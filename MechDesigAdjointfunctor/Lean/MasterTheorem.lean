@@ -63,19 +63,19 @@ an IC mechanism whenever `q` is non-decreasing under SC.
 *Reference*: Lemma 4.2. -/
 lemma T_wellDefined {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hSC : SingleCrossing v) (r : MonotoneAlloc A)
+    (hdiff : ∀ (a : A), Differentiable ℝ (v a))
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
     IsIC v ⟨r.q, transferFormula v θ_min (typeDerivAlongAlloc v r) r.q⟩ ∧
     IsIR v θ_min ⟨r.q, transferFormula v θ_min (typeDerivAlongAlloc v r) r.q⟩ := by
   constructor
   · -- IsIC: V(θ) ≥ U(θ, θ') for all θ, θ'
-    -- Reduces to: ∫ s in θ'..θ, D s ≥ v (r.q θ') θ - v (r.q θ') θ'
-    -- where D s = deriv (v (r.q s)) s = typeDerivAlongAlloc v r s.
-    -- Proof needs:
-    --   (1) FTC: v (r.q θ') θ - v (r.q θ') θ' = ∫ s in θ'..θ, deriv (v (r.q θ')) s
-    --       requires HasDerivAt (v (r.q θ')) _ on [θ', θ]
-    --   (2) SC + r.hMono: deriv (v (r.q s)) s ≥ deriv (v (r.q θ')) s when s ≥ θ'
-    --       requires differentiability of v a for each a, plus SC in derivative form
-    -- Neither is in scope without adding a differentiability hypothesis to this lemma.
+    -- Proof outline (all hypotheses now available):
+    --   (1) interval split: ∫_{θ_min}^θ D = ∫_{θ_min}^{θ'} D + ∫_{θ'}^θ D  [hint]
+    --   (2) FTC: v(r.q θ', θ) - v(r.q θ', θ') = ∫_{θ'}^θ deriv(v(r.q θ')) s  [hdiff]
+    --   (3) SC + r.hMono: deriv(v(r.q s)) s ≥ deriv(v(r.q θ')) s for s ∈ [θ',θ]
+    --       because r.q s ≥ r.q θ' and SC+hdiff → StrictMono.monotone.deriv_nonneg
+    --   (4) integral_mono: ∫_{θ'}^θ D ≥ ∫_{θ'}^θ deriv(v(r.q θ')) = v(...) - v(...)
+    -- Proof still in progress; the structure above is complete, detailing awaited.
     intro θ θ'
     sorry
   · -- IsIR: v(r.q θ_min, θ_min) - t*(θ_min) ≥ 0
@@ -88,11 +88,12 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min 
 /-- The BIC-IR mechanism `T(r) = (r.q, t*)` as an element of `ICIRMechanism`. -/
 noncomputable def Tmech {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hSC : SingleCrossing v) (r : MonotoneAlloc A)
+    (hdiff : ∀ (a : A), Differentiable ℝ (v a))
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
     ICIRMechanism A v θ_min :=
   { mech := ⟨r.q, transferFormula v θ_min (typeDerivAlongAlloc v r) r.q⟩
-    hIC  := (T_wellDefined hSC r hint).1
-    hIR  := (T_wellDefined hSC r hint).2 }
+    hIC  := (T_wellDefined hSC r hdiff hint).1
+    hIR  := (T_wellDefined hSC r hdiff hint).2 }
 
 /-- **T : Alloc → Mech** — the Transfer Functor (Definition 4.1).
 - On objects: `T(r) = (r.q, t*)` where `t*` is the envelope transfer formula.
@@ -100,10 +101,11 @@ noncomputable def Tmech {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_
 *Reference*: Definition 4.1. -/
 noncomputable def T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hSC : SingleCrossing v)
+    (hdiff : ∀ (a : A), Differentiable ℝ (v a))
     (hint : ∀ (r : MonotoneAlloc A) a b,
       IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
     MonotoneAlloc A ⥤ ICIRMechanism A v θ_min where
-  obj r     := Tmech hSC r (hint r)
+  obj r     := Tmech hSC r hdiff (hint r)
   map {r r'} f :=
     { φ       := f.φ
       hMono   := f.hMono
@@ -131,9 +133,10 @@ Naturality follows from functoriality of Q and T.
 -- `θ_min` must be passed explicitly: neither `Q hSC` nor `T hSC hint` carries it.
 noncomputable def adj_Q_T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} (θ_min : ℝ)
     (hSC : SingleCrossing v)
+    (hdiff : ∀ (a : A), Differentiable ℝ (v a))
     (hint : ∀ (r : MonotoneAlloc A) a b,
       IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
-    Q (θ_min := θ_min) hSC ⊣ T (θ_min := θ_min) hSC hint :=
+    Q (θ_min := θ_min) hSC ⊣ T (θ_min := θ_min) hSC hdiff hint :=
   sorry
 
 /-! ### 4.3 Terminality of T(q) in **Mech_q** (Corollary 4.4) -/
@@ -155,10 +158,11 @@ morphism to `T(r)`.
 *Reference*: Corollary 4.4; Mac Lane (1978), Section IV.1. -/
 theorem T_terminal {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hSC : SingleCrossing v) (r : MonotoneAlloc A)
+    (hdiff : ∀ (a : A), Differentiable ℝ (v a))
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r) :
-    Nonempty (m ⟶ Tmech hSC r hint) ∧
-    ∀ (f g : m ⟶ Tmech hSC r hint), f = g := by
+    Nonempty (m ⟶ Tmech hSC r hdiff hint) ∧
+    ∀ (f g : m ⟶ Tmech hSC r hdiff hint), f = g := by
   sorry
 
 /-! ### 4.4 The Master Theorem (Theorem 4.5) -/
@@ -171,6 +175,7 @@ Uniqueness: terminal objects are unique up to unique isomorphism (Mac Lane, Sec.
 *Reference*: Theorem 4.5(i). -/
 theorem masterTheorem_existence {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hSC : SingleCrossing v) (r : MonotoneAlloc A)
+    (hdiff : ∀ (a : A), Differentiable ℝ (v a))
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
     ∃! (m : ICIRMechanism A v θ_min),
       m ∈ MechWithAlloc r ∧
@@ -184,9 +189,10 @@ Proof: the unique morphism from Corollary 4.4 is `id_Θ`, which is an isomorphis
 *Reference*: Theorem 4.5(ii). -/
 theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hSC : SingleCrossing v) (r : MonotoneAlloc A)
+    (hdiff : ∀ (a : A), Differentiable ℝ (v a))
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r) :
-    Nonempty (m ≅ Tmech hSC r hint) := by
+    Nonempty (m ≅ Tmech hSC r hdiff hint) := by
   sorry
 
 /-- **Theorem 4.5(iii) — Transfer Invariance**: Any two BIC-IR mechanisms with the
@@ -198,6 +204,7 @@ pointwise, and hence their expected transfers are equal.
 theorem masterTheorem_transferInvariance {A : Type*} [LinearOrder A]
     {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hSC : SingleCrossing v) (r : MonotoneAlloc A)
+    (hdiff : ∀ (a : A), Differentiable ℝ (v a))
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (m₁ m₂ : ICIRMechanism A v θ_min)
     (hm₁ : m₁ ∈ MechWithAlloc r) (hm₂ : m₂ ∈ MechWithAlloc r)

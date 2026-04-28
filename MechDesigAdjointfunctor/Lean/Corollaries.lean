@@ -80,7 +80,7 @@ theorem revenueEquivalence
     ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance
     Myerson.myerson_singleCrossing
-    q₀ hint m₁ m₂ hm₁_alloc hm₂_alloc μ
+    q₀ Myerson.myerson_vDiff hint m₁ m₂ hm₁_alloc hm₂_alloc μ
 
 /-- **Myerson expected revenue formula**: for any BIC-IR mechanism with allocation `q`
 and `V(0) = 0`, expected revenue equals expected virtual surplus.
@@ -130,7 +130,7 @@ theorem taxationPrinciple
     ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance
     (Mirrlees.mirrlees_singleCrossing h g hh hg hg_pos)
-    q₀ hint m₁ m₂ hm₁_alloc hm₂_alloc μ
+    q₀ (Mirrlees.mirrlees_vDiff h g hh hg) hint m₁ m₂ hm₁_alloc hm₂_alloc μ
 
 /-! ### 5.3 Conditions for Failure (Stage 6 placeholders)
 

@@ -51,7 +51,16 @@ lemma myerson_singleCrossing : SingleCrossing myersonValue := by
   have hqq : q'.val < q.val := hq
   nlinarith [hq, hθ]
 
-/-! ### 2.3 IC Characterisation in the Myerson Setting (Lemma 2.1) -/
+/-! ### 2.3 Differentiability of the Myerson Value Function -/
+
+/-- The Myerson value function `v(q, θ) = θ * q.val` is differentiable (in fact
+polynomial) in the type argument `θ`, for any fixed allocation `q`. -/
+lemma myerson_vDiff : ∀ (q : MyersonAlloc), Differentiable ℝ (myersonValue q) := by
+  intro q
+  unfold myersonValue
+  fun_prop
+
+/-! ### 2.4 IC Characterisation in the Myerson Setting (Lemma 2.1) -/
 
 /-- The **Myerson envelope transfer formula**: the unique transfer rule that, paired
 with a monotone allocation rule `q`, yields a BIC mechanism with `V(0) = 0`.
