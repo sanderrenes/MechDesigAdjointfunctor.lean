@@ -92,9 +92,9 @@ instance mechCategory {A : Type*} {v : A → ℝ → ℝ} {θ_min : ℝ} :
   comp f g  := ⟨g.φ ∘ f.φ, g.hMono.comp f.hMono,
     fun θ => by rw [Function.comp_apply, g.hAlloc, f.hAlloc],
     fun θ => by rw [Function.comp_apply, g.hTransf, f.hTransf]⟩
-  id_comp _ := by sorry
-  comp_id _ := by sorry
-  assoc _ _ _ := by sorry
+  id_comp _ := by apply MechHom.ext; funext; rfl
+  comp_id _ := by apply MechHom.ext; funext; rfl
+  assoc _ _ _ := by apply MechHom.ext; funext; rfl
 
 /-! ### 1.4 The Category **Alloc** (Definition 1.5)
 
@@ -122,9 +122,9 @@ instance allocCategory {A : Type*} [Preorder A] :
   id _      := ⟨id, monotone_id, fun _ => rfl⟩
   comp f g  := ⟨g.φ ∘ f.φ, g.hMono.comp f.hMono,
     fun θ => by rw [Function.comp_apply, g.hCompat, f.hCompat]⟩
-  id_comp _ := by sorry
-  comp_id _ := by sorry
-  assoc _ _ _ := by sorry
+  id_comp _ := by apply AllocHom.ext; funext; rfl
+  comp_id _ := by apply AllocHom.ext; funext; rfl
+  assoc _ _ _ := by apply AllocHom.ext; funext; rfl
 
 /-! ### 1.5 The Allocation Functor **Q : Mech → Alloc** (Definition 1.6) -/
 
@@ -161,8 +161,8 @@ noncomputable def Q {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min 
     ICIRMechanism A v θ_min ⥤ MonotoneAlloc A where
   obj m       := ⟨m.mech.q, IC_implies_monotone hSC m⟩
   map f       := ⟨f.φ, f.hMono, f.hAlloc⟩
-  map_id _    := by sorry
-  map_comp _ _ := by sorry
+  map_id _     := by apply AllocHom.ext; funext; rfl
+  map_comp _ _ := by apply AllocHom.ext; funext; rfl
 
 /-! ### 1.6 Completeness of **Alloc** (Lemma 1.7) -/
 
