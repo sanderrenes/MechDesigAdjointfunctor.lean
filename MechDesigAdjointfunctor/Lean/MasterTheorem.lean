@@ -54,7 +54,7 @@ noncomputable def transferFormula {A : Type*} (v : A → ℝ → ℝ) (θ_min : 
 allocation rule `q`.  Used as input to `transferFormula`. -/
 noncomputable def typeDerivAlongAlloc {A : Type*} [Preorder A]
     (v : A → ℝ → ℝ) (q : MonotoneAlloc A) : ℝ → ℝ :=
-  fun s => deriv (fun θ => v (q.q θ) θ) s
+  fun s => deriv (v (q.q s)) s
 
 /-- **Lemma 4.2**: For any monotone allocation rule `r`, the mechanism
 `T(r) = (r.q, transferFormula(...))` is BIC and IR.
@@ -66,7 +66,24 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min 
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
     IsIC v ⟨r.q, transferFormula v θ_min (typeDerivAlongAlloc v r) r.q⟩ ∧
     IsIR v θ_min ⟨r.q, transferFormula v θ_min (typeDerivAlongAlloc v r) r.q⟩ := by
-  sorry
+  constructor
+  · -- IsIC: V(θ) ≥ U(θ, θ') for all θ, θ'
+    -- Reduces to: ∫ s in θ'..θ, D s ≥ v (r.q θ') θ - v (r.q θ') θ'
+    -- where D s = deriv (v (r.q s)) s = typeDerivAlongAlloc v r s.
+    -- Proof needs:
+    --   (1) FTC: v (r.q θ') θ - v (r.q θ') θ' = ∫ s in θ'..θ, deriv (v (r.q θ')) s
+    --       requires HasDerivAt (v (r.q θ')) _ on [θ', θ]
+    --   (2) SC + r.hMono: deriv (v (r.q s)) s ≥ deriv (v (r.q θ')) s when s ≥ θ'
+    --       requires differentiability of v a for each a, plus SC in derivative form
+    -- Neither is in scope without adding a differentiability hypothesis to this lemma.
+    intro θ θ'
+    sorry
+  · -- IsIR: v(r.q θ_min, θ_min) - t*(θ_min) ≥ 0
+    -- t*(θ_min) = v(r.q θ_min, θ_min) - ∫_{θ_min}^{θ_min} D = v(...) - 0
+    change v (r.q θ_min) θ_min -
+        transferFormula v θ_min (typeDerivAlongAlloc v r) r.q θ_min ≥ 0
+    simp only [transferFormula, intervalIntegral.integral_same, sub_zero]
+    linarith
 
 /-- The BIC-IR mechanism `T(r) = (r.q, t*)` as an element of `ICIRMechanism`. -/
 noncomputable def Tmech {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
