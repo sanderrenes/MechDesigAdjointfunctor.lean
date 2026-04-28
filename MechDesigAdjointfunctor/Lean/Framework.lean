@@ -134,7 +134,24 @@ interval, a mimicry deviation by higher types would be profitable, violating IC.
 *Reference*: Myerson (1981) Lemma 2; Mirrlees (1971) Eq. (27). -/
 lemma IC_implies_monotone {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hSC : SingleCrossing v) (m : ICIRMechanism A v θ_min) : Monotone m.mech.q := by
-  sorry
+  intro θ₁ θ₂ h12
+  by_contra hlt
+  rw [not_le] at hlt
+  -- `hlt : m.mech.q θ₂ < m.mech.q θ₁`
+  -- IC for type θ₁ (truth) vs misreport θ₂:
+  have h1 := m.hIC θ₁ θ₂
+  -- IC for type θ₂ (truth) vs misreport θ₁:
+  have h2 := m.hIC θ₂ θ₁
+  -- Case split on θ₁ = θ₂ vs θ₁ < θ₂
+  rcases eq_or_lt_of_le h12 with heq | hlt_θ
+  · -- θ₁ = θ₂: then q θ₁ = q θ₂, contradicting hlt
+    rw [heq] at hlt
+    exact lt_irrefl _ hlt
+  · -- θ₁ < θ₂: apply SingleCrossing strictly
+    have hSC' := hSC (m.mech.q θ₁) (m.mech.q θ₂) hlt hlt_θ
+    -- hSC' : v (q θ₁) θ₁ - v (q θ₂) θ₁ < v (q θ₁) θ₂ - v (q θ₂) θ₂
+    -- Combined with h1 and h2, this gives a contradiction.
+    linarith
 
 /-- **Q : Mech → Alloc** — the forgetful functor that drops the transfer rule and
 retains only the allocation rule.  Well-defined by `IC_implies_monotone`.
