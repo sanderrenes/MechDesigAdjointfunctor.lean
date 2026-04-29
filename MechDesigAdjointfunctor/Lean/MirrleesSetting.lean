@@ -60,6 +60,36 @@ lemma mirrlees_singleCrossing (h g : ℝ → ℝ) (hh : Differentiable ℝ h)
     SingleCrossing (A := ℝ) (mirrleesValue h g) := by
   sorry
 
+/-! ### 3.1.bis Differentiability of the Mirrlees Value Function
+
+The Mirrlees value function `v(y, θ) = θ * h y - g (y/θ)` has a singularity at `θ = 0`
+because `y/θ` blows up there.  It is **not** globally differentiable on `ℝ`.
+
+The framework's `T_wellDefined` uses `DifferentiableOn ℝ (v a) (Set.Ioi 0)`, i.e.
+differentiability on the strictly positive reals `(0, ∞)`.  Since the type space satisfies
+`θ_min > 0` (design decision), the integration interval `[θ_min, θ_max]` lies inside
+`Set.Ioi 0`, and `g (y/θ)` is differentiable there because the denominator `θ ≠ 0`.
+
+Note: `Set.Ioi 0 = {θ : ℝ | 0 < θ}` — the open interval `(0, ∞)`.  This is the minimal
+domain needed to avoid the `1/θ` singularity.
+*Reference*: Mirrlees (1971), Section 2 (assumption that types are bounded away from `0`). -/
+
+/-- The Mirrlees value function `v(y, θ) = θ * h y - g (y/θ)` is differentiable on
+`Set.Ioi 0 = (0, ∞)` in the type argument `θ`, for any fixed income `y`.
+
+The singularity at `θ = 0` is excluded by the domain: on `(0, ∞)`, `fun θ => y / θ`
+is differentiable (denominator non-zero), so the chain rule applies to `g (y / θ)`. -/
+lemma mirrlees_vDiff (h g : ℝ → ℝ) (_hh : Differentiable ℝ h) (hg : Differentiable ℝ g) :
+    ∀ (y : ℝ), DifferentiableOn ℝ (mirrleesValue h g y) (Set.Ioi 0) := by
+  intro y
+  unfold mirrleesValue
+  apply DifferentiableOn.sub
+  · exact (differentiable_id.mul_const _).differentiableOn
+  · apply hg.differentiableOn.comp _ (fun x _ => Set.mem_univ _)
+    simp_rw [div_eq_mul_inv]
+    exact (differentiableOn_const y).mul
+      (differentiableOn_id.inv (fun x hx => ne_of_gt hx))
+
 /-! ### 3.2 IC Characterisation and the Taxation Principle (Lemma 3.1) -/
 
 /-- The **Mirrlees envelope transfer formula**: the unique consumption rule `c(θ)` that,

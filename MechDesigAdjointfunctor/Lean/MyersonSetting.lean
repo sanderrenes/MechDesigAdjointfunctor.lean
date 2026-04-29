@@ -55,7 +55,7 @@ lemma myerson_singleCrossing : SingleCrossing myersonValue := by
 
 /-- The Myerson value function `v(q, θ) = θ * q.val` is differentiable (in fact
 polynomial) in the type argument `θ`, for any fixed allocation `q`. -/
-lemma myerson_vDiff : ∀ (q : MyersonAlloc), Differentiable ℝ (myersonValue q) := by
+lemma myerson_vDiff : ∀ (q : MyersonAlloc), DifferentiableOn ℝ (myersonValue q) (Set.Ioi 0) := by
   intro q
   unfold myersonValue
   fun_prop

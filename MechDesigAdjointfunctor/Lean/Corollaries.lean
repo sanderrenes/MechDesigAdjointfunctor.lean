@@ -78,7 +78,12 @@ theorem revenueEquivalence
     (F : ℝ → ℝ) (f : ℝ → ℝ) (hf : ∀ θ, 0 < f θ)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
+  -- NOTE: `masterTheorem_transferInvariance` now requires `0 < θ_min`; the Myerson
+  -- setting uses `θ_min = 0` so this corollary is currently blocked at the
+  -- boundary-condition argument (sorry below).  Recovering the result for Myerson
+  -- needs a separate argument that handles the `θ_min = 0` boundary directly.
   masterTheorem_transferInvariance
+    (sorry : (0 : ℝ) < 0)
     Myerson.myerson_singleCrossing
     q₀ Myerson.myerson_vDiff hint m₁ m₂ hm₁_alloc hm₂_alloc μ
 
@@ -118,7 +123,8 @@ Eq. (27). -/
 theorem taxationPrinciple
     (h g : ℝ → ℝ) (hh : Differentiable ℝ h) (hg : Differentiable ℝ g)
     (hg_pos : ∀ l, 0 < deriv g l)
-    (θ_min : ℝ)
+    (θ_min : ℝ) (hθ_pos : 0 < θ_min)
+    (hvalue_diff : ∀ y : ℝ, Differentiable ℝ (Mirrlees.mirrleesValue h g y))
     (q₀ : MonotoneAlloc ℝ)
     (m₁ m₂ : ICIRMechanism ℝ (Mirrlees.mirrleesValue h g) θ_min)
     (hm₁_alloc : ∀ θ, m₁.mech.q θ = q₀.q θ)
@@ -129,8 +135,10 @@ theorem taxationPrinciple
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance
+    hθ_pos
     (Mirrlees.mirrlees_singleCrossing h g hh hg hg_pos)
-    q₀ (Mirrlees.mirrlees_vDiff h g hh hg) hint m₁ m₂ hm₁_alloc hm₂_alloc μ
+    q₀ (Mirrlees.mirrlees_vDiff h g hh hg θ_min hθ_pos hvalue_diff)
+    hint m₁ m₂ hm₁_alloc hm₂_alloc μ
 
 /-! ### 5.3 Conditions for Failure (Stage 6 placeholders)
 

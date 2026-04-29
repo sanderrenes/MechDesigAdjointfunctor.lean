@@ -106,7 +106,7 @@ Morphisms: order-preserving type transformations compatible with the allocation 
 is a consequence of IC + SC; see `IC_implies_monotone`. -/
 @[ext]
 structure MonotoneAlloc (A : Type*) [Preorder A] where
-  q     : ℝ → A
+  q : ℝ → A
   hMono : Monotone q
 
 /-- A morphism `φ : r → r'` in **Alloc**: an order-preserving `φ : ℝ → ℝ` with
