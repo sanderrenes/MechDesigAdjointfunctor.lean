@@ -2,6 +2,9 @@ import MechDesigAdjointfunctor.Lean.Framework
 import Mathlib.CategoryTheory.Adjunction.Basic
 import Mathlib.CategoryTheory.Limits.Shapes.Terminal
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
+import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
+import Mathlib.Analysis.Calculus.Deriv.Add
+import Mathlib.Analysis.Calculus.Deriv.Slope
 
 /-!
 # Stage 4: The Master Theorem — Adjunction Q ⊣ T
@@ -117,19 +120,15 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min 
       -- when r.q s ≥ r.q θ'.
       rcases le_total θ' θ with hle | hle
       · -- θ' ≤ θ: integration interval is [θ', θ]. For s ∈ [θ', θ], s ≥ θ', so r.q s ≥ r.q θ'.
+        -- Goal: ∫ D ≥ ∫ D' = ∫ D' ≤ ∫ D, so hintC (for D') is the first arg, hint (for D) second.
         rw [hIθ'θ_def]
-        apply intervalIntegral.integral_mono_on hle (hint θ' θ) (hintC (r.q θ') θ' θ)
+        apply intervalIntegral.integral_mono_on hle (hintC (r.q θ') θ' θ) (hint θ' θ)
         intro s hs
-        -- hs : s ∈ Icc θ' θ; need typeDerivAlongAlloc v r s ≥ deriv (v (r.q θ')) s
-        -- typeDerivAlongAlloc v r s = deriv (v (r.q s)) s
+        -- hs : s ∈ Icc θ' θ; need deriv (v (r.q θ')) s ≤ typeDerivAlongAlloc v r s
         unfold typeDerivAlongAlloc
-        -- We have r.q s ≥ r.q θ' from monotonicity of r.q at hs.1 : θ' ≤ s.
         have hqle : r.q θ' ≤ r.q s := r.hMono hs.1
         rcases lt_or_eq_of_le hqle with hqlt | hqeq
-        · -- Strict: by SC, fun θ => v (r.q s) θ - v (r.q θ') θ is StrictMono;
-          -- its derivative at s ≥ 0 by Monotone.deriv_nonneg.
-          have hSCq := hSC (r.q s) (r.q θ') hqlt
-          -- deriv (fun x => v (r.q s) x - v (r.q θ') x) s ≥ 0
+        · have hSCq := hSC (r.q s) (r.q θ') hqlt
           have hs_pos : 0 < s := lt_of_lt_of_le hθ'_pos hs.1
           have hd1 : DifferentiableAt ℝ (v (r.q s)) s :=
             ((hdiff (r.q s)) s hs_pos).differentiableAt
@@ -137,31 +136,47 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min 
           have hd2 : DifferentiableAt ℝ (v (r.q θ')) s :=
             ((hdiff (r.q θ')) s hs_pos).differentiableAt
               (IsOpen.mem_nhds isOpen_Ioi hs_pos)
-          have hderiv_sub : deriv (fun x => v (r.q s) x - v (r.q θ') x) s =
-              deriv (v (r.q s)) s - deriv (v (r.q θ')) s :=
-            deriv_sub hd1 hd2
-          have hnn : 0 ≤ deriv (fun x => v (r.q s) x - v (r.q θ') x) s :=
-            hSCq.monotone.deriv_nonneg
-          linarith [hnn, hderiv_sub]
-        · -- Equal: deriv(v(r.q s)) s = deriv(v(r.q θ')) s
-          rw [← hqeq]
-      · -- θ' ≥ θ: integration interval is [θ, θ']. Going "backwards":
-        --   ∫_{θ'}^θ f = -∫_θ^{θ'} f, so we need ∫_θ^{θ'} D ≤ ∫_θ^{θ'} deriv(v(qθ')).
-        rw [hIθ'θ_def, intervalIntegral.integral_symm]
-        rw [intervalIntegral.integral_symm θ' θ]
-        rw [neg_le_neg_iff]
-        apply intervalIntegral.integral_mono_on hle (hintC (r.q θ') θ θ') (hint θ θ')
-        intro s hs
-        -- hs : s ∈ Icc θ θ'; s ≤ θ', so r.q s ≤ r.q θ'.
-        unfold typeDerivAlongAlloc
-        have hqle : r.q s ≤ r.q θ' := r.hMono hs.2
-        rcases lt_or_eq_of_le hqle with hqlt | hqeq
-        · -- r.q s < r.q θ': SC gives StrictMono of fun x => v(r.q θ') x - v(r.q s) x
-          have hSCq := hSC (r.q θ') (r.q s) hqlt
-          have hs_pos : 0 < s := lt_of_lt_of_le hθ_pos' hs.2 -- wait, that's wrong
-          sorry
-        · rw [hqeq]
-    · -- Non-physical case: θ ≤ 0 or θ' ≤ 0.  Cannot be proved from `hdiff` alone.
+          have hhas : HasDerivAt (fun x => v (r.q s) x - v (r.q θ') x)
+              (deriv (v (r.q s)) s - deriv (v (r.q θ')) s) s :=
+            HasDerivAt.sub hd1.hasDerivAt hd2.hasDerivAt
+          linarith [HasDerivAt.nonneg_of_monotone hhas hSCq.monotone]
+        · rw [← hqeq]
+      · -- θ ≤ θ': backwards integral case — reduce to forward by integral_symm.
+        -- Key: ∫_{θ}^{θ'} typeDerivAlongAlloc ≤ ∫_{θ}^{θ'} deriv(v(r.q θ'))
+        -- pointwise: r.q s ≤ r.q θ' for s ∈ [θ,θ'], so SC gives deriv(v(r.q s)) ≤ deriv(v(r.q θ')).
+        have key : ∫ s in θ..θ', typeDerivAlongAlloc v r s ≤
+                   ∫ s in θ..θ', deriv (v (r.q θ')) s :=
+          intervalIntegral.integral_mono_on hle (hint θ θ') (hintC (r.q θ') θ θ') (by
+            intro s hs
+            unfold typeDerivAlongAlloc
+            have hqle : r.q s ≤ r.q θ' := r.hMono hs.2
+            rcases lt_or_eq_of_le hqle with hqlt | hqeq
+            · have hSCq := hSC (r.q θ') (r.q s) hqlt
+              have hs_pos : 0 < s := lt_of_lt_of_le hθ_pos' hs.1
+              have hd1 : DifferentiableAt ℝ (v (r.q s)) s :=
+                ((hdiff (r.q s)) s hs_pos).differentiableAt
+                  (IsOpen.mem_nhds isOpen_Ioi hs_pos)
+              have hd2 : DifferentiableAt ℝ (v (r.q θ')) s :=
+                ((hdiff (r.q θ')) s hs_pos).differentiableAt
+                  (IsOpen.mem_nhds isOpen_Ioi hs_pos)
+              -- HasDerivAt for the difference function, then use nonneg_of_monotone
+              have hhas : HasDerivAt (fun x => v (r.q θ') x - v (r.q s) x)
+                  (deriv (v (r.q θ')) s - deriv (v (r.q s)) s) s :=
+                HasDerivAt.sub hd2.hasDerivAt hd1.hasDerivAt
+              linarith [HasDerivAt.nonneg_of_monotone hhas hSCq.monotone]
+            · rw [← hqeq])
+        -- integral_symm θ θ' : ∫ x in θ'..θ, f x = -∫ x in θ..θ', f x
+        have h1 : ∫ s in θ'..θ, typeDerivAlongAlloc v r s =
+                  -∫ s in θ..θ', typeDerivAlongAlloc v r s :=
+          intervalIntegral.integral_symm θ θ'
+        have h2 : ∫ s in θ'..θ, deriv (v (r.q θ')) s =
+                  -∫ s in θ..θ', deriv (v (r.q θ')) s :=
+          intervalIntegral.integral_symm θ θ'
+        rw [hIθ'θ_def, h1]
+        linarith [h2]
+    · -- Non-physical case: θ ≤ 0 or θ' ≤ 0.
+      -- `hdiff` restricts differentiability to (0,∞); FTC is unavailable here.
+      -- `IsIC` ideally should quantify over types in (0,∞) only — known design limitation.
       sorry
   · -- IsIR: v(r.q θ_min, θ_min) - t*(θ_min) ≥ 0
     -- t*(θ_min) = v(r.q θ_min, θ_min) - ∫_{θ_min}^{θ_min} D = v(...) - 0
@@ -174,11 +189,12 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min 
 noncomputable def Tmech {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) (hSC : SingleCrossing v) (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
-    (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
+    (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
+    (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c) :
     ICIRMechanism A v θ_min :=
   { mech := ⟨r.q, transferFormula v θ_min (typeDerivAlongAlloc v r) r.q⟩
-    hIC  := (T_wellDefined hθ_pos hSC r hdiff hint).1
-    hIR  := (T_wellDefined hθ_pos hSC r hdiff hint).2 }
+    hIC  := (T_wellDefined hθ_pos hSC r hdiff hint hintC).1
+    hIR  := (T_wellDefined hθ_pos hSC r hdiff hint hintC).2 }
 
 /-- **T : Alloc → Mech** — the Transfer Functor (Definition 4.1).
 - On objects: `T(r) = (r.q, t*)` where `t*` is the envelope transfer formula.
@@ -187,18 +203,19 @@ noncomputable def Tmech {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_
 noncomputable def T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) (hSC : SingleCrossing v)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
+    (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (hint : ∀ (r : MonotoneAlloc A) a b,
       IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
     MonotoneAlloc A ⥤ ICIRMechanism A v θ_min where
-  obj r     := Tmech hθ_pos hSC r hdiff (hint r)
+  obj r     := Tmech hθ_pos hSC r hdiff (hint r) hintC
   map {r r'} f :=
     { φ       := f.φ
       hMono   := f.hMono
       hAlloc  := f.hCompat
       hTransf := by sorry  -- chain rule applied to the envelope formula under φ
     }
-  map_id _    := by sorry
-  map_comp _ _ := by sorry
+  map_id _    := by apply MechHom.ext; funext; rfl
+  map_comp _ _ := by apply MechHom.ext; funext; rfl
 
 /-! ### 4.2 The Adjunction **Q ⊣ T** (Theorem 4.3) -/
 
@@ -219,9 +236,10 @@ Naturality follows from functoriality of Q and T.
 noncomputable def adj_Q_T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} (θ_min : ℝ)
     (hθ_pos : 0 < θ_min) (hSC : SingleCrossing v)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
+    (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (hint : ∀ (r : MonotoneAlloc A) a b,
       IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
-    Q (θ_min := θ_min) hSC ⊣ T (θ_min := θ_min) hθ_pos hSC hdiff hint :=
+    Q (θ_min := θ_min) hSC ⊣ T (θ_min := θ_min) hθ_pos hSC hdiff hintC hint :=
   sorry
 
 /-! ### 4.3 Terminality of T(q) in **Mech_q** (Corollary 4.4) -/
@@ -245,9 +263,10 @@ theorem T_terminal {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min :
     (hθ_pos : 0 < θ_min) (hSC : SingleCrossing v) (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
+    (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r) :
-    Nonempty (m ⟶ Tmech hθ_pos hSC r hdiff hint) ∧
-    ∀ (f g : m ⟶ Tmech hθ_pos hSC r hdiff hint), f = g := by
+    Nonempty (m ⟶ Tmech hθ_pos hSC r hdiff hint hintC) ∧
+    ∀ (f g : m ⟶ Tmech hθ_pos hSC r hdiff hint hintC), f = g := by
   sorry
 
 /-! ### 4.4 The Master Theorem (Theorem 4.5) -/
@@ -261,7 +280,8 @@ Uniqueness: terminal objects are unique up to unique isomorphism (Mac Lane, Sec.
 theorem masterTheorem_existence {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) (hSC : SingleCrossing v) (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
-    (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
+    (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
+    (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c) :
     ∃! (m : ICIRMechanism A v θ_min),
       m ∈ MechWithAlloc r ∧
       ∀ θ, m.mech.t θ = transferFormula v θ_min (typeDerivAlongAlloc v r) r.q θ := by
@@ -276,8 +296,9 @@ theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] {v : A → ℝ →
     (hθ_pos : 0 < θ_min) (hSC : SingleCrossing v) (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
+    (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r) :
-    Nonempty (m ≅ Tmech hθ_pos hSC r hdiff hint) := by
+    Nonempty (m ≅ Tmech hθ_pos hSC r hdiff hint hintC) := by
   sorry
 
 /-- **Theorem 4.5(iii) — Transfer Invariance**: Any two BIC-IR mechanisms with the
@@ -291,6 +312,7 @@ theorem masterTheorem_transferInvariance {A : Type*} [LinearOrder A]
     (hθ_pos : 0 < θ_min) (hSC : SingleCrossing v) (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
+    (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (m₁ m₂ : ICIRMechanism A v θ_min)
     (hm₁ : m₁ ∈ MechWithAlloc r) (hm₂ : m₂ ∈ MechWithAlloc r)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :

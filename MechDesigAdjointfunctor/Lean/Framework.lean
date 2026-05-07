@@ -175,7 +175,24 @@ noncomputable def Q {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min 
 - *Equalisers*: restriction of a monotone function to a subtype is monotone;
   the universal property is immediate.
 
-*Reference*: Mac Lane (1978), Theorem V.2.1. -/
+*Reference*: Mac Lane (1978), Theorem V.2.1.
+
+**STATUS — obstacle identified (2026-05-07).**  As currently stated this lemma is
+*not provable*: it is false for the morphism convention chosen above.  A morphism
+`r → r'` in `Alloc` is a monotone reparametrization `φ : ℝ → ℝ` with
+`r'.q ∘ φ = r.q`, so morphism existence forces `image r.q ⊆ image r'.q`, and
+uniqueness fails whenever `r'.q` is constant on a non-degenerate interval (any
+monotone `φ` landing in that interval works).  Concrete counterexample for the
+terminal object with `A = Bool`: take a constant `r₁.q ≡ false` and a step
+`r₂.q (θ) = decide (0 ≤ θ)`; no `r_term` admits unique morphisms from both.
+
+The proof sketch above (pointwise infimum) tacitly assumes morphisms are
+*pointwise inequalities* `r.q θ ≤ r'.q θ` — a different category.  To recover
+`HasLimits`, redefine `AllocHom` as the poset of pointwise comparisons
+(making `MonotoneAlloc A` the functor category `[ℝ, A]` of order-preserving
+maps), under which the result follows from `Pi.completeLattice` and
+`CategoryTheory.Limits.completeLatticeHasLimits`.  Until the morphism convention
+is revised this sorry must remain. -/
 theorem alloc_hasLimits {A : Type*} [CompleteLattice A] :
     HasLimits (MonotoneAlloc A) := by
   sorry
@@ -190,7 +207,18 @@ Limits in **Mech** therefore act componentwise.  Since Q projects onto the
 `q`-component, and limits of `q`-components in **Mech** coincide with limits in
 **Alloc**, Q preserves limits.
 
-*Reference*: Mac Lane (1978), Chapter V, Corollary 5.1. -/
+*Reference*: Mac Lane (1978), Chapter V, Corollary 5.1.
+
+**STATUS — blocked by `alloc_hasLimits` (2026-05-07).**  `PreservesLimits`
+requires source and target categories to admit the limits in question.  The
+target side `HasLimits (MonotoneAlloc A)` is itself unprovable under the present
+morphism convention (see `alloc_hasLimits`).  The source-side construction —
+componentwise envelope-formula limits in `Mech` — is sound and would be the
+substantive content here, but it cannot be packaged as `PreservesLimits` until
+the underlying limit categories are non-trivially inhabited.  Once the
+`AllocHom` / `MechHom` convention is redefined to a pointwise-poset structure
+(see comment on `alloc_hasLimits`), this lemma reduces to checking that `Q` is
+componentwise on `q`, which is immediate from its definition. -/
 theorem Q_preservesLimits {A : Type*} [LinearOrder A]
     {v : A → ℝ → ℝ} {θ_min : ℝ} (hSC : SingleCrossing v) :
     PreservesLimits (Q (θ_min := θ_min) hSC) := by

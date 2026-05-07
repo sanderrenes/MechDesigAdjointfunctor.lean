@@ -75,6 +75,8 @@ theorem revenueEquivalence
     (hint : ∀ a b, IntervalIntegrable
       (typeDerivAlongAlloc Myerson.myersonValue q₀)
       MeasureTheory.volume a b)
+    (hintC : ∀ (a : Myerson.MyersonAlloc) b c,
+      IntervalIntegrable (deriv (Myerson.myersonValue a)) MeasureTheory.volume b c)
     (F : ℝ → ℝ) (f : ℝ → ℝ) (hf : ∀ θ, 0 < f θ)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
@@ -85,7 +87,7 @@ theorem revenueEquivalence
   masterTheorem_transferInvariance
     (sorry : (0 : ℝ) < 0)
     Myerson.myerson_singleCrossing
-    q₀ Myerson.myerson_vDiff hint m₁ m₂ hm₁_alloc hm₂_alloc μ
+    q₀ Myerson.myerson_vDiff hint hintC m₁ m₂ hm₁_alloc hm₂_alloc μ
 
 /-- **Myerson expected revenue formula**: for any BIC-IR mechanism with allocation `q`
 and `V(0) = 0`, expected revenue equals expected virtual surplus.
@@ -124,7 +126,6 @@ theorem taxationPrinciple
     (h g : ℝ → ℝ) (hh : Differentiable ℝ h) (hg : Differentiable ℝ g)
     (hg_pos : ∀ l, 0 < deriv g l)
     (θ_min : ℝ) (hθ_pos : 0 < θ_min)
-    (hvalue_diff : ∀ y : ℝ, Differentiable ℝ (Mirrlees.mirrleesValue h g y))
     (q₀ : MonotoneAlloc ℝ)
     (m₁ m₂ : ICIRMechanism ℝ (Mirrlees.mirrleesValue h g) θ_min)
     (hm₁_alloc : ∀ θ, m₁.mech.q θ = q₀.q θ)
@@ -132,13 +133,15 @@ theorem taxationPrinciple
     (hint : ∀ a b, IntervalIntegrable
       (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀)
       MeasureTheory.volume a b)
+    (hintC : ∀ (a : ℝ) b c,
+      IntervalIntegrable (deriv (Mirrlees.mirrleesValue h g a)) MeasureTheory.volume b c)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance
     hθ_pos
     (Mirrlees.mirrlees_singleCrossing h g hh hg hg_pos)
-    q₀ (Mirrlees.mirrlees_vDiff h g hh hg θ_min hθ_pos hvalue_diff)
-    hint m₁ m₂ hm₁_alloc hm₂_alloc μ
+    q₀ (Mirrlees.mirrlees_vDiff h g hh hg)
+    hint hintC m₁ m₂ hm₁_alloc hm₂_alloc μ
 
 /-! ### 5.3 Conditions for Failure (Stage 6 placeholders)
 

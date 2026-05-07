@@ -84,7 +84,39 @@ Proof sketch: for any misreport `r`, the payoff difference is
 lemma myerson_IC_of_monotone_transfer (q : ℝ → ℝ) (hq : Monotone q)
     (hq_int : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b) :
     IsIC myersonValue ⟨fun θ => ⟨q θ, sorry, sorry⟩, myersonTransfer q⟩ := by
-  sorry
+  intro θ θ'
+  unfold myersonValue myersonTransfer
+  simp only
+  -- Goal reduces to: ∫ s in θ'..θ, q s ≥ (θ - θ') * q θ'
+  -- After algebra, the inequality becomes:
+  --   θ * q θ - (θ * q θ - ∫ 0..θ q) ≥ θ * q θ' - (θ' * q θ' - ∫ 0..θ', q)
+  -- i.e. ∫ 0..θ q ≥ (θ - θ') * q θ' + ∫ 0..θ', q
+  have key : (θ - θ') * q θ' ≤ ∫ s in θ'..θ, q s := by
+    rcases le_or_gt θ' θ with hθ | hθ
+    · -- Case θ' ≤ θ: ∫ θ'..θ q ≥ ∫ θ'..θ (q θ') = (θ - θ') * q θ'
+      have hmono : ∀ x ∈ Set.Icc θ' θ, q θ' ≤ q x := fun x hx => hq hx.1
+      have hconst_int : IntervalIntegrable (fun _ : ℝ => q θ') MeasureTheory.volume θ' θ :=
+        intervalIntegrable_const
+      have hbound : ∫ s in θ'..θ, (fun _ : ℝ => q θ') s ≤ ∫ s in θ'..θ, q s :=
+        intervalIntegral.integral_mono_on hθ hconst_int (hq_int θ' θ) hmono
+      rw [intervalIntegral.integral_const] at hbound
+      simp [smul_eq_mul, mul_comm] at hbound
+      linarith
+    · -- Case θ < θ': ∫ θ'..θ = -∫ θ..θ'; on [θ, θ'], q s ≤ q θ'
+      have hθ_le : θ ≤ θ' := le_of_lt hθ
+      have hmono : ∀ x ∈ Set.Icc θ θ', q x ≤ q θ' := fun x hx => hq hx.2
+      have hconst_int : IntervalIntegrable (fun _ : ℝ => q θ') MeasureTheory.volume θ θ' :=
+        intervalIntegrable_const
+      have hbound : ∫ s in θ..θ', q s ≤ ∫ s in θ..θ', (fun _ : ℝ => q θ') s :=
+        intervalIntegral.integral_mono_on hθ_le (hq_int θ θ') hconst_int hmono
+      rw [intervalIntegral.integral_const] at hbound
+      simp [smul_eq_mul, mul_comm] at hbound
+      rw [intervalIntegral.integral_symm θ θ']
+      linarith
+  -- Now use integral_add_adjacent_intervals to split ∫ 0..θ
+  have hsplit : (∫ s in (0:ℝ)..θ', q s) + ∫ s in θ'..θ, q s = ∫ s in (0:ℝ)..θ, q s :=
+    intervalIntegral.integral_add_adjacent_intervals (hq_int 0 θ') (hq_int θ' θ)
+  linarith
 
 /-- **Lemma 2.1 (only-if direction)**: If `(q, t)` is BIC with `V(0) = 0`,
 then `q` is monotone and `t = myersonTransfer q`.
