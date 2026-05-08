@@ -87,6 +87,7 @@ theorem revenueEquivalence
   masterTheorem_transferInvariance
     (sorry : (0 : ℝ) < 0)
     Myerson.myerson_singleCrossing
+    (Set.subset_univ _)
     q₀ Myerson.myerson_vDiff hint hintC m₁ m₂ hm₁_alloc hm₂_alloc μ
 
 /-- **Myerson expected revenue formula**: for any BIC-IR mechanism with allocation `q`
@@ -125,6 +126,8 @@ Eq. (27). -/
 theorem taxationPrinciple
     (h g : ℝ → ℝ) (hh : Differentiable ℝ h) (hg : Differentiable ℝ g)
     (hg_pos : ∀ l, 0 < deriv g l)
+    (hh_mono : StrictMono h)
+    (hSM : StrictMono (fun l => l * deriv g l))
     (θ_min : ℝ) (hθ_pos : 0 < θ_min)
     (q₀ : MonotoneAlloc ℝ)
     (m₁ m₂ : ICIRMechanism ℝ (Mirrlees.mirrleesValue h g) θ_min)
@@ -139,7 +142,8 @@ theorem taxationPrinciple
     ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance
     hθ_pos
-    (Mirrlees.mirrlees_singleCrossing h g hh hg hg_pos)
+    (Mirrlees.mirrlees_singleCrossing h g hh hg hg_pos hh_mono hSM)
+    (le_refl (Set.Ioi 0))
     q₀ (Mirrlees.mirrlees_vDiff h g hh hg)
     hint hintC m₁ m₂ hm₁_alloc hm₂_alloc μ
 

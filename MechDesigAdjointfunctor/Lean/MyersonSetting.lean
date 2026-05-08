@@ -45,8 +45,8 @@ def IsRegular (F f : ℝ → ℝ) (Θ : Set ℝ) : Prop :=
 
 /-- SC holds for the Myerson value function: `v q θ - v q' θ = θ * (q - q')`,
 which is strictly increasing in `θ` whenever `q > q'`. -/
-lemma myerson_singleCrossing : SingleCrossing myersonValue := by
-  intro q q' hq θ θ' hθ
+lemma myerson_singleCrossing : SingleCrossing myersonValue Set.univ := by
+  intro q q' hq θ _ θ' _ hθ
   simp only [myersonValue]
   have hqq : q'.val < q.val := hq
   nlinarith [hq, hθ]
@@ -82,8 +82,9 @@ the mechanism `(q, t)` is BIC with `V(0) = 0`.
 Proof sketch: for any misreport `r`, the payoff difference is
 `V(θ) - U(θ, r) = ∫ᵣ^θ [q(θ) - q(s)] ds ≥ 0` since `q` is non-decreasing. -/
 lemma myerson_IC_of_monotone_transfer (q : ℝ → ℝ) (hq : Monotone q)
+    (hq_range : ∀ θ, 0 ≤ q θ ∧ q θ ≤ 1)
     (hq_int : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b) :
-    IsIC myersonValue ⟨fun θ => ⟨q θ, sorry, sorry⟩, myersonTransfer q⟩ := by
+    IsIC myersonValue ⟨fun θ => ⟨q θ, (hq_range θ).1, (hq_range θ).2⟩, myersonTransfer q⟩ := by
   intro θ θ'
   unfold myersonValue myersonTransfer
   simp only
@@ -125,7 +126,8 @@ Proof sketch: `V(θ) = max_r U(θ, r)` is convex (max of affine functions), so `
 is non-decreasing.  The envelope theorem gives `V'(θ) = q(θ)` a.e.; integrating
 with `V(0) = 0` and substituting yields the formula. -/
 lemma myerson_transfer_unique {q : ℝ → ℝ} {t : ℝ → ℝ}
-    (hIC : IsIC myersonValue ⟨fun θ => ⟨q θ, sorry, sorry⟩, t⟩)
+    (hq_range : ∀ θ, 0 ≤ q θ ∧ q θ ≤ 1)
+    (hIC : IsIC myersonValue ⟨fun θ => ⟨q θ, (hq_range θ).1, (hq_range θ).2⟩, t⟩)
     (hIR : t 0 ≤ 0 * q 0) :
     ∀ θ, t θ = myersonTransfer q θ := by
   sorry

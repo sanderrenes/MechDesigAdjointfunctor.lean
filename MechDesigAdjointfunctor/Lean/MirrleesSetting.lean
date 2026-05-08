@@ -6,6 +6,9 @@ import Mathlib.Analysis.Calculus.Deriv.Add
 import Mathlib.Analysis.Calculus.Deriv.Inv
 import Mathlib.Analysis.Calculus.Deriv.Slope
 import Mathlib.Analysis.Calculus.MeanValue
+import Mathlib.Analysis.Calculus.Deriv.MeanValue
+import Mathlib.Topology.Perfect
+import Mathlib.Topology.Order.DenselyOrdered
 
 /-!
 # Stage 3: The Mirrlees Taxation Setting
@@ -33,7 +36,7 @@ optimal nonlinear income taxation model, recovering the **Taxation Principle**
 * Seade (1977), *On the Shape of Optimal Tax Schedules*
 -/
 
-open MeasureTheory intervalIntegral
+open MeasureTheory intervalIntegral Filter
 
 namespace MechDesign.Mirrlees
 
@@ -52,7 +55,7 @@ Formalised here as: `∂/∂θ [v(y, θ) - v(y', θ)] > 0` for all `y > y'`, whi
 abstract SC condition applied to the income-consumption allocation space.
 *Reference*: Mirrlees (1971) Assumption 3; Seade (1977). -/
 def SpenceMirrlees (v : ℝ → ℝ → ℝ) : Prop :=
-  SingleCrossing (A := ℝ) v
+  SingleCrossing (A := ℝ) v (Set.Ioi 0)
 
 /-- SC-M implies the abstract SC condition for the income-consumption allocation space.
 
@@ -60,9 +63,74 @@ The Spence-Mirrlees condition `SpenceMirrlees v = SingleCrossing v` (by definiti
 so this lemma establishes SC from differentiability assumptions on `h` and `g`.
 *Reference*: Mirrlees (1971), Lemma 1; Fudenberg–Tirole (1991), Ch. 7. -/
 lemma mirrlees_singleCrossing (h g : ℝ → ℝ) (hh : Differentiable ℝ h)
-    (hg : Differentiable ℝ g) (hg_pos : ∀ l, 0 < deriv g l) :
-    SingleCrossing (A := ℝ) (mirrleesValue h g) := by
-  sorry
+    (hg : Differentiable ℝ g) (hg_pos : ∀ l, 0 < deriv g l)
+    (hh_mono : StrictMono h)
+    (hSM : StrictMono (fun l => l * deriv g l)) :
+    SingleCrossing (A := ℝ) (mirrleesValue h g) (Set.Ioi 0) := by
+  intro y y' hyy
+  apply strictMonoOn_of_deriv_pos (convex_Ioi 0)
+  · -- ContinuousOn (fun θ => mirrleesValue h g y θ - mirrleesValue h g y' θ) (Set.Ioi 0)
+    have hcont_y : ContinuousOn (fun θ => mirrleesValue h g y θ) (Set.Ioi 0) := by
+      simp only [mirrleesValue]
+      apply ContinuousOn.sub
+      · exact (continuous_id.mul_const _).continuousOn
+      · apply hg.continuous.continuousOn.comp
+          (ContinuousOn.div continuousOn_const continuousOn_id (fun x hx => hx.ne'))
+        intro _ _; exact Set.mem_univ _
+    have hcont_y' : ContinuousOn (fun θ => mirrleesValue h g y' θ) (Set.Ioi 0) := by
+      simp only [mirrleesValue]
+      apply ContinuousOn.sub
+      · exact (continuous_id.mul_const _).continuousOn
+      · apply hg.continuous.continuousOn.comp
+          (ContinuousOn.div continuousOn_const continuousOn_id (fun x hx => hx.ne'))
+        intro _ _; exact Set.mem_univ _
+    exact hcont_y.sub hcont_y'
+  · -- 0 < deriv f θ for θ ∈ interior (Set.Ioi 0) = Set.Ioi 0
+    intro θ hθ
+    rw [interior_Ioi] at hθ
+    have hθne : θ ≠ 0 := hθ.ne'
+    have hθ_pos : 0 < θ := hθ
+    -- Rewrite f in simplified form
+    have hf_eq : (fun x => mirrleesValue h g y x - mirrleesValue h g y' x) =
+        (fun x => x * (h y - h y') - g (y / x) + g (y' / x)) := by
+      ext x; simp only [mirrleesValue]; ring
+    rw [hf_eq]
+    -- HasDerivAt for y/x and y'/x
+    have hdy : HasDerivAt (fun x => y / x) (-(y / θ ^ 2)) θ := by
+      have hraw := (hasDerivAt_const θ y).div (hasDerivAt_id θ) hθne
+      simp only [id] at hraw
+      convert hraw using 1; ring
+    have hdy' : HasDerivAt (fun x => y' / x) (-(y' / θ ^ 2)) θ := by
+      have hraw := (hasDerivAt_const θ y').div (hasDerivAt_id θ) hθne
+      simp only [id] at hraw
+      convert hraw using 1; ring
+    -- HasDerivAt for g(y/x) and g(y'/x)
+    have hdgy : HasDerivAt (fun x => g (y / x)) (deriv g (y / θ) * -(y / θ ^ 2)) θ :=
+      (hg (y / θ)).hasDerivAt.comp θ hdy
+    have hdgy' : HasDerivAt (fun x => g (y' / x)) (deriv g (y' / θ) * -(y' / θ ^ 2)) θ :=
+      (hg (y' / θ)).hasDerivAt.comp θ hdy'
+    -- HasDerivAt for full function
+    have hdf : HasDerivAt (fun x => x * (h y - h y') - g (y / x) + g (y' / x))
+        ((h y - h y') + deriv g (y / θ) * (y / θ ^ 2) - deriv g (y' / θ) * (y' / θ ^ 2)) θ := by
+      have ha : HasDerivAt (fun x => x * (h y - h y')) (1 * (h y - h y')) θ :=
+        (hasDerivAt_id θ).mul_const _
+      have hstep := (ha.sub hdgy).add hdgy'
+      convert hstep using 1; ring
+    rw [hdf.deriv]
+    -- Show derivative value is positive
+    have hhy : h y' < h y := hh_mono hyy
+    have hlt : y' / θ < y / θ := by
+      apply div_lt_div_of_pos_right hyy hθ_pos
+    have hSM_app : y' / θ * deriv g (y' / θ) < y / θ * deriv g (y / θ) := hSM hlt
+    have hrewrite :
+        (h y - h y') + deriv g (y / θ) * (y / θ ^ 2) - deriv g (y' / θ) * (y' / θ ^ 2) =
+        (h y - h y') + (1 / θ) * (y / θ * deriv g (y / θ) - y' / θ * deriv g (y' / θ)) := by
+      field_simp; ring
+    rw [hrewrite]
+    have h1 : 0 < h y - h y' := by linarith
+    have h2 : 0 < y / θ * deriv g (y / θ) - y' / θ * deriv g (y' / θ) := by linarith
+    have h3 : 0 < (1 : ℝ) / θ := by rw [one_div]; exact inv_pos.mpr hθ_pos
+    linarith [mul_pos h3 h2]
 
 /-! ### 3.1.bis Differentiability of the Mirrlees Value Function
 
@@ -116,7 +184,7 @@ Proof sketch: for a misreport `r`, the payoff difference is
 by SC-M and monotonicity of `y`. -/
 lemma mirrlees_IC_of_envelope (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → ℝ) (V₀ θ_min : ℝ)
     (hθ_pos : 0 < θ_min)
-    (y : ℝ → ℝ) (hySC : SingleCrossing v)
+    (y : ℝ → ℝ) {D : Set ℝ} (hySC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (hy_mono : Monotone y)
     (hdiff : ∀ a : ℝ, DifferentiableOn ℝ (v a) (Set.Ioi 0))
     (hvθ : ∀ θ, vθ_partial θ = deriv (v (y θ)) θ)
@@ -165,7 +233,11 @@ lemma mirrlees_IC_of_envelope (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → �
         have hhas : HasDerivAt (fun x => v (y s) x - v (y θ') x)
             (deriv (v (y s)) s - deriv (v (y θ')) s) s :=
           HasDerivAt.sub hd1.hasDerivAt hd2.hasDerivAt
-        linarith [HasDerivAt.nonneg_of_monotone hhas hSCq.monotone]
+        have hacc : AccPt s (𝓟 D) := by
+          rw [accPt_principal_iff_nhdsWithin]
+          apply Filter.NeBot.mono (right_nhdsWithin_Ioo_neBot hs_pos)
+          exact nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩)
+        linarith [hhas.hasDerivWithinAt.nonneg_of_monotoneOn hacc hSCq.monotoneOn]
       · rw [← hqeq]
     · have hle : θ ≤ θ' := le_of_lt hlt
       have key : ∫ s in θ..θ', vθ_partial s ≤
@@ -186,7 +258,11 @@ lemma mirrlees_IC_of_envelope (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → �
             have hhas : HasDerivAt (fun x => v (y θ') x - v (y s) x)
                 (deriv (v (y θ')) s - deriv (v (y s)) s) s :=
               HasDerivAt.sub hd2.hasDerivAt hd1.hasDerivAt
-            linarith [HasDerivAt.nonneg_of_monotone hhas hSCq.monotone]
+            have hacc : AccPt s (𝓟 D) := by
+              rw [accPt_principal_iff_nhdsWithin]
+              apply Filter.NeBot.mono (right_nhdsWithin_Ioo_neBot hs_pos)
+              exact nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩)
+            linarith [hhas.hasDerivWithinAt.nonneg_of_monotoneOn hacc hSCq.monotoneOn]
           · rw [← hqeq])
       have h1 : ∫ s in θ'..θ, vθ_partial s = -∫ s in θ..θ', vθ_partial s :=
         intervalIntegral.integral_symm θ θ'

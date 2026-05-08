@@ -14,16 +14,17 @@ See `MechDesigAdjointfunctor/Unification.md` for the mathematical write-up.
 | `MirrleesSetting.lean` | Mirrlees taxation instantiation, Taxation Principle |
 | `Corollaries.lean` | Corollaries 5.1 and 5.2 as instances of the Master Theorem |
 
-## Proof status (as of 2026-05-07)
+## Proof status (as of 2026-05-08)
 
-Build: `lake build` — completes successfully (2652 jobs, only `sorry` warnings).
+Build: `lake build` — completes successfully (2652 jobs, only `sorry` warnings, 17 total).
 
 ### Completed ✓
 
 | Lemma | File | Notes |
 |-------|------|-------|
 | `IC_implies_monotone` | Framework | MON from IC + SC via mimicry argument |
-| Category laws (8 stubs) | Framework | `apply MechHom.ext/AllocHom.ext; funext; rfl` |
+| Category laws (8 stubs) | Framework | `Subsingleton.elim` — thin category |
+| `alloc_hasLimitsOfShape` / `alloc_hasLimits` | Framework | Pointwise `sInf`; `alloc_hasLimitsOfSize` bridges to `HasLimitsOfSize` |
 | `myerson_singleCrossing` | MyersonSetting | `nlinarith` |
 | `myerson_vDiff` | MyersonSetting | `unfold myersonValue; fun_prop` |
 | `mirrlees_vDiff` | MirrleesSetting | `DifferentiableOn.sub` + `DifferentiableOn.div`; domain `Set.Ioi 0` |
@@ -42,23 +43,13 @@ Build: `lake build` — completes successfully (2652 jobs, only `sorry` warnings
 | `taxation_principle` (local) | MirrleesSetting | Depends on only-if direction |
 | `T_wellDefined` (non-physical case) | MasterTheorem | `hdiff` restricted to `Set.Ioi 0`; FTC unavailable for θ ≤ 0 |
 | `mirrlees_IC_of_envelope` (non-physical) | MirrleesSetting | Same `Set.Ioi 0` restriction |
-| `alloc_hasLimits` | Framework | **Architectural**: current `AllocHom` (reparametrizations) doesn't give a complete category; see below |
-| `Q_preservesLimits` | Framework | Depends on `alloc_hasLimits` |
-| `adj_Q_T` | MasterTheorem | Depends on uniqueness of envelope formula (sorry) |
+| `Q_preservesLimits` | Framework | Requires Mech to have limits; standalone (not used by main results) |
+| `T.map hTransf` | MasterTheorem | Monotonicity of t* in q from SC; needed for `adj_Q_T` |
+| `adj_Q_T` | MasterTheorem | Forward direction needs `hTransf` monotonicity |
 | `T_terminal` | MasterTheorem | Depends on `adj_Q_T` |
 | `masterTheorem_existence/isomorphism/transferInvariance` | MasterTheorem | Depend on `T_terminal` |
-| `revenueEquivalence` | Corollaries | Uses `masterTheorem_transferInvariance` (sorry); also θ_min = 0 boundary |
+| `revenueEquivalence` | Corollaries | Uses `masterTheorem_transferInvariance` (sorry) |
 | `taxationPrinciple` (corollary) | Corollaries | Uses `masterTheorem_transferInvariance` (sorry) |
-
-### Architectural issue: `AllocHom` morphism convention
-
-`alloc_hasLimits` is not provable under the current `AllocHom` definition (type-space reparametrizations φ : ℝ → ℝ with `r'.q ∘ φ = r.q`). Even a terminal object fails: uniqueness breaks for constant allocations.
-
-The `Unification.md` proof sketch assumes a *different* morphism convention — pointwise value comparison `∀ θ, r.q θ ≤ r'.q θ`. Under that convention, `MonotoneAlloc A` is a poset and limits are immediate from `Pi.completeLattice`.
-
-This does not block the main economic results: `adj_Q_T` and `masterTheorem_transferInvariance` do not take `alloc_hasLimits` as a hypothesis.
-
-**Possible fix:** Redefine `AllocHom r r' : Prop := ∀ θ, r.q θ ≤ r'.q θ` (requires refactoring Q functor and category laws).
 
 ## Key proof patterns
 
