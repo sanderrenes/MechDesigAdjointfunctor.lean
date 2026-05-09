@@ -235,11 +235,42 @@ in **Mech** are computed pointwise, and Q commutes with pointwise operations.
 theorem Q_preservesLimits {A : Type*} [LinearOrder A]
     {v : A → ℝ → ℝ} {θ_min : ℝ} {D : Set ℝ} (hSC : SingleCrossing v D) (hD : ∀ θ, θ ∈ D) :
     PreservesLimits (Q (θ_min := θ_min) hSC hD) := by
-  -- Q extracts the q-component; limits in Mech (pointwise sInf over q and t) map to
-  -- limits in Alloc (pointwise sInf over q).  Proof requires Mech to also have limits,
-  -- which holds under the pointwise inequality convention but requires a separate
-  -- mech_hasLimits theorem.  Neither Q_preservesLimits nor alloc_hasLimits is used
-  -- in adj_Q_T or the master theorem, so this can remain sorry without blocking results.
+  -- ## Status: genuine obstruction with current hypotheses; not blocking master theorem.
+  --
+  -- Q extracts the q-component.  Both Mech and Alloc are thin categories (all hom-sets
+  -- are Subsingleton), so to show Q preserves a limit cone `c : Cone K` it suffices to
+  -- exhibit, for every Alloc-cone `s : Cone (K ⋙ Q)`, a morphism `s.pt ⟶ Q.obj c.pt` —
+  -- i.e. `s.pt.q θ ≤ c.pt.mech.q θ` for all θ.  (`fac` and `uniq` are automatic by
+  -- `Subsingleton.elim`.)
+  --
+  -- What we have:
+  --   * `(c.π.app j).hAlloc θ : c.pt.mech.q θ ≤ (K.obj j).mech.q θ`
+  --   * `(s.π.app j).h θ      : s.pt.q θ      ≤ (K.obj j).mech.q θ`
+  -- These are independent lower-bound facts; nothing forces `s.pt.q θ ≤ c.pt.mech.q θ`.
+  --
+  -- The natural route is to feed `hc.lift` a Mech-cone with apex some
+  -- `ICIRMechanism A v θ_min` whose allocation rule is `s.pt.q`.  This requires building
+  -- an IC + IR transfer rule `t : ℝ → ℝ` for `s.pt.q` — i.e. an envelope-formula transfer
+  -- (Mirrlees/Myerson payment formula).  Existence of such `t` is exactly the content
+  -- of the right adjoint `T : Alloc → Mech` constructed in `MasterTheorem.lean`, so
+  -- `Q_preservesLimits` is downstream of the adjunction, not upstream:
+  --
+  --     once `Q ⊣ T` is in hand, `PreservesLimits Q` follows from
+  --     `Adjunction.leftAdjoint_preservesColimits` / `rightAdjoint_preservesLimits`
+  --     applied to the adjoint structure (Q is the LEFT adjoint here per the convention
+  --     in `MasterTheorem.lean`; if Q is the right adjoint there, use the dual lemma).
+  --
+  -- Alternative routes that DO NOT work in the current development:
+  --   1. `preservesLimits_of_isRightAdjoint` — needs the adjunction (see above).
+  --   2. Direct pointwise sInf construction — needs `[CompleteLattice A]` AND a
+  --      `mech_hasLimits` instance, and the Mech limit's q-component is only equal to
+  --      the Alloc sInf if Mech has limits constructed via the same envelope T.
+  --   3. Reflection from `alloc_hasLimitsOfShape` — same circularity.
+  --
+  -- This lemma is NOT used by `adj_Q_T`, the master theorem, or any corollary; it is a
+  -- standalone categorical fact whose proper proof lives after the adjunction is built.
+  -- TODO: revisit after `MasterTheorem.adj_Q_T` is finalised and replace with a one-line
+  -- application of the adjoint-preserves-limits lemma.
   sorry
 
 end MechDesign

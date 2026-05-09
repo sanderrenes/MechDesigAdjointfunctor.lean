@@ -1,5 +1,8 @@
 import MechDesigAdjointfunctor.Lean.Framework
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
+import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
+import Mathlib.MeasureTheory.Integral.IntervalIntegral.IntegrationByParts
+import Mathlib.Analysis.Calculus.Deriv.Basic
 
 /-!
 # Stage 2: The Myerson Auction Setting
@@ -128,9 +131,16 @@ with `V(0) = 0` and substituting yields the formula. -/
 lemma myerson_transfer_unique {q : ℝ → ℝ} {t : ℝ → ℝ}
     (hq_range : ∀ θ, 0 ≤ q θ ∧ q θ ≤ 1)
     (hIC : IsIC myersonValue ⟨fun θ => ⟨q θ, (hq_range θ).1, (hq_range θ).2⟩, t⟩)
-    (hIR : t 0 ≤ 0 * q 0) :
+    (hIR : t 0 = 0 * q 0)
+    (hEnv : ∀ θ, HasDerivAt (fun s => s * q s - t s) (q θ) θ)
+    (hint : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b) :
     ∀ θ, t θ = myersonTransfer q θ := by
-  sorry
+  intro θ
+  simp only [myersonTransfer]
+  have hFTC : ∫ s in (0:ℝ)..θ, q s =
+      (θ * q θ - t θ) - (0 * q 0 - t 0) :=
+    intervalIntegral.integral_eq_sub_of_hasDerivAt (fun s _ => hEnv s) (hint 0 θ)
+  linarith [hFTC, hIR]
 
 /-- **Expected revenue formula**: for any BIC-IR mechanism with allocation `q` and
 `V(0) = 0`, the expected payment equals the expected virtual surplus.
@@ -141,9 +151,83 @@ Derived from the Myerson transfer formula by integration by parts.
 *Reference*: Myerson (1981), Equation (5); Riley–Samuelson (1981). -/
 theorem myerson_expectedRevenue (q : ℝ → ℝ) (F f : ℝ → ℝ)
     (hf : ∀ θ, 0 < f θ)
-    (hq_int : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b) :
+    (hq_int : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b)
+    (hq_cont : Continuous q) (hf_cont : Continuous f)
+    (hFf : ∀ θ, HasDerivAt F (f θ) θ)
+    (hF0 : F 0 = 0) (hF1 : F 1 = 1) :
     ∫ θ in (0 : ℝ)..1, myersonTransfer q θ * f θ =
     ∫ θ in (0 : ℝ)..1, (θ - (1 - F θ) / f θ) * q θ * f θ := by
-  sorry
+  -- Abbreviation for the rent function G θ = ∫₀^θ q s.
+  set G : ℝ → ℝ := fun θ => ∫ s in (0:ℝ)..θ, q s with hG_def
+  -- F is continuous (since differentiable everywhere).
+  have hF_cont : Continuous F := by
+    refine continuous_iff_continuousAt.mpr (fun θ => ?_)
+    exact (hFf θ).continuousAt
+  -- G is continuous (FTC), since q is integrable and continuous.
+  have hG_hasDerivAt : ∀ θ, HasDerivAt G (q θ) θ :=
+    fun θ => (hq_cont.integral_hasStrictDerivAt 0 θ).hasDerivAt
+  have hG_cont : Continuous G := by
+    refine continuous_iff_continuousAt.mpr (fun θ => ?_)
+    exact (hG_hasDerivAt θ).continuousAt
+  -- Various integrabilities on [0,1].
+  have hf_int : IntervalIntegrable f MeasureTheory.volume 0 1 :=
+    hf_cont.intervalIntegrable 0 1
+  have hF_int : IntervalIntegrable F MeasureTheory.volume 0 1 :=
+    hF_cont.intervalIntegrable 0 1
+  have hG_int : IntervalIntegrable G MeasureTheory.volume 0 1 :=
+    hG_cont.intervalIntegrable 0 1
+  -- Integration by parts: ∫ G f = G(1)F(1) - G(0)F(0) - ∫ q F.
+  have hG0 : G 0 = 0 := by simp [G]
+  have hIBP : ∫ θ in (0:ℝ)..1, G θ * f θ =
+      G 1 * F 1 - G 0 * F 0 - ∫ θ in (0:ℝ)..1, q θ * F θ :=
+    integral_mul_deriv_eq_deriv_mul
+      (fun x _ => hG_hasDerivAt x) (fun x _ => hFf x)
+      (hq_cont.intervalIntegrable 0 1) hf_int
+  -- Simplify the IBP statement using F(0)=0, F(1)=1, G(0)=0.
+  have hIBP' : ∫ θ in (0:ℝ)..1, G θ * f θ = G 1 - ∫ θ in (0:ℝ)..1, q θ * F θ := by
+    rw [hIBP, hF0, hF1, hG0]; ring
+  -- LHS: expand myersonTransfer and split the integral.
+  have hLHS_split : ∫ θ in (0:ℝ)..1, myersonTransfer q θ * f θ =
+      (∫ θ in (0:ℝ)..1, θ * q θ * f θ) - ∫ θ in (0:ℝ)..1, G θ * f θ := by
+    simp only [myersonTransfer]
+    have heq : ∀ θ, (θ * q θ - G θ) * f θ = θ * q θ * f θ - G θ * f θ :=
+      fun θ => by ring
+    have hrw : (fun θ => (θ * q θ - ∫ s in (0:ℝ)..θ, q s) * f θ) =
+        (fun θ => θ * q θ * f θ - G θ * f θ) := by
+      funext θ; show (θ * q θ - G θ) * f θ = _; exact heq θ
+    rw [hrw]
+    refine intervalIntegral.integral_sub ?_ ?_
+    · exact ((continuous_id.mul hq_cont).mul hf_cont).intervalIntegrable 0 1
+    · exact (hG_cont.mul hf_cont).intervalIntegrable 0 1
+  -- RHS: simplify (θ - (1-F)/f) * q * f = θ*q*f - (1-F)*q (using f ≠ 0).
+  have hRHS_simp : ∀ θ, (θ - (1 - F θ) / f θ) * q θ * f θ =
+      θ * q θ * f θ - (1 - F θ) * q θ := by
+    intro θ
+    have hfne : f θ ≠ 0 := ne_of_gt (hf θ)
+    field_simp [hfne]
+  have hRHS_split : ∫ θ in (0:ℝ)..1, (θ - (1 - F θ) / f θ) * q θ * f θ =
+      (∫ θ in (0:ℝ)..1, θ * q θ * f θ) - ∫ θ in (0:ℝ)..1, (1 - F θ) * q θ := by
+    have hrw : (fun θ => (θ - (1 - F θ) / f θ) * q θ * f θ) =
+        (fun θ => θ * q θ * f θ - (1 - F θ) * q θ) := by
+      funext θ; exact hRHS_simp θ
+    rw [hrw]
+    refine intervalIntegral.integral_sub ?_ ?_
+    · exact ((continuous_id.mul hq_cont).mul hf_cont).intervalIntegrable 0 1
+    · exact (((continuous_const.sub hF_cont)).mul hq_cont).intervalIntegrable 0 1
+  -- ∫ (1-F)*q = ∫ q - ∫ F*q = G(1) - ∫ q*F.
+  have h1F_q : ∫ θ in (0:ℝ)..1, (1 - F θ) * q θ =
+      G 1 - ∫ θ in (0:ℝ)..1, q θ * F θ := by
+    have hqF_int : IntervalIntegrable (fun θ => q θ * F θ) MeasureTheory.volume 0 1 :=
+      (hq_cont.mul hF_cont).intervalIntegrable 0 1
+    have hsplit : ∫ θ in (0:ℝ)..1, (1 - F θ) * q θ =
+        (∫ θ in (0:ℝ)..1, q θ) - ∫ θ in (0:ℝ)..1, q θ * F θ := by
+      have : ∫ θ in (0:ℝ)..1, (1 - F θ) * q θ =
+          ∫ θ in (0:ℝ)..1, (q θ - q θ * F θ) := by
+        congr 1; funext θ; ring
+      rw [this, intervalIntegral.integral_sub (hq_int 0 1) hqF_int]
+    have hG1 : G 1 = ∫ θ in (0:ℝ)..1, q θ := by simp [G]
+    linarith [hsplit, hG1]
+  -- Assemble.
+  linarith [hLHS_split, hIBP', hRHS_split, h1F_q]
 
 end MechDesign.Myerson

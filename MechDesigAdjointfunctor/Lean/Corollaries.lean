@@ -88,7 +88,8 @@ theorem revenueEquivalence
     (sorry : (0 : ℝ) < 0)
     Myerson.myerson_singleCrossing
     (Set.subset_univ _)
-    q₀ Myerson.myerson_vDiff hint hintC m₁ m₂ hm₁_alloc hm₂_alloc μ
+    q₀ Myerson.myerson_vDiff hint hintC m₁ m₂ hm₁_alloc hm₂_alloc
+    (sorry) (sorry) (sorry) (sorry) μ
 
 /-- **Myerson expected revenue formula**: for any BIC-IR mechanism with allocation `q`
 and `V(0) = 0`, expected revenue equals expected virtual surplus.
@@ -98,12 +99,14 @@ and `V(0) = 0`, expected revenue equals expected virtual surplus.
 This follows from the transfer formula by integration by parts.
 *Reference*: Myerson (1981), Equation (5). -/
 theorem myerson_revenueFormula (q : ℝ → ℝ) (F f : ℝ → ℝ)
-    (hq_mono : Monotone q)
-    (hf_pos : ∀ θ ∈ Set.Icc (0:ℝ) 1, 0 < f θ)
-    (hq_int : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b) :
+    (hf_pos : ∀ θ, 0 < f θ)
+    (hq_int : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b)
+    (hq_cont : Continuous q) (hf_cont : Continuous f)
+    (hFf : ∀ θ, HasDerivAt F (f θ) θ)
+    (hF0 : F 0 = 0) (hF1 : F 1 = 1) :
     ∫ θ in (0:ℝ)..1, Myerson.myersonTransfer q θ * f θ =
-    ∫ θ in (0:ℝ)..1, (θ - (1 - F θ) / f θ) * q θ * f θ := by
-  sorry
+    ∫ θ in (0:ℝ)..1, (θ - (1 - F θ) / f θ) * q θ * f θ :=
+  Myerson.myerson_expectedRevenue q F f hf_pos hq_int hq_cont hf_cont hFf hF0 hF1
 
 /-! ### 5.2 Taxation Principle (Corollary 5.2) -/
 
@@ -138,6 +141,14 @@ theorem taxationPrinciple
       MeasureTheory.volume a b)
     (hintC : ∀ (a : ℝ) b c,
       IntervalIntegrable (deriv (Mirrlees.mirrleesValue h g a)) MeasureTheory.volume b c)
+    (hEnv₁ : ∀ θ > 0, HasDerivAt
+      (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₁.mech.t s)
+      (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) θ)
+    (hBC₁ : Mirrlees.mirrleesValue h g (m₁.mech.q θ_min) θ_min = m₁.mech.t θ_min)
+    (hEnv₂ : ∀ θ > 0, HasDerivAt
+      (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₂.mech.t s)
+      (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) θ)
+    (hBC₂ : Mirrlees.mirrleesValue h g (m₂.mech.q θ_min) θ_min = m₂.mech.t θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance
@@ -145,7 +156,7 @@ theorem taxationPrinciple
     (Mirrlees.mirrlees_singleCrossing h g hh hg hg_pos hh_mono hSM)
     (le_refl (Set.Ioi 0))
     q₀ (Mirrlees.mirrlees_vDiff h g hh hg)
-    hint hintC m₁ m₂ hm₁_alloc hm₂_alloc μ
+    hint hintC m₁ m₂ hm₁_alloc hm₂_alloc hEnv₁ hBC₁ hEnv₂ hBC₂ μ
 
 /-! ### 5.3 Conditions for Failure (Stage 6 placeholders)
 

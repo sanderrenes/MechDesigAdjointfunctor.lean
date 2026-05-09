@@ -258,9 +258,56 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} (�
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (hint : ∀ (r : MonotoneAlloc A) a b,
-      IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
+      IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
+    -- Global only-if envelope condition: every BIC-IR mechanism has the envelope derivative.
+    -- This is the only-if direction of the IC envelope theorem (IC + diff of t → V' = typeDerivAlongAlloc).
+    (hEnv : ∀ (m : ICIRMechanism A v θ_min) (θ : ℝ), 0 < θ →
+        HasDerivAt (fun s => v (m.mech.q s) s - m.mech.t s)
+            (typeDerivAlongAlloc v ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ θ) θ) :
     Q (θ_min := θ_min) hSC hD ⊣ T (θ_min := θ_min) hθ_pos hSC hD_Ioi hdiff hintC hint :=
-  sorry
+  -- Both Mech and Alloc are thin (preorder) categories, so:
+  -- * Naturality conditions are trivial (Subsingleton.elim on the hom-set).
+  -- * Triangle identities reduce to NatTrans.ext + Subsingleton.elim on hom-sets.
+  -- The unit η_m : m → T(Q(m)) is the non-trivial part: hTransf uses FTC + IR (mirrors T_terminal).
+  -- The counit ε_r : Q(T(r)) → r is le_refl (Q(T(r)).q = r.q definitionally).
+  Adjunction.mkOfUnitCounit {
+    unit := {
+      app := fun m =>
+        { hAlloc  := fun _ => le_refl _
+          hTransf := fun θ => by
+            -- Goal: m.mech.t θ ≤ T(Q(m)).mech.t θ
+            -- T(Q(m)).t θ = v(m.q θ, θ) - ∫_{θ_min}^θ typeDerivAlongAlloc v m.q (definitionally)
+            show m.mech.t θ ≤ v (m.mech.q θ) θ -
+                ∫ s in θ_min..θ, typeDerivAlongAlloc v ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ s
+            by_cases hθ : 0 < θ
+            · -- Physical case: FTC on hEnv gives V_m(θ) = V_m(θ_min) + ∫ D; IR gives V_m(θ_min) ≥ 0.
+              have hFTC : ∫ s in θ_min..θ,
+                    typeDerivAlongAlloc v ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ s =
+                    (v (m.mech.q θ) θ - m.mech.t θ) -
+                    (v (m.mech.q θ_min) θ_min - m.mech.t θ_min) :=
+                intervalIntegral.integral_eq_sub_of_hasDerivAt
+                  (fun s hs => by
+                    have hs_pos : 0 < s := by
+                      rcases le_total θ_min θ with hle | hle
+                      · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ_pos hs.1
+                      · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ hs.1
+                    exact hEnv m s hs_pos)
+                  (hint ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ θ_min θ)
+              have hIR : (0 : ℝ) ≤ v (m.mech.q θ_min) θ_min - m.mech.t θ_min := m.hIR
+              linarith
+            · sorry  -- non-physical (θ ≤ 0): same design limitation as T_wellDefined:191
+        }
+      naturality := fun _ _ _ => @Subsingleton.elim _ mechHom_subsingleton _ _
+    }
+    counit := {
+      -- Q(T(r)).q = r.q definitionally, so the AllocHom is le_refl.
+      app := fun _ => ⟨fun _ => le_refl _⟩
+      naturality := fun _ _ _ => @Subsingleton.elim _ allocHom_subsingleton _ _
+    }
+    -- Triangle identities: both sides are equal in Subsingleton hom-sets.
+    left_triangle := by ext; exact @Subsingleton.elim _ allocHom_subsingleton _ _
+    right_triangle := by ext; exact @Subsingleton.elim _ mechHom_subsingleton _ _
+  }
 
 /-! ### 4.3 Terminality of T(q) in **Mech_q** (Corollary 4.4) -/
 

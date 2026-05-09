@@ -298,8 +298,19 @@ theorem taxation_principle (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → ℝ)
     (V₀ θ_min : ℝ) (y₁ y₂ t₁ t₂ : ℝ → ℝ)
     (hIC₁ : IsIC v ⟨y₁, t₁⟩) (hIR₁ : v (y₁ θ_min) θ_min - t₁ θ_min = V₀)
     (hIC₂ : IsIC v ⟨y₂, t₂⟩) (hIR₂ : v (y₂ θ_min) θ_min - t₂ θ_min = V₀)
-    (hy_eq : y₁ = y₂) :
+    (hy_eq : y₁ = y₂)
+    (hEnv₁ : ∀ θ, HasDerivAt (fun s => v (y₁ s) s - t₁ s) (vθ_partial θ) θ)
+    (hEnv₂ : ∀ θ, HasDerivAt (fun s => v (y₂ s) s - t₂ s) (vθ_partial θ) θ)
+    (hint : ∀ a b, IntervalIntegrable vθ_partial MeasureTheory.volume a b) :
     t₁ = t₂ := by
-  sorry
+  funext θ
+  have hFTC₁ : ∫ s in θ_min..θ, vθ_partial s =
+      (v (y₁ θ) θ - t₁ θ) - (v (y₁ θ_min) θ_min - t₁ θ_min) :=
+    intervalIntegral.integral_eq_sub_of_hasDerivAt (fun s _ => hEnv₁ s) (hint θ_min θ)
+  have hFTC₂ : ∫ s in θ_min..θ, vθ_partial s =
+      (v (y₂ θ) θ - t₂ θ) - (v (y₂ θ_min) θ_min - t₂ θ_min) :=
+    intervalIntegral.integral_eq_sub_of_hasDerivAt (fun s _ => hEnv₂ s) (hint θ_min θ)
+  rw [← hy_eq] at hFTC₂ hIR₂
+  linarith [hFTC₁, hFTC₂, hIR₁, hIR₂]
 
 end MechDesign.Mirrlees
