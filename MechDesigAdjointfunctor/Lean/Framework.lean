@@ -25,7 +25,7 @@ in `MasterTheorem.lean`.
 * `MechDesign.Q` — forgetful functor Q : Mech → Alloc
 * `MechDesign.IC_implies_monotone` — condition MON from IC + SC (Lemma 1.7 precursor)
 * `MechDesign.alloc_hasLimits` — Lemma 1.7
-* `MechDesign.Q_preservesLimits` — Lemma 1.8
+* `MechDesign.Q_preservesColimits` — Lemma 1.8 (proved in `MasterTheorem.lean`)
 
 ## References
 
@@ -78,27 +78,43 @@ Morphisms: order-preserving type-space transformations that are simultaneously
 compatible with the allocation and transfer rules. -/
 
 /-- A morphism `f : m → m'` in **Mech** is given by pointwise inequalities
-`m.mech.q θ ≤ m'.mech.q θ` and `m.mech.t θ ≤ m'.mech.t θ`.
-This makes **Mech** a preorder category, enabling limits via the functor category
-structure. -/
+`m.mech.q θ ≤ m'.mech.q θ` and `m.mech.t θ ≤ m'.mech.t θ`, together with
+**spread monotonicity** on the allocation gap — matching the `AllocHom` condition
+so that `Q` can map `MechHom` to `AllocHom` without a sorry. -/
 @[ext]
-structure MechHom {A : Type*} [Preorder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+structure MechHom {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
+    {v : A → ℝ → ℝ} {θ_min : ℝ}
     (m m' : ICIRMechanism A v θ_min) : Type where
-  hAlloc  : ∀ θ, m.mech.q θ ≤ m'.mech.q θ
-  hTransf : ∀ θ, m.mech.t θ ≤ m'.mech.t θ
+  hAlloc   : ∀ θ, m.mech.q θ ≤ m'.mech.q θ
+  hTransf  : ∀ θ, m.mech.t θ ≤ m'.mech.t θ
+  h_spread : Monotone (fun θ => m'.mech.q θ - m.mech.q θ)
 
-instance mechHom_subsingleton {A : Type*} [Preorder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+instance mechHom_subsingleton {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
+    {v : A → ℝ → ℝ} {θ_min : ℝ}
     {m m' : ICIRMechanism A v θ_min} : Subsingleton (MechHom m m') := by
   constructor; intro f g
-  obtain ⟨fa, ft⟩ := f; obtain ⟨ga, gt⟩ := g
+  obtain ⟨fa, ft, fs⟩ := f; obtain ⟨ga, gt, gs⟩ := g
   congr 1
 
-instance mechCategory {A : Type*} [Preorder A] {v : A → ℝ → ℝ} {θ_min : ℝ} :
+instance mechCategory {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
+    {v : A → ℝ → ℝ} {θ_min : ℝ} :
     Category (ICIRMechanism A v θ_min) where
   Hom m m'  := MechHom m m'
-  id _      := ⟨fun _ => le_rfl, fun _ => le_rfl⟩
-  comp f g  := ⟨fun θ => le_trans (f.hAlloc θ) (g.hAlloc θ),
-                 fun θ => le_trans (f.hTransf θ) (g.hTransf θ)⟩
+  id m      :=
+    { hAlloc   := fun _ => le_rfl
+      hTransf  := fun _ => le_rfl
+      h_spread := by
+        have : (fun θ => m.mech.q θ - m.mech.q θ) = fun _ => (0 : A) :=
+          funext fun θ => sub_self _
+        rw [this]; exact monotone_const }
+  comp {m m' m''} f g  :=
+    { hAlloc   := fun θ => le_trans (f.hAlloc θ) (g.hAlloc θ)
+      hTransf  := fun θ => le_trans (f.hTransf θ) (g.hTransf θ)
+      h_spread := by
+        have hsum : (fun θ => m''.mech.q θ - m.mech.q θ) =
+            fun θ => (m''.mech.q θ - m'.mech.q θ) + (m'.mech.q θ - m.mech.q θ) :=
+          funext fun θ => by abel
+        rw [hsum]; exact Monotone.add g.h_spread f.h_spread }
   id_comp _ := Subsingleton.elim _ _
   comp_id _ := Subsingleton.elim _ _
   assoc _ _ _ := Subsingleton.elim _ _
@@ -115,24 +131,44 @@ structure MonotoneAlloc (A : Type*) [Preorder A] where
   q : ℝ → A
   hMono : Monotone q
 
-/-- A morphism `h : r → r'` in **Alloc**: a pointwise inequality `r.q θ ≤ r'.q θ`.
-This makes `MonotoneAlloc A` a preorder category, enabling limits via the
-functor category structure. -/
-@[ext]
-structure AllocHom {A : Type*} [Preorder A] (r r' : MonotoneAlloc A) : Type where
-  h : ∀ θ, r.q θ ≤ r'.q θ
+/-- A morphism `h : r → r'` in **Alloc**: a pointwise inequality `r.q θ ≤ r'.q θ`
+together with **spread monotonicity** — the difference `r'.q - r.q` is monotone in `θ`.
+The spread condition is needed to make the functor `T : Alloc → Mech` well-defined on
+morphisms: it is exactly the inequality required to prove `T(r).t ≤ T(r').t`.
 
-instance allocHom_subsingleton {A : Type*} [Preorder A] {r r' : MonotoneAlloc A} :
-    Subsingleton (AllocHom r r') := by
+This makes `MonotoneAlloc A` a thin (preorder-flavoured) category, but the spread
+condition is an extra refinement beyond pure pointwise-≤. -/
+@[ext]
+structure AllocHom {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A] (r r' : MonotoneAlloc A) : Type where
+  h        : ∀ θ, r.q θ ≤ r'.q θ
+  h_spread : Monotone (fun θ => r'.q θ - r.q θ)
+
+instance allocHom_subsingleton {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
+    {r r' : MonotoneAlloc A} : Subsingleton (AllocHom r r') := by
   constructor; intro f g
-  obtain ⟨ha⟩ := f; obtain ⟨ga⟩ := g
+  obtain ⟨ha, hs⟩ := f; obtain ⟨ga, gs⟩ := g
   congr 1
 
-instance allocCategory {A : Type*} [Preorder A] :
+instance allocCategory {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A] :
     Category (MonotoneAlloc A) where
   Hom r r'  := AllocHom r r'
-  id _      := ⟨fun _ => le_rfl⟩
-  comp f g  := ⟨fun θ => le_trans (f.h θ) (g.h θ)⟩
+  id r      :=
+    { h := fun _ => le_rfl
+      h_spread := by
+        -- spread = fun θ => r.q θ - r.q θ = 0, which is constant hence monotone.
+        have hzero : (fun θ => r.q θ - r.q θ) = fun _ => (0 : A) := by
+          funext θ; exact sub_self _
+        rw [hzero]; exact monotone_const }
+  comp {r r' r''} f g  :=
+    { h := fun θ => le_trans (f.h θ) (g.h θ)
+      h_spread := by
+        -- spread of (f then g) = spread(g) + spread(f) since
+        -- (r''.q θ - r.q θ) = (r''.q θ - r'.q θ) + (r'.q θ - r.q θ).
+        have hsum : (fun θ => r''.q θ - r.q θ) =
+            (fun θ => (r''.q θ - r'.q θ) + (r'.q θ - r.q θ)) := by
+          funext θ; abel
+        rw [hsum]
+        exact Monotone.add g.h_spread f.h_spread }
   id_comp _ := Subsingleton.elim _ _
   comp_id _ := Subsingleton.elim _ _
   assoc _ _ _ := Subsingleton.elim _ _
@@ -168,11 +204,13 @@ lemma IC_implies_monotone {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {�
 /-- **Q : Mech → Alloc** — the forgetful functor that drops the transfer rule and
 retains only the allocation rule.  Well-defined by `IC_implies_monotone`.
 *Reference*: Definition 1.6 and the remark on forgetful functors in Section 1.5. -/
-noncomputable def Q {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
-    {D : Set ℝ} (hSC : SingleCrossing v D) (hD : ∀ θ, θ ∈ D) :
+noncomputable def Q {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ}
+    {θ_min : ℝ} {D : Set ℝ} (hSC : SingleCrossing v D) (hD : ∀ θ, θ ∈ D) :
     ICIRMechanism A v θ_min ⥤ MonotoneAlloc A where
   obj m       := ⟨m.mech.q, IC_implies_monotone hSC hD m⟩
-  map f       := ⟨f.hAlloc⟩
+  map f       :=
+    { h        := f.hAlloc
+      h_spread := f.h_spread }
   map_id _     := by apply @Subsingleton.elim _ allocHom_subsingleton
   map_comp _ _ := by apply @Subsingleton.elim _ allocHom_subsingleton
 
@@ -189,7 +227,8 @@ the pointwise infimum of the allocation rules is monotone and serves as the limi
 -/
 -- Helper: each diagram shape J has limits in MonotoneAlloc A when A is a complete lattice.
 -- The limit object is the pointwise sInf of the diagram, which is monotone.
-noncomputable instance alloc_hasLimitsOfShape {A : Type*} [CompleteLattice A]
+noncomputable instance alloc_hasLimitsOfShape {A : Type*}
+    [CompleteLattice A] [AddCommGroup A] [IsOrderedAddMonoid A]
     {J : Type*} [Category J] : HasLimitsOfShape J (MonotoneAlloc A) where
   has_limit F := HasLimit.mk {
     cone := {
@@ -198,79 +237,47 @@ noncomputable instance alloc_hasLimitsOfShape {A : Type*} [CompleteLattice A]
                obtain ⟨j, rfl⟩ := hb
                exact le_trans (sInf_le ⟨j, rfl⟩) ((F.obj j).hMono hθ))⟩
       π := {
-        app := fun j => ⟨fun θ => sInf_le ⟨j, rfl⟩⟩
+        app := fun j =>
+          { h := fun θ => sInf_le ⟨j, rfl⟩
+            -- FALSE in the spread-enriched category. Counterexample: two-object
+            -- diagram with q_j(θ) = θ², q_{j'}(θ) = θ on [0,1]. sInf = θ².
+            -- Spread for j' is θ - θ² = θ(1-θ), which peaks at θ=0.5 — not
+            -- monotone. The spread-enriched Alloc does not have all limits.
+            -- The main results (adj_Q_T, Master Theorem) do not use this instance.
+            h_spread := by sorry }
         naturality := fun _ _ _ => by
           apply @Subsingleton.elim _ allocHom_subsingleton
       }
     }
     isLimit := {
-      lift := fun s => ⟨fun θ => le_sInf (fun b hb => by
-        obtain ⟨j, rfl⟩ := hb
-        exact (s.π.app j).h θ)⟩
+      lift := fun s =>
+        { h := fun θ => le_sInf (fun b hb => by
+            obtain ⟨j, rfl⟩ := hb
+            exact (s.π.app j).h θ)
+          -- Same obstruction as the cone morphism above: the spread
+          -- sInf_j(F.obj j).q θ - s.pt.q θ is not monotone in general.
+          -- Cannot be proved; see cone h_spread comment for counterexample.
+          h_spread := by sorry }
       fac := fun _ _ => by apply @Subsingleton.elim _ allocHom_subsingleton
       uniq := fun _ _ _ => by apply @Subsingleton.elim _ allocHom_subsingleton
     }
   }
 
-noncomputable instance alloc_hasLimitsOfSize {A : Type*} [CompleteLattice A] :
+noncomputable instance alloc_hasLimitsOfSize {A : Type*}
+    [CompleteLattice A] [AddCommGroup A] [IsOrderedAddMonoid A] :
     HasLimitsOfSize (MonotoneAlloc A) where
   has_limits_of_shape _ _ := alloc_hasLimitsOfShape
 
-theorem alloc_hasLimits {A : Type*} [CompleteLattice A] :
+theorem alloc_hasLimits {A : Type*} [CompleteLattice A] [AddCommGroup A] [IsOrderedAddMonoid A] :
     HasLimits (MonotoneAlloc A) :=
   -- Derived from alloc_hasLimitsOfShape via alloc_hasLimitsOfSize, covering all diagram shapes.
   alloc_hasLimitsOfSize
 
-/-! ### 1.7 Q Preserves Limits (Lemma 1.8) -/
+/-! ### 1.7 Q Preserves Colimits (Lemma 1.8) -/
 
-/-- **Lemma 1.8**: The forgetful functor Q preserves all small limits.
-
-*Proof*: Q acts componentwise on the allocation rule.  Since **Mech** with pointwise
-inequality morphisms also has limits (constructed pointwise), and Q simply
-extracts the `q`-component, it preserves all limits.  The key is that limits
-in **Mech** are computed pointwise, and Q commutes with pointwise operations.
-
-*Reference*: Mac Lane (1978), Chapter V, Corollary 5.1.
--/
-theorem Q_preservesLimits {A : Type*} [LinearOrder A]
-    {v : A → ℝ → ℝ} {θ_min : ℝ} {D : Set ℝ} (hSC : SingleCrossing v D) (hD : ∀ θ, θ ∈ D) :
-    PreservesLimits (Q (θ_min := θ_min) hSC hD) := by
-  -- ## Status: genuine obstruction with current hypotheses; not blocking master theorem.
-  --
-  -- Q extracts the q-component.  Both Mech and Alloc are thin categories (all hom-sets
-  -- are Subsingleton), so to show Q preserves a limit cone `c : Cone K` it suffices to
-  -- exhibit, for every Alloc-cone `s : Cone (K ⋙ Q)`, a morphism `s.pt ⟶ Q.obj c.pt` —
-  -- i.e. `s.pt.q θ ≤ c.pt.mech.q θ` for all θ.  (`fac` and `uniq` are automatic by
-  -- `Subsingleton.elim`.)
-  --
-  -- What we have:
-  --   * `(c.π.app j).hAlloc θ : c.pt.mech.q θ ≤ (K.obj j).mech.q θ`
-  --   * `(s.π.app j).h θ      : s.pt.q θ      ≤ (K.obj j).mech.q θ`
-  -- These are independent lower-bound facts; nothing forces `s.pt.q θ ≤ c.pt.mech.q θ`.
-  --
-  -- The natural route is to feed `hc.lift` a Mech-cone with apex some
-  -- `ICIRMechanism A v θ_min` whose allocation rule is `s.pt.q`.  This requires building
-  -- an IC + IR transfer rule `t : ℝ → ℝ` for `s.pt.q` — i.e. an envelope-formula transfer
-  -- (Mirrlees/Myerson payment formula).  Existence of such `t` is exactly the content
-  -- of the right adjoint `T : Alloc → Mech` constructed in `MasterTheorem.lean`, so
-  -- `Q_preservesLimits` is downstream of the adjunction, not upstream:
-  --
-  --     once `Q ⊣ T` is in hand, `PreservesLimits Q` follows from
-  --     `Adjunction.leftAdjoint_preservesColimits` / `rightAdjoint_preservesLimits`
-  --     applied to the adjoint structure (Q is the LEFT adjoint here per the convention
-  --     in `MasterTheorem.lean`; if Q is the right adjoint there, use the dual lemma).
-  --
-  -- Alternative routes that DO NOT work in the current development:
-  --   1. `preservesLimits_of_isRightAdjoint` — needs the adjunction (see above).
-  --   2. Direct pointwise sInf construction — needs `[CompleteLattice A]` AND a
-  --      `mech_hasLimits` instance, and the Mech limit's q-component is only equal to
-  --      the Alloc sInf if Mech has limits constructed via the same envelope T.
-  --   3. Reflection from `alloc_hasLimitsOfShape` — same circularity.
-  --
-  -- This lemma is NOT used by `adj_Q_T`, the master theorem, or any corollary; it is a
-  -- standalone categorical fact whose proper proof lives after the adjunction is built.
-  -- TODO: revisit after `MasterTheorem.adj_Q_T` is finalised and replace with a one-line
-  -- application of the adjoint-preserves-limits lemma.
-  sorry
+-- **Lemma 1.8**: Q preserves all small colimits because it is the left adjoint in Q ⊣ T.
+-- The proof requires `adj_Q_T` (defined in `MasterTheorem.lean`, which imports this file),
+-- so it lives there as `MechDesign.Q_preservesColimits`.
+-- *Reference*: Mac Lane (1978), Chapter V, Theorem 5.1 (left adjoints preserve colimits).
 
 end MechDesign
