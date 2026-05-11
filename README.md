@@ -20,7 +20,7 @@ This branch enriches `AllocHom` with a spread-monotonicity field
 `h_spread : Monotone (fun θ => r'.q θ - r.q θ)`, needed to prove `T.map.hTransf`.
 See `Unification.md` §7.1–7.5 for the mathematical analysis.
 
-Build: `lake build` — completes successfully (only `sorry` warnings, 11 remaining).
+Build: `lake build` — completes successfully (only `sorry` warnings, 8 remaining).
 
 ### Completed ✓
 
@@ -53,9 +53,8 @@ Build: `lake build` — completes successfully (only `sorry` warnings, 11 remain
 
 | Lemma | File | Obstacle |
 |-------|------|----------|
-| `Q.map h_spread` | Framework | `MechHom` has no spread field; Q cannot derive it — structural gap |
-| `alloc_hasLimitsOfShape` cone `h_spread` | Framework | Pointwise `sInf` does not preserve spread monotonicity — structural gap |
-| `alloc_hasLimitsOfShape` lift `h_spread` | Framework | Same as above |
+| `alloc_hasLimitsOfShape` cone `h_spread` | Framework | Pointwise `sInf` does not preserve spread monotonicity (counterexample: θ² vs θ) |
+| `alloc_hasLimitsOfShape` lift `h_spread` | Framework | Same obstruction as cone |
 | `T_wellDefined` (θ ≤ 0 case) | MasterTheorem | Design limitation: FTC requires `Set.Ioi 0` |
 | `T.map hTransf` | MasterTheorem | Needs structural assumption on `v` beyond `h_spread`; see Unification.md §7.1–7.2 |
 | `adj_Q_T` unit (θ ≤ 0 case) | MasterTheorem | Design limitation |
@@ -64,7 +63,7 @@ Build: `lake build` — completes successfully (only `sorry` warnings, 11 remain
 | `mirrlees_IC_of_envelope` (θ ≤ 0 case) | MirrleesSetting | Design limitation |
 | `revenueEquivalence` | Corollaries | `MyersonAlloc = Set.Icc 0 1` is not `AddCommGroup`; see Unification.md §7.5 |
 
-The `master` branch has 8 of these sorries (all except the 3 Framework spread-field stubs introduced on this branch).
+The `master` branch has 7 of these sorries (`Q.map h_spread` is closed on this branch by adding `h_spread` to `MechHom`; the 2 limit stubs remain).
 
 ## Key proof patterns
 
