@@ -533,6 +533,91 @@ Both corollaries are instances of Theorem 4.5. The proof chain is the same; only
 
 ---
 
+---
+
+## Stage 7: Lean 4 Formalization Notes
+
+### 7.1 Functoriality Obstruction for T
+
+During Lean 4 formalization on branch `spread-monotone-allochom` it was discovered that **T is not functorial with respect to general `AllocHom` morphisms** (monotone order-preserving maps between allocation rules). The required property `T.map.hTransf` — that `T(r).t(θ) ≤ T(r').t(θ)` for any AllocHom `r → r'` — is mathematically false in general.
+
+**Counterexample (Myerson setting, v(a, θ) = a · θ).**
+Take `r.q(θ) = θ²` and `r'.q(θ) = θ` on `[0,1]`. Then `r.q ≤ r'.q` pointwise (since θ² ≤ θ for θ ∈ [0,1]), so `r → r'` is a valid AllocHom. The transfer formula gives:
+```
+T(r).t(θ)  = θ · θ² − ∫₀^θ s² ds  =  θ³ − θ³/3  =  (2/3) · θ³
+T(r').t(θ) = θ · θ  − ∫₀^θ s  ds  =  θ² − θ²/2  =  (1/2) · θ²
+```
+At `θ = 1`: `T(r).t(1) = 2/3 > 1/2 = T(r').t(1)`. The inequality reverses.
+
+The root cause: while `r.q ≤ r'.q` ensures the allocation gap `Δ(θ) = r'.q(θ) − r.q(θ) ≥ 0`, the transfer formula requires `θ · Δ(θ) ≥ ∫₀^θ Δ(s) ds` for all θ, which by integration by parts is equivalent to `Δ` being non-decreasing.
+
+### 7.2 Spread-Monotone AllocHom Enrichment
+
+The natural fix is to enrich `AllocHom` with a **spread monotonicity** condition:
+
+```lean
+structure AllocHom [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
+    (r r' : MonotoneAlloc A) : Type where
+  h        : ∀ θ, r.q θ ≤ r'.q θ          -- pointwise order
+  h_spread : Monotone (fun θ => r'.q θ - r.q θ)  -- gap is non-decreasing
+```
+
+Under this enrichment, `T.map.hTransf` follows from integration by parts: for Myerson-type value functions `v(a, θ) = a · θ`, the condition `Δ` non-decreasing is exactly what is needed. For general value functions satisfying SC, a structural assumption on `v` (e.g., `v` affine in `a`) is additionally required; the general case remains open.
+
+**Composition.** `h_spread` is closed under composition of AllocHoms via `Monotone.add`.
+
+**Identity.** The identity AllocHom has `h_spread` satisfied trivially: `r.q − r.q = 0` (constant).
+
+### 7.3 Terminal Object under Spread-Monotone Morphisms
+
+The spread-monotone structure implies a precise characterisation of the **terminal object** in the enriched category `Alloc`. Fix a maximum allocation quantity `Q_max` and a type space `[θ_min, θ_max]`. The **step allocation rule**
+
+```
+r*.q(θ) = 0        for θ < θ_max
+r*.q(θ) = Q_max    for θ = θ_max
+```
+
+is a terminal object in the spread-monotone `Alloc`: for any allocation rule `r ≤ r*` pointwise, the gap `r*.q − r.q` equals `−r.q(θ)` for `θ < θ_max` (non-decreasing, since `r.q` is non-decreasing) and jumps to `Q_max − r.q(θ_max) ≥ 0` at the top. This is non-decreasing, so every `r ≤ r*` admits a unique spread-monotone morphism to `r*`.
+
+Economically: the terminal allocation rule gives the entire resource to the highest type. This is a categorical reflection of the fact that it maximises the allocation for the highest type and thereby makes the transfer spread as concentrated as possible.
+
+### 7.4 Compatibility Issues with alloc_hasLimitsOfShape
+
+The spread-monotone enrichment is **incompatible with the existing completeness proof** (`alloc_hasLimitsOfShape`). The limit construction takes the pointwise infimum of a diagram of allocation rules. However, pointwise infimum does not in general preserve spread monotonicity: if `r`.q and `r'`.q are each spread-monotone above some lower bound, their pointwise inf need not be spread-monotone above the same lower bound.
+
+This means the spread-monotone category **Alloc** does not have the same limits as the plain monotone **Alloc**. The Adjoint Functor Theorem cannot be applied in the same way on the enriched branch. The proof of `adj_Q_T` on the enriched branch was constructed directly via `Adjunction.mkOfUnitCounit` (bypassing the GAFT), so the main results still hold.
+
+### 7.5 MyersonAlloc Type Mismatch
+
+The Myerson allocation space is `MyersonAlloc = Set.Icc (0 : ℝ) 1`. This is **not** an `AddCommGroup`: it is not closed under addition (sum may exceed 1) and lacks negation (no element `−x ∈ [0,1]` for `x > 0`). The spread-enriched `AllocHom` requires `[AddCommGroup A]`, so `revenueEquivalence` in `Corollaries.lean` cannot be instantiated with `MyersonAlloc` on the enriched branch.
+
+Two resolution paths exist:
+- **(a) Replace `MyersonAlloc` with `ℝ`** and add a range constraint `0 ≤ q θ ≤ 1` as a hypothesis; this gives `ℝ` the required `AddCommGroup` structure.
+- **(b) Generalise `AllocHom`** to an abstract structure that axiomatises spread-monotonicity without requiring `AddCommGroup` — e.g., via a predicate `SpreadMono r r'` that is closed under composition.
+
+The Mirrlees corollary (`taxationPrinciple` in `Corollaries.lean`) is unaffected since `A = ℝ` is already an `AddCommGroup`.
+
+### 7.6 Proof Status (as of 2026-05-11)
+
+The main proof chain is complete on the `master` branch. The following sorry stubs remain:
+
+| File | Declaration | Status |
+|------|-------------|--------|
+| `MasterTheorem.lean` | `T_wellDefined` (θ ≤ 0 case) | Design limitation: FTC requires θ > 0 |
+| `MasterTheorem.lean` | `T.map.hTransf` | False for general AllocHoms; see §7.1 |
+| `MasterTheorem.lean` | `adj_Q_T` unit (θ ≤ 0 case) | Design limitation |
+| `MasterTheorem.lean` | `T_terminal` (θ ≤ 0 case) | Design limitation |
+| `MasterTheorem.lean` | `masterTheorem_isomorphism` (θ ≤ 0 case) | Design limitation |
+| `MirrleesSetting.lean` | `mirrlees_IC_of_envelope` (θ ≤ 0 case) | Design limitation |
+| `MirrleesSetting.lean` | `mirrlees_unique_from_IC` | Proved; needs SC + envelope hypotheses |
+| `Corollaries.lean` | `revenueEquivalence` | Blocked by MyersonAlloc ≠ AddCommGroup (§7.5) |
+
+The non-physical (θ ≤ 0) sorry stubs are design limitations arising from `DifferentiableOn (Set.Ioi 0)`: the Mirrlees value function and the FTC machinery are set up for strictly positive types, leaving the boundary case formally open but economically irrelevant.
+
+The branch `spread-monotone-allochom` explores the enriched AllocHom structure described in §7.2–7.4. On that branch `T.map.hTransf` is still sorry (the enrichment is necessary but the proof additionally needs a structural assumption on `v`); `alloc_hasLimitsOfShape` is sorry (incompatible with spread condition); `revenueEquivalence` is sorry with the MyersonAlloc explanation from §7.5.
+
+---
+
 ## References
 
 Armstrong, M. (1996). Multiproduct nonlinear pricing. *Econometrica*, 64(1), 51–75.
