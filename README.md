@@ -14,9 +14,13 @@ See `MechDesigAdjointfunctor/Unification.md` for the mathematical write-up.
 | `MirrleesSetting.lean` | Mirrlees taxation instantiation, Taxation Principle |
 | `Corollaries.lean` | Corollaries 5.1 and 5.2 as instances of the Master Theorem |
 
-## Proof status (as of 2026-05-11)
+## Proof status — branch `spread-monotone-allochom` (as of 2026-05-11)
 
-Build: `lake build` — completes successfully (only `sorry` warnings, 9 remaining).
+This branch enriches `AllocHom` with a spread-monotonicity field
+`h_spread : Monotone (fun θ => r'.q θ - r.q θ)`, needed to prove `T.map.hTransf`.
+See `Unification.md` §7.1–7.5 for the mathematical analysis.
+
+Build: `lake build` — completes successfully (only `sorry` warnings, 11 remaining).
 
 ### Completed ✓
 
@@ -24,7 +28,6 @@ Build: `lake build` — completes successfully (only `sorry` warnings, 9 remaini
 |-------|------|-------|
 | `IC_implies_monotone` | Framework | MON from IC + SC via mimicry argument |
 | Category laws (8 stubs) | Framework | `Subsingleton.elim` — thin category |
-| `alloc_hasLimitsOfShape` / `alloc_hasLimits` | Framework | Pointwise `sInf`; `alloc_hasLimitsOfSize` bridges to `HasLimitsOfSize` |
 | `myerson_singleCrossing` | MyersonSetting | `nlinarith` |
 | `myerson_vDiff` | MyersonSetting | `unfold myersonValue; fun_prop` |
 | `mirrlees_vDiff` | MirrleesSetting | `DifferentiableOn.sub` + `DifferentiableOn.div`; domain `Set.Ioi 0` |
@@ -35,32 +38,33 @@ Build: `lake build` — completes successfully (only `sorry` warnings, 9 remaini
 | `myerson_transfer_unique` | MyersonSetting | FTC + linarith |
 | `mirrlees_unique_from_IC` | MirrleesSetting | SC + IC by-contradiction + FTC |
 | `taxation_principle` (local) | MirrleesSetting | FTC twice + linarith |
-| `alloc_hasLimits` | Framework | Complete; `alloc_hasLimitsOfSize` bridges |
+| `alloc_hasLimitsOfShape` / `alloc_hasLimits` | Framework | Pointwise `sInf` (spread fields sorry'd — see below) |
 | `adj_Q_T` | MasterTheorem | `Adjunction.mkOfUnitCounit`; unit via FTC + IR |
 | `Q_preservesColimits` | MasterTheorem | `adj_Q_T.leftAdjoint_preservesColimits` (Q is LEFT adjoint) |
-| `T_terminal` | MasterTheorem | From `adj_Q_T` + envelope formula |
+| `T_terminal` | MasterTheorem | From `adj_Q_T` + envelope formula (non-physical sorry retained) |
 | `masterTheorem_existence` | MasterTheorem | `T_terminal` + FTC |
-| `masterTheorem_isomorphism` | MasterTheorem | FTC + BC (non-physical sorry retained) |
+| `masterTheorem_isomorphism` | MasterTheorem | FTC + BC (non-physical sorrys retained) |
 | `masterTheorem_transferInvariance` | MasterTheorem | `le_antisymm` + linarith from two isomorphisms |
 | `taxationPrinciple` | Corollaries | Delegates to `masterTheorem_transferInvariance` |
 | `myerson_expectedRevenue` | MyersonSetting | IBP via `integral_hasStrictDerivAt` |
 | `myerson_revenueFormula` | Corollaries | Delegates to `myerson_expectedRevenue` |
 
-### Remaining sorry stubs
+### Remaining sorry stubs (11)
 
 | Lemma | File | Obstacle |
 |-------|------|----------|
+| `Q.map h_spread` | Framework | `MechHom` has no spread field; Q cannot derive it — structural gap |
+| `alloc_hasLimitsOfShape` cone `h_spread` | Framework | Pointwise `sInf` does not preserve spread monotonicity — structural gap |
+| `alloc_hasLimitsOfShape` lift `h_spread` | Framework | Same as above |
 | `T_wellDefined` (θ ≤ 0 case) | MasterTheorem | Design limitation: FTC requires `Set.Ioi 0` |
-| `T.map hTransf` | MasterTheorem | **Mathematically false** for general AllocHoms; see Unification.md §7.1 |
+| `T.map hTransf` | MasterTheorem | Needs structural assumption on `v` beyond `h_spread`; see Unification.md §7.1–7.2 |
 | `adj_Q_T` unit (θ ≤ 0 case) | MasterTheorem | Design limitation |
 | `T_terminal` (θ ≤ 0 case) | MasterTheorem | Design limitation |
-| `masterTheorem_isomorphism` (θ ≤ 0 case) | MasterTheorem | Design limitation |
+| `masterTheorem_isomorphism` hom/inv (θ ≤ 0 case, ×2) | MasterTheorem | Design limitation |
 | `mirrlees_IC_of_envelope` (θ ≤ 0 case) | MirrleesSetting | Design limitation |
 | `revenueEquivalence` | Corollaries | `MyersonAlloc = Set.Icc 0 1` is not `AddCommGroup`; see Unification.md §7.5 |
 
-### Branch: spread-monotone-allochom
-
-The branch `spread-monotone-allochom` experiments with enriching `AllocHom` with a spread-monotonicity condition `h_spread : Monotone (fun θ => r'.q θ - r.q θ)`, which is necessary to prove `T.map.hTransf`. See `Unification.md` §7.1–7.5 for a detailed analysis of findings, including the terminal object structure and the incompatibility with `alloc_hasLimitsOfShape`.
+The `master` branch has 8 of these sorries (all except the 3 Framework spread-field stubs introduced on this branch).
 
 ## Key proof patterns
 
