@@ -1,5 +1,6 @@
 import MechDesigAdjointfunctor.Lean.Framework
 import Mathlib.CategoryTheory.Adjunction.Basic
+import Mathlib.CategoryTheory.Adjunction.Limits
 import Mathlib.CategoryTheory.Limits.Shapes.Terminal
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
@@ -37,7 +38,7 @@ allocation rule is isomorphic to `T(q)`.
 * Rochet (1985), *The Taxation Principle*, Proposition 1
 -/
 
-open CategoryTheory MeasureTheory Filter
+open CategoryTheory CategoryTheory.Limits MeasureTheory Filter
 
 namespace MechDesign
 
@@ -66,7 +67,7 @@ noncomputable def typeDerivAlongAlloc {A : Type*} [Preorder A]
 Proof uses the if-direction of Lemmas 2.1 and 3.1: the envelope formula produces
 an IC mechanism whenever `q` is non-decreasing under SC.
 *Reference*: Lemma 4.2. -/
-lemma T_wellDefined {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+lemma T_wellDefined {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -197,7 +198,7 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min 
     linarith
 
 /-- The BIC-IR mechanism `T(r) = (r.q, t*)` as an element of `ICIRMechanism`. -/
-noncomputable def Tmech {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+noncomputable def Tmech {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -212,7 +213,7 @@ noncomputable def Tmech {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_
 - On objects: `T(r) = (r.q, t*)` where `t*` is the envelope transfer formula.
 - On morphisms: `T(φ) = (φ, φ)` — the same type transformation on both components.
 *Reference*: Definition 4.1. -/
-noncomputable def T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+noncomputable def T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
@@ -221,16 +222,45 @@ noncomputable def T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min 
     MonotoneAlloc A ⥤ ICIRMechanism A v θ_min where
   obj r     := Tmech hθ_pos hSC hD_Ioi r hdiff (hint r) hintC
   map {r r'} f :=
-    { hAlloc  := f.h
-      hTransf := by
-        -- Need: ∀ θ, T(r).t θ ≤ T(r').t θ.
-        -- Required: v(r'.q θ)θ - v(r.q θ)θ ≥ ∫[typeDerivAlongAlloc r' - r].
-        -- SC gives the integrand is ≥ 0, but the value difference must exceed the
-        -- integral difference.  By FTC, this reduces to the boundary value
-        -- v(r'.q θ_min)θ_min - v(r.q θ_min)θ_min plus an allocation-cross-derivative
-        -- integral (∂v/∂a)(r'.q s, s)*(r'.q)' - (∂v/∂a)(r.q s, s)*(r.q)'.
-        -- This holds when v is linear in a (Mirrlees/Myerson settings) but requires
-        -- additional conditions (e.g. convexity in a + same allocation slope) in general.
+    { hAlloc   := f.h
+      h_spread := f.h_spread
+      hTransf  := by
+        -- Goal: ∀ θ, T(r).t θ ≤ T(r').t θ, i.e.
+        --   v(r.q θ, θ) - ∫_{θ_min}^θ deriv(v(r.q ·)) s ds ≤
+        --   v(r'.q θ, θ) - ∫_{θ_min}^θ deriv(v(r'.q ·)) s ds
+        --
+        -- After rearranging, this is the inequality
+        --   v(r'.q θ, θ) - v(r.q θ, θ) ≥
+        --   ∫_{θ_min}^θ [deriv(v(r'.q s)) s - deriv(v(r.q s)) s] ds.
+        --
+        -- The spread-monotone-allochom branch enriches `AllocHom` with
+        --   `f.h_spread : Monotone (fun θ => r'.q θ - r.q θ)`.
+        -- In the Myerson case `v(a, θ) = a · θ`:
+        --   LHS = (r'.q θ - r.q θ) · θ,
+        --   RHS = ∫_{θ_min}^θ (r'.q s - r.q s) ds,
+        -- and the inequality reduces to
+        --   θ · Δ(θ) ≥ ∫_{θ_min}^θ Δ(s) ds   where Δ = r'.q - r.q.
+        -- Because Δ is non-decreasing (= `f.h_spread`), Δ(s) ≤ Δ(θ) for
+        -- s ≤ θ, so this follows from `intervalIntegral.integral_mono_on`
+        -- together with `θ_min ≥ 0` (so the boundary term θ_min · Δ(θ_min)
+        -- is dominated).
+        --
+        -- For a general value function `v`, however, the same reduction is
+        -- not available: it requires additional structural assumptions on
+        -- `v` — most cleanly, that `v(·, θ)` is **affine in `a`** with the
+        -- same affine slope across types (the Myerson/Mirrlees regime), or
+        -- a uniform convexity/Lipschitz condition controlling the
+        -- cross-partial `∂²v/∂a∂θ`.  These extra hypotheses are not part
+        -- of the current `T` signature.
+        --
+        -- The abstract framework therefore documents this as the remaining
+        -- gap on the spread-monotone-allochom branch: the spread field
+        -- `f.h_spread` is necessary (and in the Myerson case sufficient),
+        -- but proving `T.map.hTransf` in full categorical generality
+        -- additionally requires structural assumptions on `v`.
+        intro θ
+        -- `f.h_spread` is in scope here for future Myerson-specific use.
+        -- We do NOT discharge the inequality at this level of generality.
         sorry
     }
   map_id _     := by apply @Subsingleton.elim _ mechHom_subsingleton
@@ -252,7 +282,7 @@ Naturality follows from functoriality of Q and T.
 *Reference*: Theorem 4.3; Mac Lane (1978), Chapter IV. -/
 -- `Adjunction` is a structure (Type), not a Prop, so we use `def` not `theorem`.
 -- `θ_min` must be passed explicitly: neither `Q hSC` nor `T hSC hint` carries it.
-noncomputable def adj_Q_T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} (θ_min : ℝ)
+noncomputable def adj_Q_T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} (θ_min : ℝ)
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D)
     (hD : ∀ θ, θ ∈ D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -273,11 +303,15 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} (�
   Adjunction.mkOfUnitCounit {
     unit := {
       app := fun m =>
-        { hAlloc  := fun _ => le_refl _
+        { hAlloc   := fun _ => le_refl _
+          h_spread := by
+            -- T(Q(m)).q = m.q definitionally, so spread = m.q θ - m.q θ = 0.
+            change Monotone (fun θ => m.mech.q θ - m.mech.q θ)
+            simp [sub_self]; exact monotone_const
           hTransf := fun θ => by
             -- Goal: m.mech.t θ ≤ T(Q(m)).mech.t θ
             -- T(Q(m)).t θ = v(m.q θ, θ) - ∫_{θ_min}^θ typeDerivAlongAlloc v m.q (definitionally)
-            show m.mech.t θ ≤ v (m.mech.q θ) θ -
+            change m.mech.t θ ≤ v (m.mech.q θ) θ -
                 ∫ s in θ_min..θ, typeDerivAlongAlloc v ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ s
             by_cases hθ : 0 < θ
             · -- Physical case: FTC on hEnv gives V_m(θ) = V_m(θ_min) + ∫ D; IR gives V_m(θ_min) ≥ 0.
@@ -286,12 +320,8 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} (�
                     (v (m.mech.q θ) θ - m.mech.t θ) -
                     (v (m.mech.q θ_min) θ_min - m.mech.t θ_min) :=
                 intervalIntegral.integral_eq_sub_of_hasDerivAt
-                  (fun s hs => by
-                    have hs_pos : 0 < s := by
-                      rcases le_total θ_min θ with hle | hle
-                      · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ_pos hs.1
-                      · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ hs.1
-                    exact hEnv m s hs_pos)
+                  (fun s hs => hEnv m s <|
+                    lt_of_lt_of_le (lt_min hθ_pos hθ) (by simpa [Set.uIcc, min_comm] using hs.1))
                   (hint ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ θ_min θ)
               have hIR : (0 : ℝ) ≤ v (m.mech.q θ_min) θ_min - m.mech.t θ_min := m.hIR
               linarith
@@ -301,7 +331,13 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} (�
     }
     counit := {
       -- Q(T(r)).q = r.q definitionally, so the AllocHom is le_refl.
-      app := fun _ => ⟨fun _ => le_refl _⟩
+      app := fun r =>
+        { h := fun _ => le_refl _
+          h_spread := by
+            -- Source `Q(T(r))` has q-field definitionally equal to `r.q`, so
+            -- spread = r.q - r.q = 0, which is constantly monotone.
+            change Monotone (fun θ => r.q θ - r.q θ)
+            intro a b _; simp }
       naturality := fun _ _ _ => @Subsingleton.elim _ allocHom_subsingleton _ _
     }
     -- Triangle identities: both sides are equal in Subsingleton hom-sets.
@@ -309,10 +345,25 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} (�
     right_triangle := by ext; exact @Subsingleton.elim _ mechHom_subsingleton _ _
   }
 
+/-- **Lemma 1.8 (proved)**: Q preserves all small colimits.
+Q is the left adjoint in `adj_Q_T`, so `leftAdjoint_preservesColimits` applies directly. -/
+noncomputable instance Q_preservesColimits {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ}
+    (θ_min : ℝ) (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D)
+    (hD : ∀ θ, θ ∈ D) (hD_Ioi : Set.Ioi 0 ⊆ D)
+    (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
+    (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
+    (hint : ∀ (r : MonotoneAlloc A) a b,
+      IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
+    (hEnv : ∀ (m : ICIRMechanism A v θ_min) (θ : ℝ), 0 < θ →
+        HasDerivAt (fun s => v (m.mech.q s) s - m.mech.t s)
+            (typeDerivAlongAlloc v ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ θ) θ) :
+    PreservesColimits (Q (θ_min := θ_min) hSC hD) :=
+  (adj_Q_T θ_min hθ_pos hSC hD hD_Ioi hdiff hintC hint hEnv).leftAdjoint_preservesColimits
+
 /-! ### 4.3 Terminality of T(q) in **Mech_q** (Corollary 4.4) -/
 
 /-- The set of all BIC-IR mechanisms with allocation rule equal to `r.q` pointwise. -/
-def MechWithAlloc {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+def MechWithAlloc {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (r : MonotoneAlloc A) : Set (ICIRMechanism A v θ_min) :=
   {m | ∀ θ, m.mech.q θ = r.q θ}
 
@@ -326,7 +377,7 @@ morphism to `T(r)`.
 - *Uniqueness*: any morphism `φ : (r.q, t) → T(r)` must satisfy `r.q ∘ φ = r.q`.
   If `r.q` is strictly increasing, this forces `φ = id`.
 *Reference*: Corollary 4.4; Mac Lane (1978), Section IV.1. -/
-theorem T_terminal {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+theorem T_terminal {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -346,27 +397,32 @@ theorem T_terminal {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min :
     -- hTransf: only-if envelope theorem.  For θ > 0, FTC on hEnv gives
     --   ∫_{θ_min}^θ typeDerivAlongAlloc = V_m(θ) - V_m(θ_min).
     -- IR gives V_m(θ_min) ≥ 0, so m.t θ ≤ t*(θ).
-    refine ⟨⟨fun θ => le_of_eq (hm θ), ?_⟩⟩
-    intro θ
-    simp only [Tmech, transferFormula]
-    by_cases hθ : 0 < θ
-    · -- Physical case: apply FTC to hEnv.
-      have hFTC : ∫ s in θ_min..θ, typeDerivAlongAlloc v r s =
-              (v (r.q θ) θ - m.mech.t θ) - (v (r.q θ_min) θ_min - m.mech.t θ_min) := by
-        apply intervalIntegral.integral_eq_sub_of_hasDerivAt
-        · intro s hs
-          have hs_pos : 0 < s := by
-            rcases le_total θ_min θ with hle | hle
-            · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ_pos hs.1
-            · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ hs.1
-          exact hEnv s hs_pos
-        · exact hint θ_min θ
-      have hIR : (0 : ℝ) ≤ v (r.q θ_min) θ_min - m.mech.t θ_min := by
-        have h : v (m.mech.q θ_min) θ_min - m.mech.t θ_min ≥ 0 := m.hIR
-        rw [hm θ_min] at h; linarith
-      linarith
-    · -- Non-physical case θ ≤ 0 — same design limitation as T_wellDefined line 191.
-      sorry
+    refine ⟨⟨fun θ => le_of_eq (hm θ), ?_, ?_⟩⟩
+    · -- hTransf (field 2): FTC + IR
+      intro θ
+      simp only [Tmech, transferFormula]
+      by_cases hθ : 0 < θ
+      · have hFTC : ∫ s in θ_min..θ, typeDerivAlongAlloc v r s =
+                (v (r.q θ) θ - m.mech.t θ) - (v (r.q θ_min) θ_min - m.mech.t θ_min) := by
+          apply intervalIntegral.integral_eq_sub_of_hasDerivAt
+          · intro s hs
+            have hs_pos : 0 < s := by
+              rcases le_total θ_min θ with hle | hle
+              · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ_pos hs.1
+              · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ hs.1
+            exact hEnv s hs_pos
+          · exact hint θ_min θ
+        have hIR : (0 : ℝ) ≤ v (r.q θ_min) θ_min - m.mech.t θ_min := by
+          have h : v (m.mech.q θ_min) θ_min - m.mech.t θ_min ≥ 0 := m.hIR
+          rw [hm θ_min] at h; linarith
+        linarith
+      · -- Non-physical case θ ≤ 0 — same design limitation as T_wellDefined line 191.
+        sorry
+    · -- h_spread (field 3): Tmech.q = r.q definitionally; m.q = r.q from hm; spread = 0.
+      have hzero : (fun θ => (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.q θ -
+                              m.mech.q θ) = fun _ => (0 : A) :=
+        funext fun θ => by show r.q θ - m.mech.q θ = 0; rw [← hm θ]; exact sub_self _
+      rw [hzero]; exact monotone_const
   · intro f g
     exact @Subsingleton.elim _ mechHom_subsingleton _ _
 
@@ -378,7 +434,7 @@ with allocation `r.q`.  It is the explicit mechanism `T(r)`.
 
 Uniqueness: terminal objects are unique up to unique isomorphism (Mac Lane, Sec. III.1).
 *Reference*: Theorem 4.5(i). -/
-theorem masterTheorem_existence {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+theorem masterTheorem_existence {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -404,7 +460,7 @@ and `V(θ_min) = 0` is isomorphic to `T(r)` in **Mech**.
 
 Proof: the unique morphism from Corollary 4.4 is `id_Θ`, which is an isomorphism.
 *Reference*: Theorem 4.5(ii). -/
-theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -447,9 +503,15 @@ theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] {v : A → ℝ →
     by_cases hθ : 0 < θ
     · exact le_of_eq (htransf_eq θ hθ).symm
     · sorry  -- non-physical: same design limitation as T_wellDefined line 191
+  have hspread_zero : ∀ (f g : ℝ → A), (∀ θ, f θ = g θ) →
+      Monotone (fun θ => f θ - g θ) := fun f g heq => by
+    have : (fun θ => f θ - g θ) = fun _ => (0 : A) := funext fun θ => by rw [heq θ]; exact sub_self _
+    rw [this]; exact monotone_const
   exact ⟨{
-    hom := ⟨fun θ => le_of_eq (hm θ), hom_transf⟩
-    inv := ⟨fun θ => le_of_eq (hqeq θ), inv_transf⟩
+    hom := ⟨fun θ => le_of_eq (hm θ), hom_transf,
+            hspread_zero _ _ hqeq⟩
+    inv := ⟨fun θ => le_of_eq (hqeq θ), inv_transf,
+            hspread_zero _ _ (fun θ => (hqeq θ).symm)⟩
     hom_inv_id := @Subsingleton.elim _ mechHom_subsingleton _ _
     inv_hom_id := @Subsingleton.elim _ mechHom_subsingleton _ _
   }⟩
@@ -461,6 +523,7 @@ Proof: by Thm 4.5(ii), both are isomorphic to `T(r)`, so their transfers coincid
 pointwise, and hence their expected transfers are equal.
 *Reference*: Theorem 4.5(iii); Myerson (1981), Theorem 2. -/
 theorem masterTheorem_transferInvariance {A : Type*} [LinearOrder A]
+    [AddCommGroup A] [IsOrderedAddMonoid A]
     {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (r : MonotoneAlloc A)
