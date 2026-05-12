@@ -140,8 +140,8 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMo
             HasDerivAt.sub hd1.hasDerivAt hd2.hasDerivAt
           have hacc : AccPt s (𝓟 D) := by
             rw [accPt_principal_iff_nhdsWithin]
-            apply Filter.NeBot.mono (right_nhdsWithin_Ioo_neBot hs_pos)
-            exact nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩)
+            exact (right_nhdsWithin_Ioo_neBot hs_pos).mono
+              (nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩))
           linarith [hhas.hasDerivWithinAt.nonneg_of_monotoneOn hacc hSCq.monotoneOn]
         · rw [← hqeq]
       · -- θ ≤ θ': backwards integral case — reduce to forward by integral_symm.
@@ -168,8 +168,8 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMo
                 HasDerivAt.sub hd2.hasDerivAt hd1.hasDerivAt
               have hacc : AccPt s (𝓟 D) := by
                 rw [accPt_principal_iff_nhdsWithin]
-                apply Filter.NeBot.mono (right_nhdsWithin_Ioo_neBot hs_pos)
-                exact nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩)
+                exact (right_nhdsWithin_Ioo_neBot hs_pos).mono
+                  (nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩))
               linarith [hhas.hasDerivWithinAt.nonneg_of_monotoneOn hacc hSCq.monotoneOn]
             · rw [← hqeq])
         -- integral_symm θ θ' : ∫ x in θ'..θ, f x = -∫ x in θ..θ', f x

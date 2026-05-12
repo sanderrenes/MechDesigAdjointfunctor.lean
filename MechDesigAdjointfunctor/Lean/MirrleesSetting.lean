@@ -72,18 +72,18 @@ lemma mirrlees_singleCrossing (h g : ℝ → ℝ) (hh : Differentiable ℝ h)
   · -- ContinuousOn (fun θ => mirrleesValue h g y θ - mirrleesValue h g y' θ) (Set.Ioi 0)
     have hcont_y : ContinuousOn (fun θ => mirrleesValue h g y θ) (Set.Ioi 0) := by
       simp only [mirrleesValue]
-      apply ContinuousOn.sub
-      · exact (continuous_id.mul_const _).continuousOn
-      · apply hg.continuous.continuousOn.comp
+      exact ContinuousOn.sub
+        (continuous_id.mul_const _).continuousOn
+        (hg.continuous.continuousOn.comp
           (ContinuousOn.div continuousOn_const continuousOn_id (fun x hx => hx.ne'))
-        intro _ _; exact Set.mem_univ _
+          (fun _ _ => Set.mem_univ _))
     have hcont_y' : ContinuousOn (fun θ => mirrleesValue h g y' θ) (Set.Ioi 0) := by
       simp only [mirrleesValue]
-      apply ContinuousOn.sub
-      · exact (continuous_id.mul_const _).continuousOn
-      · apply hg.continuous.continuousOn.comp
+      exact ContinuousOn.sub
+        (continuous_id.mul_const _).continuousOn
+        (hg.continuous.continuousOn.comp
           (ContinuousOn.div continuousOn_const continuousOn_id (fun x hx => hx.ne'))
-        intro _ _; exact Set.mem_univ _
+          (fun _ _ => Set.mem_univ _))
     exact hcont_y.sub hcont_y'
   · -- 0 < deriv f θ for θ ∈ interior (Set.Ioi 0) = Set.Ioi 0
     intro θ hθ
@@ -155,11 +155,11 @@ lemma mirrlees_vDiff (h g : ℝ → ℝ) (_hh : Differentiable ℝ h) (hg : Diff
     ∀ (y : ℝ), DifferentiableOn ℝ (mirrleesValue h g y) (Set.Ioi 0) := by
   intro y
   unfold mirrleesValue
-  apply DifferentiableOn.sub
-  · exact (differentiable_id.mul_const _).differentiableOn
-  · apply hg.differentiableOn.comp _ (fun x _ => Set.mem_univ _)
-    exact DifferentiableOn.div (differentiableOn_const y) differentiableOn_id
-      (fun x hx => hx.ne')
+  exact DifferentiableOn.sub
+    (differentiable_id.mul_const _).differentiableOn
+    (hg.differentiableOn.comp
+      (DifferentiableOn.div (differentiableOn_const y) differentiableOn_id (fun x hx => hx.ne'))
+      (fun x _ => Set.mem_univ _))
 
 /-! ### 3.2 IC Characterisation and the Taxation Principle (Lemma 3.1) -/
 
@@ -236,8 +236,8 @@ lemma mirrlees_IC_of_envelope (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → �
         HasDerivAt.sub hd1.hasDerivAt hd2.hasDerivAt
       have hacc : AccPt s (𝓟 D) := by
         rw [accPt_principal_iff_nhdsWithin]
-        apply Filter.NeBot.mono (right_nhdsWithin_Ioo_neBot hs_pos)
-        exact nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩)
+        exact (right_nhdsWithin_Ioo_neBot hs_pos).mono
+          (nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩))
       linarith [hhas.hasDerivWithinAt.nonneg_of_monotoneOn hacc hSCq.monotoneOn]
     · rw [← hqeq]
   · have hle : θ ≤ θ' := le_of_lt hlt
@@ -261,8 +261,8 @@ lemma mirrlees_IC_of_envelope (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → �
             HasDerivAt.sub hd2.hasDerivAt hd1.hasDerivAt
           have hacc : AccPt s (𝓟 D) := by
             rw [accPt_principal_iff_nhdsWithin]
-            apply Filter.NeBot.mono (right_nhdsWithin_Ioo_neBot hs_pos)
-            exact nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩)
+            exact (right_nhdsWithin_Ioo_neBot hs_pos).mono
+              (nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩))
           linarith [hhas.hasDerivWithinAt.nonneg_of_monotoneOn hacc hSCq.monotoneOn]
         · rw [← hqeq])
     have h1 : ∫ s in θ'..θ, vθ_partial s = -∫ s in θ..θ', vθ_partial s :=
