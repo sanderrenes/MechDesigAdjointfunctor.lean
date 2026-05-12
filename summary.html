@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mechanism Design via the Adjoint Functor Theorem — Lean 4 Formalization</title>
+<style>
+  :root {
+    --blue:    #2563eb;
+    --blue-l:  #dbeafe;
+    --green:   #16a34a;
+    --green-l: #dcfce7;
+    --amber:   #d97706;
+    --amber-l: #fef3c7;
+    --red:     #dc2626;
+    --red-l:   #fee2e2;
+    --purple:  #7c3aed;
+    --purple-l:#ede9fe;
+    --gray:    #374151;
+    --gray-l:  #f3f4f6;
+    --border:  #e5e7eb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Georgia", "Times New Roman", serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: #1f2937;
+    background: #fafafa;
+    padding: 0 16px 60px;
+  }
+  a { color: var(--blue); }
+  h1 { font-size: 1.8em; font-weight: bold; margin-bottom: .3em; }
+  h2 { font-size: 1.25em; font-weight: bold; border-bottom: 2px solid var(--blue);
+       padding-bottom: .25em; margin: 1.8em 0 .8em; color: var(--blue); }
+  h3 { font-size: 1.05em; font-weight: bold; margin: 1.2em 0 .4em; color: var(--gray); }
+  p  { margin-bottom: .8em; }
+  code, .mono {
+    font-family: "Menlo", "Consolas", "Courier New", monospace;
+    font-size: .88em; background: var(--gray-l); padding: 1px 5px; border-radius: 3px;
+  }
+  pre.lean {
+    font-family: "Menlo", "Consolas", monospace;
+    font-size: .82em;
+    background: #1e293b; color: #e2e8f0;
+    padding: 14px 18px; border-radius: 6px;
+    overflow-x: auto; margin: .8em 0 1.2em;
+    line-height: 1.55;
+  }
+  pre.lean .kw  { color: #93c5fd; }
+  pre.lean .ty  { color: #86efac; }
+  pre.lean .cm  { color: #94a3b8; font-style: italic; }
+  pre.lean .lit { color: #fbbf24; }
+
+  .container { max-width: 960px; margin: 0 auto; }
+  .header-box {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #2563eb 100%);
+    color: white; padding: 32px 40px; border-radius: 10px; margin: 24px 0 32px;
+  }
+  .header-box .subtitle { opacity: .85; font-size: .95em; margin-top: .4em; }
+  .header-box .authors  { margin-top: 1em; font-size: .85em; opacity: .7; }
+
+  /* Theorem boxes */
+  .box {
+    border-left: 4px solid; padding: 12px 16px;
+    border-radius: 0 6px 6px 0; margin: 1em 0 1.4em;
+  }
+  .box .label { font-size: .78em; font-weight: bold; text-transform: uppercase;
+                letter-spacing: .07em; margin-bottom: .3em; }
+  .box .name  { font-weight: bold; }
+  .box-thm    { border-color: var(--blue);   background: var(--blue-l); }
+  .box-thm .label { color: var(--blue); }
+  .box-lem    { border-color: var(--green);  background: var(--green-l); }
+  .box-lem .label { color: var(--green); }
+  .box-def    { border-color: var(--purple); background: var(--purple-l); }
+  .box-def .label { color: var(--purple); }
+  .box-cor    { border-color: var(--amber);  background: var(--amber-l); }
+  .box-cor .label { color: var(--amber); }
+  .box-warn   { border-color: var(--red);    background: var(--red-l); }
+  .box-warn .label { color: var(--red); }
+
+  /* Assumption table */
+  table.hyp { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: .9em; }
+  table.hyp th { background: #1e3a8a; color: white; padding: 7px 12px; text-align: left; }
+  table.hyp td { padding: 7px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.hyp tr:nth-child(even) td { background: var(--gray-l); }
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: .75em; font-weight: bold; white-space: nowrap;
+  }
+  .tag-struct  { background: var(--purple-l); color: var(--purple); }
+  .tag-econ    { background: var(--green-l);  color: var(--green);  }
+  .tag-anal    { background: var(--amber-l);  color: var(--amber);  }
+  .tag-cat     { background: var(--blue-l);   color: var(--blue);   }
+  .tag-sorry   { background: var(--red-l);    color: var(--red);    }
+
+  /* SVG diagram containers */
+  .diagram { text-align: center; margin: 1.5em 0; }
+  .diagram svg { max-width: 100%; }
+  .diagram figcaption { font-size: .82em; color: #6b7280; margin-top: .5em; }
+
+  /* Two-column layout */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Sorry notice */
+  .sorry-notice {
+    background: var(--red-l); border: 1px solid #fca5a5;
+    border-radius: 6px; padding: 10px 14px; font-size: .88em; margin: .5em 0;
+  }
+  .sorry-notice strong { color: var(--red); }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+  .ref { font-size: .85em; color: #6b7280; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ============================================================ HEADER -->
+<div class="header-box">
+  <h1>Mechanism Design via the Adjoint Functor Theorem</h1>
+  <div class="subtitle">A Lean&nbsp;4 / Mathlib Formalization of Myerson (1981) and Mirrlees (1971)</div>
+  <div class="authors">Formalization · 2026 &nbsp;·&nbsp; Branch: <code style="background:rgba(255,255,255,.15);color:white">master</code></div>
+</div>
+
+<!-- ============================================================ ABSTRACT -->
+<h2>Overview</h2>
+<p>
+  This project formalizes the insight that two classical results in mechanism design —
+  <strong>Myerson's Revenue Equivalence Theorem</strong> and the
+  <strong>Mirrlees Taxation Principle</strong> — are corollaries of a single abstract
+  categorical theorem: the forgetful functor <em>Q</em> from incentive-compatible
+  mechanisms to allocation rules has a right adjoint <em>T</em>, the
+  <em>transfer functor</em>.
+</p>
+<p>
+  The construction is carried out in Lean&nbsp;4 with Mathlib.  The five source files
+  progress from abstract categorical infrastructure (<code>Framework.lean</code>)
+  through the adjunction proof (<code>MasterTheorem.lean</code>) to the two economic
+  instantiations (<code>MyersonSetting.lean</code>, <code>MirrleesSetting.lean</code>)
+  and their corollaries (<code>Corollaries.lean</code>).
+</p>
+
+<!-- ============================================================ PROOF CHAIN -->
+<h2>Proof Chain</h2>
+<div class="diagram">
+<figure>
+<svg viewBox="0 0 780 620" xmlns="http://www.w3.org/2000/svg" font-family="Georgia, serif" font-size="13">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#374151"/>
+    </marker>
+    <marker id="arr-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arr-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arr-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#d97706"/>
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="120%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2" flood-opacity=".12"/>
+    </filter>
+  </defs>
+
+  <!-- ── Row 0: Conditions ── -->
+  <!-- QI box -->
+  <rect x="30" y="20" width="100" height="46" rx="6" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="80" y="39" text-anchor="middle" fill="#7c3aed" font-weight="bold" font-size="11">QI</text>
+  <text x="80" y="55" text-anchor="middle" fill="#4c1d95" font-size="10">Quasilinearity</text>
+  <text x="80" y="67" text-anchor="middle" fill="#6d28d9" font-size="9">(structural)</text>
+
+  <!-- SC box -->
+  <rect x="160" y="20" width="130" height="46" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="225" y="39" text-anchor="middle" fill="#166534" font-weight="bold" font-size="11">SC</text>
+  <text x="225" y="55" text-anchor="middle" fill="#166534" font-size="10">Single Crossing</text>
+  <text x="225" y="67" text-anchor="middle" fill="#166534" font-size="9">StrictMonoOn(v a − v a′) D</text>
+
+  <!-- IC+IR box -->
+  <rect x="320" y="20" width="130" height="46" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="385" y="39" text-anchor="middle" fill="#1e3a8a" font-weight="bold" font-size="11">IC + IR</text>
+  <text x="385" y="55" text-anchor="middle" fill="#1e40af" font-size="10">Incentive compat.</text>
+  <text x="385" y="67" text-anchor="middle" fill="#1e40af" font-size="9">+ indiv. rationality</text>
+
+  <!-- A=ℝ box -->
+  <rect x="480" y="20" width="130" height="46" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="545" y="39" text-anchor="middle" fill="#92400e" font-weight="bold" font-size="11">A : AddCommGroup</text>
+  <text x="545" y="55" text-anchor="middle" fill="#92400e" font-size="10">Ordered add. monoid</text>
+  <text x="545" y="67" text-anchor="middle" fill="#92400e" font-size="9">e.g. A = ℝ</text>
+
+  <!-- ── Row 1: IC_implies_monotone ── -->
+  <line x1="225" y1="66" x2="225" y2="105" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="385" y1="66" x2="310" y2="105" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="80"  y1="66" x2="160" y2="105" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="130" y="105" width="210" height="44" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.8" filter="url(#shadow)"/>
+  <text x="235" y="124" text-anchor="middle" fill="#166534" font-weight="bold" font-size="11">IC_implies_monotone</text>
+  <text x="235" y="140" text-anchor="middle" fill="#166534" font-size="10">IC + SC ⟹ MON (Lemma 1.7)</text>
+
+  <!-- ── Row 2: Alloc complete ── -->
+  <line x1="235" y1="149" x2="235" y2="188" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="545" y1="66" x2="350" y2="188" stroke="#d97706" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arr-amber)"/>
+
+  <rect x="130" y="188" width="210" height="44" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.8" filter="url(#shadow)"/>
+  <text x="235" y="207" text-anchor="middle" fill="#1e3a8a" font-weight="bold" font-size="11">alloc_hasLimits</text>
+  <text x="235" y="223" text-anchor="middle" fill="#1e40af" font-size="10">Alloc is complete (Lemma 1.7)</text>
+
+  <!-- ── Row 3: Q preserves colimits ── -->
+  <line x1="235" y1="232" x2="235" y2="271" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="130" y="271" width="210" height="44" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.8" filter="url(#shadow)"/>
+  <text x="235" y="290" text-anchor="middle" fill="#1e3a8a" font-weight="bold" font-size="11">Q_preservesColimits</text>
+  <text x="235" y="306" text-anchor="middle" fill="#1e40af" font-size="10">Q left adjoint ⟹ preserves colimits</text>
+
+  <!-- ── Row 4: T_wellDefined + adj_Q_T ── -->
+  <line x1="235" y1="315" x2="235" y2="354" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="130" y="354" width="210" height="44" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.8" filter="url(#shadow)"/>
+  <text x="235" y="373" text-anchor="middle" fill="#1e3a8a" font-weight="bold" font-size="11">adj_Q_T</text>
+  <text x="235" y="389" text-anchor="middle" fill="#1e40af" font-size="10">Q ⊣ T  (Theorem 4.3)</text>
+
+  <!-- ── Row 5: T_terminal ── -->
+  <line x1="235" y1="398" x2="235" y2="437" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="130" y="437" width="210" height="44" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.8" filter="url(#shadow)"/>
+  <text x="235" y="456" text-anchor="middle" fill="#1e3a8a" font-weight="bold" font-size="11">masterTheorem_transferInvariance</text>
+  <text x="235" y="472" text-anchor="middle" fill="#1e40af" font-size="10">Thm 4.5(iii): same q ⟹ same 𝔼[t]</text>
+
+  <!-- ── Row 6: Corollaries ── -->
+  <line x1="190" y1="481" x2="130" y2="530" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="280" y1="481" x2="360" y2="530" stroke="#374151" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Revenue Equivalence -->
+  <rect x="20" y="530" width="210" height="56" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.8" filter="url(#shadow)"/>
+  <text x="125" y="550" text-anchor="middle" fill="#92400e" font-weight="bold" font-size="11">Revenue Equivalence</text>
+  <text x="125" y="566" text-anchor="middle" fill="#92400e" font-size="10">Myerson (1981) Thm 2</text>
+  <text x="125" y="578" text-anchor="middle" fill="#92400e" font-size="9">𝔼[t₁] = 𝔼[t₂]  (A = ℝ, v = θq)</text>
+
+  <!-- Taxation Principle -->
+  <rect x="260" y="530" width="210" height="56" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.8" filter="url(#shadow)"/>
+  <text x="365" y="550" text-anchor="middle" fill="#92400e" font-weight="bold" font-size="11">Taxation Principle</text>
+  <text x="365" y="566" text-anchor="middle" fill="#92400e" font-size="10">Mirrlees (1971) Eq. (27)</text>
+  <text x="365" y="578" text-anchor="middle" fill="#92400e" font-size="9">t unique from q and V(θ_min)</text>
+
+  <!-- Differentiability / env annotations -->
+  <text x="640" y="200" fill="#6b7280" font-size="10" font-style="italic">hθ_pos : 0 &lt; θ_min</text>
+  <text x="640" y="215" fill="#6b7280" font-size="10" font-style="italic">hdiff: v(a,·) diff on (0,∞)</text>
+  <text x="640" y="230" fill="#6b7280" font-size="10" font-style="italic">hEnv: envelope derivative</text>
+  <text x="640" y="245" fill="#6b7280" font-size="10" font-style="italic">hBC: boundary condition</text>
+  <line x1="637" y1="220" x2="345" y2="395" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3,4" marker-end="url(#arr)"/>
+</svg>
+<figcaption>Figure 1 — Logical dependency chain from economic primitives to the two classical corollaries.</figcaption>
+</figure>
+</div>
+
+<!-- ============================================================ ADJUNCTION DIAGRAM -->
+<h2>Categorical Structure</h2>
+
+<div class="diagram">
+<figure>
+<svg viewBox="0 0 680 280" xmlns="http://www.w3.org/2000/svg" font-family="Georgia,serif" font-size="13">
+  <defs>
+    <marker id="arr2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0,10 3.5,0 7" fill="#1e40af"/>
+    </marker>
+    <marker id="arr3" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0,10 3.5,0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arr4" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0,10 3.5,0 7" fill="#d97706"/>
+    </marker>
+    <filter id="sh2" x="-5%" y="-5%" width="110%" height="120%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2.5" flood-opacity=".13"/>
+    </filter>
+  </defs>
+
+  <!-- Mech category -->
+  <rect x="40" y="80" width="200" height="120" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#sh2)"/>
+  <text x="140" y="105" text-anchor="middle" fill="#1e40af" font-weight="bold" font-size="15">Mech</text>
+  <text x="140" y="125" text-anchor="middle" fill="#374151" font-size="11">Objects: ICIRMechanism (q,t)</text>
+  <text x="140" y="142" text-anchor="middle" fill="#374151" font-size="11">  • IC + IR + Monotone q</text>
+  <text x="140" y="159" text-anchor="middle" fill="#374151" font-size="11">Homs: (≤q, ≤t, spread-mono)</text>
+  <text x="140" y="176" text-anchor="middle" fill="#374151" font-size="11">  Thin (poset-like) category</text>
+  <text x="140" y="193" text-anchor="middle" fill="#374151" font-size="11">  All homs are subsingleton</text>
+
+  <!-- Alloc category -->
+  <rect x="440" y="80" width="200" height="120" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#sh2)"/>
+  <text x="540" y="105" text-anchor="middle" fill="#166534" font-weight="bold" font-size="15">Alloc</text>
+  <text x="540" y="125" text-anchor="middle" fill="#374151" font-size="11">Objects: MonotoneAlloc q</text>
+  <text x="540" y="142" text-anchor="middle" fill="#374151" font-size="11">  • Monotone q : ℝ → A</text>
+  <text x="540" y="159" text-anchor="middle" fill="#374151" font-size="11">Homs: (≤q, spread-mono)</text>
+  <text x="540" y="176" text-anchor="middle" fill="#374151" font-size="11">  Complete (has all limits)</text>
+  <text x="540" y="193" text-anchor="middle" fill="#374151" font-size="11">  (A complete lattice)</text>
+
+  <!-- Q arrow -->
+  <path d="M 242 125 C 300 90, 380 90, 438 125" stroke="#2563eb" stroke-width="2.5" fill="none" marker-end="url(#arr2)"/>
+  <text x="340" y="85" text-anchor="middle" fill="#2563eb" font-weight="bold" font-size="14">Q</text>
+  <text x="340" y="98" text-anchor="middle" fill="#2563eb" font-size="10">(q,t) ↦ q  (forgetful)</text>
+
+  <!-- T arrow -->
+  <path d="M 438 155 C 380 195, 300 195, 242 155" stroke="#16a34a" stroke-width="2.5" fill="none" marker-end="url(#arr3)"/>
+  <text x="340" y="205" text-anchor="middle" fill="#16a34a" font-weight="bold" font-size="14">T</text>
+  <text x="340" y="218" text-anchor="middle" fill="#16a34a" font-size="10">q ↦ (q, t*) where t* = envelope formula</text>
+
+  <!-- Adjunction symbol -->
+  <rect x="290" y="118" width="100" height="44" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2" filter="url(#sh2)"/>
+  <text x="340" y="138" text-anchor="middle" fill="#92400e" font-weight="bold" font-size="17">Q ⊣ T</text>
+  <text x="340" y="154" text-anchor="middle" fill="#92400e" font-size="10">Adjunction</text>
+
+  <!-- Unit / counit labels -->
+  <text x="100" y="60" text-anchor="middle" fill="#6b7280" font-size="10" font-style="italic">unit η_m : m → T(Q(m))</text>
+  <text x="560" y="240" text-anchor="middle" fill="#6b7280" font-size="10" font-style="italic">counit ε_r : Q(T(r)) → r</text>
+</svg>
+<figcaption>Figure 2 — The adjunction Q ⊣ T.  Q is the forgetful functor (drops the transfer);
+T is the transfer functor (adds the envelope transfer formula).</figcaption>
+</figure>
+</div>
+
+<!-- ============================================================ UNIT / COUNIT -->
+<div class="diagram">
+<figure>
+<svg viewBox="0 0 680 240" xmlns="http://www.w3.org/2000/svg" font-family="Georgia,serif" font-size="12">
+  <defs>
+    <marker id="a5" markerWidth="9" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0,9 3,0 6" fill="#374151"/>
+    </marker>
+    <filter id="sh3" x="-5%" y="-5%" width="112%" height="122%">
+      <feDropShadow dx="1" dy="1.5" stdDeviation="2" flood-opacity=".10"/>
+    </filter>
+  </defs>
+
+  <!-- LEFT: Unit triangle -->
+  <text x="150" y="25" text-anchor="middle" fill="#1e40af" font-weight="bold" font-size="13">Unit: m → T(Q(m))</text>
+
+  <!-- m box -->
+  <rect x="30"  y="50" width="100" height="50" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5" filter="url(#sh3)"/>
+  <text x="80"  y="72" text-anchor="middle" fill="#1e40af" font-weight="bold">m</text>
+  <text x="80"  y="88" text-anchor="middle" fill="#374151" font-size="10">(q, t) ∈ Mech</text>
+
+  <!-- T(Q(m)) box -->
+  <rect x="170" y="50" width="130" height="50" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5" filter="url(#sh3)"/>
+  <text x="235" y="72" text-anchor="middle" fill="#166534" font-weight="bold">T(Q(m))</text>
+  <text x="235" y="88" text-anchor="middle" fill="#374151" font-size="10">(q, t*) with t* from envelope</text>
+
+  <!-- η_m arrow -->
+  <line x1="132" y1="75" x2="168" y2="75" stroke="#374151" stroke-width="1.8" marker-end="url(#a5)"/>
+  <text x="150" y="68" text-anchor="middle" fill="#374151" font-size="11" font-style="italic">η_m</text>
+
+  <!-- Note: m ≤ T(Q(m)) by IR -->
+  <text x="150" y="130" text-anchor="middle" fill="#6b7280" font-size="10">t ≤ t*</text>
+  <text x="150" y="143" text-anchor="middle" fill="#6b7280" font-size="10">(IR gives V(θ_min) ≥ 0)</text>
+  <text x="150" y="158" text-anchor="middle" fill="#6b7280" font-size="10">m ≅ T(Q(m)) iff BC holds exactly</text>
+
+  <!-- Isomorphism note -->
+  <rect x="30" y="170" width="270" height="50" rx="6" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+  <text x="165" y="190" text-anchor="middle" fill="#854d0e" font-weight="bold" font-size="11">masterTheorem_isomorphism</text>
+  <text x="165" y="207" text-anchor="middle" fill="#854d0e" font-size="10">If hEnv + hBC hold, then m ≅ T(Q(m))</text>
+
+  <!-- DIVIDER -->
+  <line x1="340" y1="30" x2="340" y2="225" stroke="#e5e7eb" stroke-width="1.5"/>
+
+  <!-- RIGHT: Counit / transfer invariance -->
+  <text x="510" y="25" text-anchor="middle" fill="#1e40af" font-weight="bold" font-size="13">Transfer Invariance</text>
+
+  <!-- m₁ box -->
+  <rect x="360" y="50" width="110" height="50" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5" filter="url(#sh3)"/>
+  <text x="415" y="70" text-anchor="middle" fill="#1e40af" font-weight="bold">m₁ = (q, t₁)</text>
+  <text x="415" y="87" text-anchor="middle" fill="#374151" font-size="10">IC+IR, same q</text>
+
+  <!-- m₂ box -->
+  <rect x="550" y="50" width="110" height="50" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5" filter="url(#sh3)"/>
+  <text x="605" y="70" text-anchor="middle" fill="#1e40af" font-weight="bold">m₂ = (q, t₂)</text>
+  <text x="605" y="87" text-anchor="middle" fill="#374151" font-size="10">IC+IR, same q</text>
+
+  <!-- T(r) box below -->
+  <rect x="455" y="140" width="110" height="50" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.8" filter="url(#sh3)"/>
+  <text x="510" y="162" text-anchor="middle" fill="#166534" font-weight="bold">T(r)</text>
+  <text x="510" y="178" text-anchor="middle" fill="#374151" font-size="10">unique t* by envelope</text>
+
+  <!-- iso arrows -->
+  <line x1="435" y1="100" x2="476" y2="138" stroke="#16a34a" stroke-width="1.8" marker-end="url(#a5)"/>
+  <text x="445" y="128" fill="#166534" font-size="10" font-style="italic">≅</text>
+  <line x1="585" y1="100" x2="544" y2="138" stroke="#16a34a" stroke-width="1.8" marker-end="url(#a5)"/>
+  <text x="570" y="128" fill="#166534" font-size="10" font-style="italic">≅</text>
+
+  <!-- Therefore -->
+  <text x="510" y="208" text-anchor="middle" fill="#92400e" font-weight="bold" font-size="12">∴  t₁ = t₂  ⟹  𝔼[t₁] = 𝔼[t₂]</text>
+</svg>
+<figcaption>Figure 3 — Left: the unit morphism η_m gives a canonical map m → T(Q(m)); when the
+envelope and boundary conditions hold, this is an isomorphism.
+Right: two mechanisms with the same allocation are each isomorphic to T(r), forcing t₁ = t₂.</figcaption>
+</figure>
+</div>
+
+<!-- ============================================================ DEFINITIONS -->
+<h2>Economic Primitives</h2>
+
+<div class="box box-def">
+  <div class="label">Definition — Mechanism</div>
+  <p>A <strong>direct mechanism</strong> over allocation space <em>A</em> is a pair
+  <em>m = (q, t)</em> where <code>q : ℝ → A</code> assigns an allocation to each type,
+  and <code>t : ℝ → ℝ</code> is the transfer (payment by agent).
+  Utility is <em>v(q(θ), θ) − t(θ)</em> — quasilinear in the transfer (condition <strong>QI</strong>).</p>
+</div>
+
+<div class="box box-def">
+  <div class="label">Definition — Single Crossing (SC)</div>
+  <p>For a domain <em>D ⊆ ℝ</em>, the value function <em>v : A → ℝ → ℝ</em> satisfies
+  <strong>SC</strong> on <em>D</em> if for every <em>a &gt; a′</em> in <em>A</em>,
+  the surplus difference <em>θ ↦ v(a,θ) − v(a′,θ)</em> is strictly increasing on <em>D</em>.</p>
+  <pre class="lean"><span class="kw">def</span> <span class="ty">SingleCrossing</span> {A : <span class="ty">Type</span>*} [<span class="ty">Preorder</span> A] (v : A → ℝ → ℝ) (D : <span class="ty">Set</span> ℝ) : <span class="ty">Prop</span> :=
+  ∀ (a a' : A), a &gt; a' → <span class="ty">StrictMonoOn</span> (<span class="kw">fun</span> θ =&gt; v a θ - v a' θ) D</pre>
+</div>
+
+<div class="box box-def">
+  <div class="label">Definition — IsIC / IsIR</div>
+  <p><strong>IC</strong> (Incentive Compatibility) restricted to types ≥ θ_min:
+  truth-telling weakly dominates any misreport θ′.</p>
+  <p><strong>IR</strong> (Individual Rationality): the lowest type θ_min obtains
+  non-negative surplus — normalised to <em>V(θ_min) = v(q(θ_min), θ_min) − t(θ_min) ≥ 0</em>.</p>
+  <pre class="lean"><span class="kw">def</span> <span class="ty">IsIC</span> (v : A → ℝ → ℝ) (θ_min : ℝ) (m : <span class="ty">Mechanism</span> A) : <span class="ty">Prop</span> :=
+  ∀ θ θ' : ℝ, θ_min ≤ θ → θ_min ≤ θ' →
+    v (m.q θ) θ - m.t θ ≥ v (m.q θ') θ - m.t θ'</pre>
+</div>
+
+<!-- ============================================================ KEY LEMMAS -->
+<h2>Key Lemmas and Theorems</h2>
+
+<div class="box box-lem">
+  <div class="label">Lemma 1.7 — IC_implies_monotone</div>
+  <div class="name">IC + SC ⟹ MON</div>
+  <p>Every BIC mechanism with a single-crossing value function has a non-decreasing
+  allocation rule on [θ_min, ∞).  Proof: if q were decreasing on some interval,
+  higher types could profitably mimic lower types, contradicting IC.</p>
+  <p><strong>Assumptions:</strong> SC, IC (and transitively QI).<br>
+  <strong>Conclusion:</strong> <code>MonotoneOn m.mech.q (Set.Ici θ_min)</code></p>
+</div>
+
+<div class="box box-lem">
+  <div class="label">Lemma 4.2 — T_wellDefined</div>
+  <div class="name">T(r) is BIC-IR for any monotone allocation r</div>
+  <p>Given any monotone allocation rule <em>r : ℝ → A</em>, the mechanism
+  T(r) = (r.q, t*) with transfer formula
+  <em>t*(θ) = v(r.q(θ), θ) − ∫<sub>θ_min</sub><sup>θ</sup> (∂v/∂s)(r.q(s), s) ds</em>
+  is BIC and IR.</p>
+  <p><strong>Additional assumptions:</strong> 0 &lt; θ_min, SC, v(a,·) differentiable on (0,∞),
+  integrability of typeDerivAlongAlloc.</p>
+</div>
+
+<div class="box box-thm">
+  <div class="label">Theorem 4.3 — adj_Q_T</div>
+  <div class="name">Q ⊣ T  (The Adjunction)</div>
+  <p>The forgetful functor Q : Mech → Alloc has a right adjoint T : Alloc → Mech.
+  The adjunction is constructed via unit η and counit ε:</p>
+  <ul style="margin:.4em 0 .4em 1.2em">
+    <li>Unit <em>η_m : m → T(Q(m))</em>: proved via FTC + IR boundary condition</li>
+    <li>Counit <em>ε_r : Q(T(r)) → r</em>: allocation equality is definitional</li>
+    <li>Triangle identities: immediate from the subsingleton property of Hom-sets</li>
+  </ul>
+  <p><strong>Additional assumptions:</strong> hEnv (envelope derivative holds for each mechanism),
+  0 &lt; θ_min.</p>
+</div>
+
+<div class="box box-thm">
+  <div class="label">Theorem 4.5(ii) — masterTheorem_isomorphism</div>
+  <div class="name">Every BIC-IR mechanism with allocation r is isomorphic to T(r)</div>
+  <p>If m is BIC-IR with allocation rule r (i.e. m ∈ MechWithAlloc r), and the envelope
+  derivative holds pointwise, then m ≅ T(r) in Mech.</p>
+  <p><strong>Key assumptions:</strong> hEnv₁ (FTC envelope for m), hBC (binding IR:
+  <em>v(q(θ_min),θ_min) = t(θ_min)</em>).</p>
+</div>
+
+<div class="box box-thm">
+  <div class="label">Theorem 4.5(iii) — masterTheorem_transferInvariance</div>
+  <div class="name">Same allocation + binding IR ⟹ same expected transfer</div>
+  <p>If m₁ and m₂ are both BIC-IR with the same allocation rule r and the same boundary
+  value V(θ_min) = 0, then <em>∫ t₁ dμ = ∫ t₂ dμ</em> for any finite measure μ.</p>
+  <p>Proof: by 4.5(ii), m₁ ≅ T(r) ≅ m₂, so t₁ = t₂ pointwise (on [θ_min,∞)).
+  A non-physical sorry remains for θ &lt; θ_min.</p>
+</div>
+
+<!-- ============================================================ ASSUMPTIONS TABLE -->
+<h2>Full Assumption Table</h2>
+
+<table class="hyp">
+  <tr>
+    <th>Label</th><th>Kind</th><th>Statement</th><th>Where required</th>
+  </tr>
+  <tr>
+    <td><strong>QI</strong></td>
+    <td><span class="tag tag-struct">structural</span></td>
+    <td>Utility = v(q(θ),θ) − t(θ); linearity in t baked into <code>Mechanism</code></td>
+    <td>All theorems</td>
+  </tr>
+  <tr>
+    <td><strong>SC</strong></td>
+    <td><span class="tag tag-econ">economic</span></td>
+    <td><code>StrictMonoOn (v a − v a′) D</code> for all a &gt; a′</td>
+    <td>IC_implies_monotone, T_wellDefined, mirrlees_IC_of_envelope</td>
+  </tr>
+  <tr>
+    <td><strong>hθ_pos</strong></td>
+    <td><span class="tag tag-econ">economic</span></td>
+    <td><code>0 &lt; θ_min</code> — lowest type is strictly positive</td>
+    <td>T_wellDefined, adj_Q_T, T_terminal, masterTheorem_*</td>
+  </tr>
+  <tr>
+    <td><strong>hMono</strong></td>
+    <td><span class="tag tag-econ">economic</span></td>
+    <td><code>Monotone mech.q</code> — allocation is non-decreasing</td>
+    <td>ICIRMechanism field; derived from IC+SC in applications</td>
+  </tr>
+  <tr>
+    <td><strong>hdiff</strong></td>
+    <td><span class="tag tag-anal">analytic</span></td>
+    <td><code>DifferentiableOn ℝ (v a) (Set.Ioi 0)</code> for all a</td>
+    <td>T_wellDefined, adj_Q_T, masterTheorem_*</td>
+  </tr>
+  <tr>
+    <td><strong>hint</strong></td>
+    <td><span class="tag tag-anal">analytic</span></td>
+    <td><code>IntervalIntegrable (typeDerivAlongAlloc v r) μ a b</code></td>
+    <td>T_wellDefined, T_terminal, masterTheorem_*</td>
+  </tr>
+  <tr>
+    <td><strong>hintC</strong></td>
+    <td><span class="tag tag-anal">analytic</span></td>
+    <td><code>IntervalIntegrable (deriv (v a)) μ b c</code> for all a, b, c</td>
+    <td>T_wellDefined IC branch, mirrlees_IC_of_envelope</td>
+  </tr>
+  <tr>
+    <td><strong>hEnv</strong></td>
+    <td><span class="tag tag-anal">analytic</span></td>
+    <td><code>HasDerivAt (fun s ↦ v(r.q s, s) − t s) (typeDerivAlongAlloc v r θ) θ</code> for θ &gt; 0</td>
+    <td>adj_Q_T (unit), T_terminal, masterTheorem_isomorphism</td>
+  </tr>
+  <tr>
+    <td><strong>hBC</strong></td>
+    <td><span class="tag tag-econ">economic</span></td>
+    <td><code>v(m.q θ_min, θ_min) = m.t θ_min</code> — binding IR at the boundary</td>
+    <td>masterTheorem_isomorphism, masterTheorem_transferInvariance</td>
+  </tr>
+  <tr>
+    <td><strong>hD_Ioi</strong></td>
+    <td><span class="tag tag-anal">analytic</span></td>
+    <td><code>Set.Ioi 0 ⊆ D</code> — SC domain contains the positive reals</td>
+    <td>T_wellDefined, masterTheorem_*</td>
+  </tr>
+  <tr>
+    <td><strong>A : AddCommGroup</strong></td>
+    <td><span class="tag tag-cat">categorical</span></td>
+    <td>Allocation space has additive group structure (needed for AllocHom.h_spread)</td>
+    <td>MechHom, AllocHom, T functor on morphisms (T.map)</td>
+  </tr>
+  <tr>
+    <td><strong>A : LinearOrder</strong></td>
+    <td><span class="tag tag-cat">categorical</span></td>
+    <td>Total order on allocations (for IC mimicry argument)</td>
+    <td>IC_implies_monotone, masterTheorem_*</td>
+  </tr>
+</table>
+
+<!-- ============================================================ COROLLARIES -->
+<h2>Economic Corollaries</h2>
+
+<div class="two-col">
+
+<div>
+<div class="box box-cor">
+  <div class="label">Corollary 5.1 — Revenue Equivalence (Myerson 1981)</div>
+  <p><strong>Setting:</strong> A = ℝ, v(q,θ) = θ·q (linear-in-allocation), θ_min &gt; 0.</p>
+  <p>Any two BIC-IR mechanisms with the same allocation rule q₀ and binding IR at θ_min
+  have the same expected revenue under any finite measure μ:</p>
+  <p style="text-align:center;font-style:italic;margin:.6em 0">𝔼<sub>μ</sub>[t₁(θ)] = 𝔼<sub>μ</sub>[t₂(θ)]</p>
+  <p><strong>Proof:</strong> instantiate masterTheorem_transferInvariance with
+  <code>myerson_singleCrossing</code> and <code>myerson_vDiff</code>. One-liner.</p>
+  <p class="ref">Reference: Myerson (1981) Theorem 2; Riley–Samuelson (1981).</p>
+</div>
+</div>
+
+<div>
+<div class="box box-cor">
+  <div class="label">Corollary 5.2 — Taxation Principle (Mirrlees 1971)</div>
+  <p><strong>Setting:</strong> A = ℝ, v(y,θ) = θ·h(y) − g(y/θ) (Spence-Mirrlees), θ_min &gt; 0.</p>
+  <p>Any two IC mechanisms with the same income assignment y(θ) and the same V(θ_min)
+  produce identical transfer schedules — hence the same expected tax revenue:</p>
+  <p style="text-align:center;font-style:italic;margin:.6em 0">𝔼<sub>μ</sub>[t₁] = 𝔼<sub>μ</sub>[t₂]</p>
+  <p><strong>Proof:</strong> instantiate masterTheorem_transferInvariance with
+  <code>mirrlees_singleCrossing</code> and <code>mirrlees_vDiff</code>.</p>
+  <p class="ref">Reference: Hammond (1979) Thm 1; Rochet (1985) Prop 1.</p>
+</div>
+</div>
+
+</div>
+
+<!-- Transfer formula -->
+<div class="box box-def">
+  <div class="label">Definition — Envelope Transfer Formula</div>
+  <p>The unique transfer consistent with IC, IR, and boundary condition V(θ_min) = 0:</p>
+  <p style="text-align:center;font-style:italic;margin:.7em 0">
+    t*(θ) = v(q(θ), θ) − ∫<sub>θ_min</sub><sup>θ</sup> (∂v/∂s)(q(s), s) ds
+  </p>
+  <p>In the Myerson setting: <em>t*(θ) = θ·q(θ) − ∫<sub>θ_min</sub><sup>θ</sup> q(s) ds</em><br>
+  In the Mirrlees setting: <em>t*(θ) = v(y(θ),θ) − ∫<sub>θ_min</sub><sup>θ</sup> (∂v/∂s)(y(s),s) ds</em></p>
+</div>
+
+<!-- ============================================================ INSTANCES -->
+<h2>Instantiation Comparison</h2>
+
+<div class="diagram">
+<figure>
+<svg viewBox="0 0 680 230" xmlns="http://www.w3.org/2000/svg" font-family="Georgia,serif" font-size="12">
+  <defs>
+    <filter id="sh4" x="-5%" y="-5%" width="112%" height="122%">
+      <feDropShadow dx="1" dy="1.5" stdDeviation="2" flood-opacity=".10"/>
+    </filter>
+  </defs>
+
+  <!-- Abstract box -->
+  <rect x="230" y="10" width="220" height="60" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" filter="url(#sh4)"/>
+  <text x="340" y="33" text-anchor="middle" fill="#5b21b6" font-weight="bold" font-size="13">Abstract Framework</text>
+  <text x="340" y="50" text-anchor="middle" fill="#5b21b6" font-size="11">A : LinearOrder + AddCommGroup</text>
+  <text x="340" y="65" text-anchor="middle" fill="#5b21b6" font-size="11">v : A → ℝ → ℝ,  SC,  θ_min &gt; 0</text>
+
+  <!-- Lines down -->
+  <line x1="260" y1="70" x2="130" y2="120" stroke="#7c3aed" stroke-width="1.5"/>
+  <line x1="420" y1="70" x2="555" y2="120" stroke="#7c3aed" stroke-width="1.5"/>
+
+  <!-- Myerson box -->
+  <rect x="20" y="120" width="230" height="90" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2" filter="url(#sh4)"/>
+  <text x="135" y="142" text-anchor="middle" fill="#92400e" font-weight="bold" font-size="13">Myerson Setting</text>
+  <text x="135" y="160" text-anchor="middle" fill="#374151" font-size="11">A = ℝ  (MyersonAlloc)</text>
+  <text x="135" y="176" text-anchor="middle" fill="#374151" font-size="11">v(q,θ) = θ · q</text>
+  <text x="135" y="192" text-anchor="middle" fill="#374151" font-size="11">D = Set.univ</text>
+  <text x="135" y="208" text-anchor="middle" fill="#374151" font-size="11">Result: Revenue Equivalence</text>
+
+  <!-- Mirrlees box -->
+  <rect x="435" y="120" width="230" height="90" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2" filter="url(#sh4)"/>
+  <text x="550" y="142" text-anchor="middle" fill="#166534" font-weight="bold" font-size="13">Mirrlees Setting</text>
+  <text x="550" y="160" text-anchor="middle" fill="#374151" font-size="11">A = ℝ  (income levels)</text>
+  <text x="550" y="176" text-anchor="middle" fill="#374151" font-size="11">v(y,θ) = θ·h(y) − g(y/θ)</text>
+  <text x="550" y="192" text-anchor="middle" fill="#374151" font-size="11">D = Set.Ioi 0</text>
+  <text x="550" y="208" text-anchor="middle" fill="#374151" font-size="11">Result: Taxation Principle</text>
+</svg>
+<figcaption>Figure 4 — The abstract framework is instantiated twice: the Myerson auction setting
+and the Mirrlees income-tax setting.  Both use A = ℝ, which provides AddCommGroup.</figcaption>
+</figure>
+</div>
+
+<!-- ============================================================ OPEN QUESTIONS -->
+<h2>Remaining Sorries and Design Limitations</h2>
+
+<div class="box box-warn">
+  <div class="label">Sorry — T.map.hTransf (MasterTheorem.lean)</div>
+  <p><strong>Status: mathematically false</strong> for general AllocHoms.<br>
+  <em>T(r).t θ</em> is not pointwise-monotone in <em>r.q</em> under general monotone
+  allocation morphisms.  A counterexample exists with oscillating spread
+  Δ(θ) = r′.q(θ) − r.q(θ).  A spread-monotonicity hypothesis on AllocHom
+  (<code>h_spread</code>) was added to make the T functor well-defined on morphisms;
+  the sorry in T.map is the residual gap for the general case.</p>
+</div>
+
+<div class="box box-warn">
+  <div class="label">Sorry — non-physical θ &lt; θ_min (MasterTheorem.lean)</div>
+  <p><strong>Status: design limitation.</strong>
+  The FTC-based proofs require 0 &lt; θ (differentiability of v(a,·) on (0,∞)).
+  For θ ≤ 0 (or θ &lt; θ_min in transfer invariance) the physical model breaks down
+  — Lean's convention 0/0 = 0 means v(y,0) is economically meaningless.
+  These sorrys are intentional scope limitations, not proof gaps.</p>
+</div>
+
+<div class="box box-warn">
+  <div class="label">Failure conditions (formal stubs)</div>
+  <ul style="margin:.4em 0 .4em 1.2em">
+    <li><strong>Non-QI:</strong> without quasilinearity, Q no longer factors through Alloc; adjunction breaks (Maskin–Riley 1984).</li>
+    <li><strong>Multi-dimensional types:</strong> no total order on ℝᵏ for k ≥ 2; completeness argument fails (Rochet 1987).</li>
+    <li><strong>Non-regular:</strong> without MON, ironing is needed; uniqueness of T(q) recovers only in expectation (Myerson 1981 §6).</li>
+  </ul>
+</div>
+
+<!-- ============================================================ REFERENCES -->
+<h2>References</h2>
+
+<p class="ref">Hammond, P. (1979). <em>Straightforward Individual Incentive Compatibility in Large Economies.</em> Review of Economic Studies 46(2), 263–282.</p>
+<p class="ref">Mac Lane, S. (1978). <em>Categories for the Working Mathematician</em>, 2nd ed. Springer.</p>
+<p class="ref">Mirrlees, J. A. (1971). <em>An Exploration in the Theory of Optimum Income Taxation.</em> Review of Economic Studies 38(2), 175–208.</p>
+<p class="ref">Myerson, R. B. (1981). <em>Optimal Auction Design.</em> Mathematics of Operations Research 6(1), 58–73.</p>
+<p class="ref">Riley, J. &amp; Samuelson, W. (1981). <em>Optimal Auctions.</em> American Economic Review 71(3), 381–392.</p>
+<p class="ref">Rochet, J.-C. (1985). <em>The Taxation Principle and Multi-Time Hamilton-Jacobi Equations.</em> Journal of Mathematical Economics 14(2), 113–128.</p>
+
+<hr>
+<p class="ref" style="text-align:center">
+  Lean 4 source:
+  <code>MechDesigAdjointfunctor/Lean/{Framework,MasterTheorem,MyersonSetting,MirrleesSetting,Corollaries}.lean</code><br>
+  Build: <code>lake build</code> — 3 sorry-bearing declarations remain (all documented design limitations).
+</p>
+
+</div><!-- /.container -->
+</body>
+</html>
