@@ -12,7 +12,7 @@ single-object auction with one-dimensional types.
 
 ## Summary
 
-* Allocation space `A = Set.Icc 0 1` — probability of receiving the object.
+* Allocation space `A = ℝ` — allocation values; range `[0,1]` enforced by hypothesis.
 * Value function `v q θ = θ * q`.
 * SC holds: `v q θ - v q' θ = θ * (q - q')` is strictly increasing in `θ` for `q > q'`.
 * IC characterises payment uniquely via the envelope formula (Lemma 2.1):
@@ -31,12 +31,14 @@ namespace MechDesign.Myerson
 
 /-! ### 2.1 The Myerson Environment -/
 
-/-- The Myerson allocation space: probabilities of receiving the object. -/
-abbrev MyersonAlloc := Set.Icc (0 : ℝ) 1
+/-- The Myerson allocation space: real-valued allocation levels (range [0,1] enforced
+by hypothesis at call sites). Using `ℝ` rather than `Set.Icc 0 1` gives the
+`AddCommGroup` instance required by `AllocHom`. -/
+abbrev MyersonAlloc := ℝ
 
 /-- The Myerson value function: `v(q, θ) = θ * q`.  Linear in both arguments. -/
 noncomputable def myersonValue : MyersonAlloc → ℝ → ℝ :=
-  fun q θ => θ * q.val
+  fun q θ => θ * q
 
 /-- **Condition REG** (Regularity, Myerson): the virtual valuation
 `ψ(θ) = θ - (1 - F(θ)) / f(θ)` is non-decreasing.  Required for the optimal
@@ -51,7 +53,6 @@ which is strictly increasing in `θ` whenever `q > q'`. -/
 lemma myerson_singleCrossing : SingleCrossing myersonValue Set.univ := by
   intro q q' hq θ _ θ' _ hθ
   simp only [myersonValue]
-  have hqq : q'.val < q.val := hq
   nlinarith [hq, hθ]
 
 /-! ### 2.3 Differentiability of the Myerson Value Function -/
@@ -85,9 +86,8 @@ the mechanism `(q, t)` is BIC with `V(0) = 0`.
 Proof sketch: for any misreport `r`, the payoff difference is
 `V(θ) - U(θ, r) = ∫ᵣ^θ [q(θ) - q(s)] ds ≥ 0` since `q` is non-decreasing. -/
 lemma myerson_IC_of_monotone_transfer (q : ℝ → ℝ) (hq : Monotone q)
-    (hq_range : ∀ θ, 0 ≤ q θ ∧ q θ ≤ 1)
     (hq_int : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b) :
-    IsIC myersonValue 0 ⟨fun θ => ⟨q θ, (hq_range θ).1, (hq_range θ).2⟩, myersonTransfer q⟩ := by
+    IsIC myersonValue 0 ⟨q, myersonTransfer q⟩ := by
   intro θ θ' _hθ _hθ'
   unfold myersonValue myersonTransfer
   simp only
@@ -129,8 +129,7 @@ Proof sketch: `V(θ) = max_r U(θ, r)` is convex (max of affine functions), so `
 is non-decreasing.  The envelope theorem gives `V'(θ) = q(θ)` a.e.; integrating
 with `V(0) = 0` and substituting yields the formula. -/
 lemma myerson_transfer_unique {q : ℝ → ℝ} {t : ℝ → ℝ}
-    (hq_range : ∀ θ, 0 ≤ q θ ∧ q θ ≤ 1)
-    (hIC : IsIC myersonValue 0 ⟨fun θ => ⟨q θ, (hq_range θ).1, (hq_range θ).2⟩, t⟩)
+    (hIC : IsIC myersonValue 0 ⟨q, t⟩)
     (hIR : t 0 = 0 * q 0)
     (hEnv : ∀ θ, HasDerivAt (fun s => s * q s - t s) (q θ) θ)
     (hint : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b) :

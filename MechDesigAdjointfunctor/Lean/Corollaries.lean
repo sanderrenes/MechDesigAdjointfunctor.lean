@@ -68,31 +68,32 @@ which depends only on `q` and the type distribution `F`.
 
 *Reference*: Myerson (1981), Theorem 2; Riley–Samuelson (1981). -/
 theorem revenueEquivalence
+    (θ_min : ℝ) (hθ_pos : 0 < θ_min)
     (q₀ : MonotoneAlloc Myerson.MyersonAlloc)
-    (m₁ m₂ : ICIRMechanism Myerson.MyersonAlloc Myerson.myersonValue 0)
-    (hm₁_alloc : ∀ θ, m₁.mech.q θ = q₀.q θ)
-    (hm₂_alloc : ∀ θ, m₂.mech.q θ = q₀.q θ)
+    (m₁ m₂ : ICIRMechanism Myerson.MyersonAlloc Myerson.myersonValue θ_min)
+    (hm₁_alloc : m₁ ∈ MechWithAlloc q₀)
+    (hm₂_alloc : m₂ ∈ MechWithAlloc q₀)
     (hint : ∀ a b, IntervalIntegrable
       (typeDerivAlongAlloc Myerson.myersonValue q₀)
       MeasureTheory.volume a b)
     (hintC : ∀ (a : Myerson.MyersonAlloc) b c,
       IntervalIntegrable (deriv (Myerson.myersonValue a)) MeasureTheory.volume b c)
-    (F : ℝ → ℝ) (f : ℝ → ℝ) (hf : ∀ θ, 0 < f θ)
+    (hEnv₁ : ∀ θ > 0, HasDerivAt
+      (fun s => Myerson.myersonValue (q₀.q s) s - m₁.mech.t s)
+      (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) θ)
+    (hBC₁ : Myerson.myersonValue (m₁.mech.q θ_min) θ_min = m₁.mech.t θ_min)
+    (hEnv₂ : ∀ θ > 0, HasDerivAt
+      (fun s => Myerson.myersonValue (q₀.q s) s - m₂.mech.t s)
+      (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) θ)
+    (hBC₂ : Myerson.myersonValue (m₂.mech.q θ_min) θ_min = m₂.mech.t θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
-    ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ := by
-  -- NOTE (spread-monotone-allochom branch):
-  --   `MyersonAlloc = Set.Icc (0 : ℝ) 1` is a subset of ℝ and does NOT carry an
-  --   `AddCommGroup` instance (it is closed under neither addition nor negation).
-  --   The spread-enriched `AllocHom` requires `[AddCommGroup A] [IsOrderedAddMonoid A]`,
-  --   and `masterTheorem_transferInvariance` inherits that constraint.
-  --
-  --   Recovering this Myerson corollary on the new branch therefore requires
-  --   either: (a) replacing `MyersonAlloc` with `ℝ` (or `ℝ≥0`) and adding a
-  --   coercion / range constraint, or (b) generalising `AllocHom` to a structure
-  --   that doesn't insist on `AddCommGroup` (e.g. by axiomatising the spread
-  --   monotonicity property abstractly).  Pre-existing blockers (θ_min = 0
-  --   boundary condition; missing only-if envelope hypothesis) also remain.
-  sorry
+    ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
+  masterTheorem_transferInvariance
+    hθ_pos
+    Myerson.myerson_singleCrossing
+    (Set.subset_univ _)
+    q₀ Myerson.myerson_vDiff
+    hint hintC m₁ m₂ hm₁_alloc hm₂_alloc hEnv₁ hBC₁ hEnv₂ hBC₂ μ
 
 /-- **Myerson expected revenue formula**: for any BIC-IR mechanism with allocation `q`
 and `V(0) = 0`, expected revenue equals expected virtual surplus.
