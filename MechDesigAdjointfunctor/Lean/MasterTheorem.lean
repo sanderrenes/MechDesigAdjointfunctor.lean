@@ -73,16 +73,14 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMo
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c) :
-    IsIC v ⟨r.q, transferFormula v θ_min (typeDerivAlongAlloc v r) r.q⟩ ∧
+    IsIC v θ_min ⟨r.q, transferFormula v θ_min (typeDerivAlongAlloc v r) r.q⟩ ∧
     IsIR v θ_min ⟨r.q, transferFormula v θ_min (typeDerivAlongAlloc v r) r.q⟩ := by
   refine ⟨?_, ?_⟩
-  · -- IsIC: V(θ) ≥ U(θ, θ') for all θ, θ'
-    -- Strategy: in the "physical" case (both reports in the valid domain `(0, ∞)`),
-    -- apply FTC + SC + integral_mono.  The non-physical case (θ ≤ 0 ∨ θ' ≤ 0)
-    -- cannot be proved from `hdiff` alone since differentiability is restricted
-    -- to `Set.Ioi 0`; this is a known limitation of the abstract framework
-    -- (`IsIC` ∀-quantifies over all reals).
-    intro θ θ'
+  · -- IsIC: V(θ) ≥ U(θ, θ') for all physical θ, θ' (θ_min ≤ θ, θ_min ≤ θ').
+    -- Since θ_min > 0, both θ > 0 and θ' > 0 always, so FTC + SC + integral_mono apply.
+    intro θ θ' hθ hθ'
+    have hθ'_pos : 0 < θ' := lt_of_lt_of_le hθ_pos hθ'
+    have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ
     -- Unfold to integral inequality form.
     show v (r.q θ) θ - transferFormula v θ_min (typeDerivAlongAlloc v r) r.q θ ≥
         v (r.q θ') θ - transferFormula v θ_min (typeDerivAlongAlloc v r) r.q θ'
@@ -101,11 +99,8 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMo
       exact intervalIntegral.integral_add_adjacent_intervals (hint θ_min θ') (hint θ' θ)
     -- Reduce the goal to: Iθ'_θ ≥ v(qθ', θ) - v(qθ', θ')
     suffices h : Iθ'_θ ≥ v (r.q θ') θ - v (r.q θ') θ' by linarith
-    -- Case-split on positivity to apply FTC.
-    by_cases hpos : 0 < θ' ∧ 0 < θ
-    · -- Physical case: both θ, θ' > 0 — apply FTC + integral_mono.
-      obtain ⟨hθ'_pos, hθ_pos'⟩ := hpos
-      -- FTC: ∫_{θ'}^θ deriv(v(qθ')) s = v(qθ', θ) - v(qθ', θ')
+    -- Physical case: both θ, θ' > 0 (from θ_min > 0 and IsIC restriction).
+    · -- FTC: ∫_{θ'}^θ deriv(v(qθ')) s = v(qθ', θ) - v(qθ', θ')
       have hFTC : (∫ s in θ'..θ, deriv (v (r.q θ')) s) = v (r.q θ') θ - v (r.q θ') θ' := by
         apply intervalIntegral.integral_eq_sub_of_hasDerivAt
         · intro s hs
@@ -186,10 +181,6 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMo
           intervalIntegral.integral_symm θ θ'
         rw [hIθ'θ_def, h1]
         linarith [h2]
-    · -- Non-physical case: θ ≤ 0 or θ' ≤ 0.
-      -- `hdiff` restricts differentiability to (0,∞); FTC is unavailable here.
-      -- `IsIC` ideally should quantify over types in (0,∞) only — known design limitation.
-      sorry
   · -- IsIR: v(r.q θ_min, θ_min) - t*(θ_min) ≥ 0
     -- t*(θ_min) = v(r.q θ_min, θ_min) - ∫_{θ_min}^{θ_min} D = v(...) - 0
     change v (r.q θ_min) θ_min -
@@ -206,8 +197,9 @@ noncomputable def Tmech {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedA
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c) :
     ICIRMechanism A v θ_min :=
   { mech := ⟨r.q, transferFormula v θ_min (typeDerivAlongAlloc v r) r.q⟩
-    hIC  := (T_wellDefined hθ_pos hSC hD_Ioi r hdiff hint hintC).1
-    hIR  := (T_wellDefined hθ_pos hSC hD_Ioi r hdiff hint hintC).2 }
+    hMono := r.hMono
+    hIC   := (T_wellDefined hθ_pos hSC hD_Ioi r hdiff hint hintC).1
+    hIR   := (T_wellDefined hθ_pos hSC hD_Ioi r hdiff hint hintC).2 }
 
 /-- **T : Alloc → Mech** — the Transfer Functor (Definition 4.1).
 - On objects: `T(r) = (r.q, t*)` where `t*` is the envelope transfer formula.
@@ -258,7 +250,7 @@ noncomputable def T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMo
         -- `f.h_spread` is necessary (and in the Myerson case sufficient),
         -- but proving `T.map.hTransf` in full categorical generality
         -- additionally requires structural assumptions on `v`.
-        intro θ
+        intro θ _hθ
         -- `f.h_spread` is in scope here for future Myerson-specific use.
         -- We do NOT discharge the inequality at this level of generality.
         sorry
@@ -293,7 +285,7 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrdere
     -- This is the only-if direction of the IC envelope theorem (IC + diff of t → V' = typeDerivAlongAlloc).
     (hEnv : ∀ (m : ICIRMechanism A v θ_min) (θ : ℝ), 0 < θ →
         HasDerivAt (fun s => v (m.mech.q s) s - m.mech.t s)
-            (typeDerivAlongAlloc v ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ θ) θ) :
+            (typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ θ) θ) :
     Q (θ_min := θ_min) hSC hD ⊣ T (θ_min := θ_min) hθ_pos hSC hD_Ioi hdiff hintC hint :=
   -- Both Mech and Alloc are thin (preorder) categories, so:
   -- * Naturality conditions are trivial (Subsingleton.elim on the hom-set).
@@ -308,24 +300,22 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrdere
             -- T(Q(m)).q = m.q definitionally, so spread = m.q θ - m.q θ = 0.
             change Monotone (fun θ => m.mech.q θ - m.mech.q θ)
             simp [sub_self]; exact monotone_const
-          hTransf := fun θ => by
+          hTransf := fun θ hθ => by
             -- Goal: m.mech.t θ ≤ T(Q(m)).mech.t θ
-            -- T(Q(m)).t θ = v(m.q θ, θ) - ∫_{θ_min}^θ typeDerivAlongAlloc v m.q (definitionally)
+            -- Physical case only (θ ≥ θ_min > 0). FTC on hEnv + IR gives the envelope.
             change m.mech.t θ ≤ v (m.mech.q θ) θ -
-                ∫ s in θ_min..θ, typeDerivAlongAlloc v ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ s
-            by_cases hθ : 0 < θ
-            · -- Physical case: FTC on hEnv gives V_m(θ) = V_m(θ_min) + ∫ D; IR gives V_m(θ_min) ≥ 0.
-              have hFTC : ∫ s in θ_min..θ,
-                    typeDerivAlongAlloc v ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ s =
-                    (v (m.mech.q θ) θ - m.mech.t θ) -
-                    (v (m.mech.q θ_min) θ_min - m.mech.t θ_min) :=
-                intervalIntegral.integral_eq_sub_of_hasDerivAt
-                  (fun s hs => hEnv m s <|
-                    lt_of_lt_of_le (lt_min hθ_pos hθ) (by simpa [Set.uIcc, min_comm] using hs.1))
-                  (hint ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ θ_min θ)
-              have hIR : (0 : ℝ) ≤ v (m.mech.q θ_min) θ_min - m.mech.t θ_min := m.hIR
-              linarith
-            · sorry  -- non-physical (θ ≤ 0): same design limitation as T_wellDefined:191
+                ∫ s in θ_min..θ, typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ s
+            have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ
+            have hFTC : ∫ s in θ_min..θ,
+                  typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ s =
+                  (v (m.mech.q θ) θ - m.mech.t θ) -
+                  (v (m.mech.q θ_min) θ_min - m.mech.t θ_min) :=
+              intervalIntegral.integral_eq_sub_of_hasDerivAt
+                (fun s hs => hEnv m s <|
+                  lt_of_lt_of_le (lt_min hθ_pos hθ_pos') (by simpa [Set.uIcc, min_comm] using hs.1))
+                (hint ⟨m.mech.q, m.hMono⟩ θ_min θ)
+            have hIR : (0 : ℝ) ≤ v (m.mech.q θ_min) θ_min - m.mech.t θ_min := m.hIR
+            linarith
         }
       naturality := fun _ _ _ => @Subsingleton.elim _ mechHom_subsingleton _ _
     }
@@ -356,7 +346,7 @@ noncomputable instance Q_preservesColimits {A : Type*} [LinearOrder A] [AddCommG
       IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (hEnv : ∀ (m : ICIRMechanism A v θ_min) (θ : ℝ), 0 < θ →
         HasDerivAt (fun s => v (m.mech.q s) s - m.mech.t s)
-            (typeDerivAlongAlloc v ⟨m.mech.q, IC_implies_monotone hSC hD m⟩ θ) θ) :
+            (typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ θ) θ) :
     PreservesColimits (Q (θ_min := θ_min) hSC hD) :=
   (adj_Q_T θ_min hθ_pos hSC hD hD_Ioi hdiff hintC hint hEnv).leftAdjoint_preservesColimits
 
@@ -398,26 +388,24 @@ theorem T_terminal {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMon
     --   ∫_{θ_min}^θ typeDerivAlongAlloc = V_m(θ) - V_m(θ_min).
     -- IR gives V_m(θ_min) ≥ 0, so m.t θ ≤ t*(θ).
     refine ⟨⟨fun θ => le_of_eq (hm θ), ?_, ?_⟩⟩
-    · -- hTransf (field 2): FTC + IR
-      intro θ
+    · -- hTransf (field 2): FTC + IR. θ ≥ θ_min > 0 ensures FTC is available.
+      intro θ hθ_lb
+      have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ_lb
       simp only [Tmech, transferFormula]
-      by_cases hθ : 0 < θ
-      · have hFTC : ∫ s in θ_min..θ, typeDerivAlongAlloc v r s =
+      have hFTC : ∫ s in θ_min..θ, typeDerivAlongAlloc v r s =
                 (v (r.q θ) θ - m.mech.t θ) - (v (r.q θ_min) θ_min - m.mech.t θ_min) := by
-          apply intervalIntegral.integral_eq_sub_of_hasDerivAt
-          · intro s hs
-            have hs_pos : 0 < s := by
-              rcases le_total θ_min θ with hle | hle
-              · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ_pos hs.1
-              · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ hs.1
-            exact hEnv s hs_pos
-          · exact hint θ_min θ
-        have hIR : (0 : ℝ) ≤ v (r.q θ_min) θ_min - m.mech.t θ_min := by
-          have h : v (m.mech.q θ_min) θ_min - m.mech.t θ_min ≥ 0 := m.hIR
-          rw [hm θ_min] at h; linarith
-        linarith
-      · -- Non-physical case θ ≤ 0 — same design limitation as T_wellDefined line 191.
-        sorry
+        apply intervalIntegral.integral_eq_sub_of_hasDerivAt
+        · intro s hs
+          have hs_pos : 0 < s := by
+            rcases le_total θ_min θ with hle | hle
+            · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ_pos hs.1
+            · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ_pos' hs.1
+          exact hEnv s hs_pos
+        · exact hint θ_min θ
+      have hIR : (0 : ℝ) ≤ v (r.q θ_min) θ_min - m.mech.t θ_min := by
+        have h : v (m.mech.q θ_min) θ_min - m.mech.t θ_min ≥ 0 := m.hIR
+        rw [hm θ_min] at h; linarith
+      linarith
     · -- h_spread (field 3): Tmech.q = r.q definitionally; m.q = r.q from hm; spread = 0.
       have hzero : (fun θ => (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.q θ -
                               m.mech.q θ) = fun _ => (0 : A) :=
@@ -493,16 +481,10 @@ theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] [AddCommGroup A] [
   -- Both allocation rules agree; the isomorphism hom/inv identities hold by subsingleton.
   have hqeq : ∀ θ, (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.q θ = m.mech.q θ :=
     fun θ => (hm θ).symm
-  have hom_transf : ∀ θ, m.mech.t θ ≤ (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ := by
-    intro θ
-    by_cases hθ : 0 < θ
-    · exact le_of_eq (htransf_eq θ hθ)
-    · sorry  -- non-physical: same design limitation as T_wellDefined line 191
-  have inv_transf : ∀ θ, (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ ≤ m.mech.t θ := by
-    intro θ
-    by_cases hθ : 0 < θ
-    · exact le_of_eq (htransf_eq θ hθ).symm
-    · sorry  -- non-physical: same design limitation as T_wellDefined line 191
+  have hom_transf : ∀ θ, θ_min ≤ θ → m.mech.t θ ≤ (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ :=
+    fun θ hθ_lb => le_of_eq (htransf_eq θ (lt_of_lt_of_le hθ_pos hθ_lb))
+  have inv_transf : ∀ θ, θ_min ≤ θ → (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ ≤ m.mech.t θ :=
+    fun θ hθ_lb => le_of_eq (htransf_eq θ (lt_of_lt_of_le hθ_pos hθ_lb)).symm
   have hspread_zero : ∀ (f g : ℝ → A), (∀ θ, f θ = g θ) →
       Monotone (fun θ => f θ - g θ) := fun f g heq => by
     have : (fun θ => f θ - g θ) = fun _ => (0 : A) := funext fun θ => by rw [heq θ]; exact sub_self _
@@ -542,9 +524,13 @@ theorem masterTheorem_transferInvariance {A : Type*} [LinearOrder A]
   obtain ⟨iso1⟩ := masterTheorem_isomorphism hθ_pos hSC hD_Ioi r hdiff hint hintC m₁ hm₁ hEnv₁ hBC₁
   obtain ⟨iso2⟩ := masterTheorem_isomorphism hθ_pos hSC hD_Ioi r hdiff hint hintC m₂ hm₂ hEnv₂ hBC₂
   have heq : m₁.mech.t = m₂.mech.t :=
-    funext fun θ => le_antisymm
-      (le_trans (iso1.hom.hTransf θ) (iso2.inv.hTransf θ))
-      (le_trans (iso2.hom.hTransf θ) (iso1.inv.hTransf θ))
+    funext fun θ => by
+      rcases le_or_gt θ_min θ with hθ_lb | hθ_lt
+      · exact le_antisymm
+          (le_trans (iso1.hom.hTransf θ hθ_lb) (iso2.inv.hTransf θ hθ_lb))
+          (le_trans (iso2.hom.hTransf θ hθ_lb) (iso1.inv.hTransf θ hθ_lb))
+      · -- θ < θ_min: design limitation (same as other non-physical cases).
+        sorry
   rw [heq]
 
 end MechDesign

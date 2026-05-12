@@ -57,8 +57,9 @@ structure Mechanism (A : Type*) where
 
 /-- **Bayesian Incentive Compatibility (BIC)**: truth-telling is weakly optimal for
 every type `θ` regardless of the report `θ'`. -/
-def IsIC {A : Type*} (v : A → ℝ → ℝ) (m : Mechanism A) : Prop :=
-  ∀ θ θ' : ℝ, v (m.q θ) θ - m.t θ ≥ v (m.q θ') θ - m.t θ'
+def IsIC {A : Type*} (v : A → ℝ → ℝ) (θ_min : ℝ) (m : Mechanism A) : Prop :=
+  ∀ θ θ' : ℝ, θ_min ≤ θ → θ_min ≤ θ' →
+    v (m.q θ) θ - m.t θ ≥ v (m.q θ') θ - m.t θ'
 
 /-- **Individual Rationality (IR)**: the lowest type `θ_min` receives non-negative
 surplus.  Normalised to zero: `V(θ_min) = 0`. -/
@@ -66,10 +67,11 @@ def IsIR {A : Type*} (v : A → ℝ → ℝ) (θ_min : ℝ) (m : Mechanism A) : 
   v (m.q θ_min) θ_min - m.t θ_min ≥ 0
 
 /-- A **BIC-IR mechanism**: a mechanism satisfying both `IsIC` and `IsIR`. -/
-structure ICIRMechanism (A : Type*) (v : A → ℝ → ℝ) (θ_min : ℝ) where
-  mech : Mechanism A
-  hIC  : IsIC v mech
-  hIR  : IsIR v θ_min mech
+structure ICIRMechanism (A : Type*) [Preorder A] (v : A → ℝ → ℝ) (θ_min : ℝ) where
+  mech  : Mechanism A
+  hMono : Monotone mech.q
+  hIC   : IsIC v θ_min mech
+  hIR   : IsIR v θ_min mech
 
 /-! ### 1.3 The Category **Mech** (Definition 1.4)
 
@@ -86,7 +88,7 @@ structure MechHom {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid 
     {v : A → ℝ → ℝ} {θ_min : ℝ}
     (m m' : ICIRMechanism A v θ_min) : Type where
   hAlloc   : ∀ θ, m.mech.q θ ≤ m'.mech.q θ
-  hTransf  : ∀ θ, m.mech.t θ ≤ m'.mech.t θ
+  hTransf  : ∀ θ : ℝ, θ_min ≤ θ → m.mech.t θ ≤ m'.mech.t θ
   h_spread : Monotone (fun θ => m'.mech.q θ - m.mech.q θ)
 
 instance mechHom_subsingleton {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
@@ -102,14 +104,14 @@ instance mechCategory {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMon
   Hom m m'  := MechHom m m'
   id m      :=
     { hAlloc   := fun _ => le_rfl
-      hTransf  := fun _ => le_rfl
+      hTransf  := fun _ _ => le_rfl
       h_spread := by
         have : (fun θ => m.mech.q θ - m.mech.q θ) = fun _ => (0 : A) :=
           funext fun θ => sub_self _
         rw [this]; exact monotone_const }
   comp {m m' m''} f g  :=
     { hAlloc   := fun θ => le_trans (f.hAlloc θ) (g.hAlloc θ)
-      hTransf  := fun θ => le_trans (f.hTransf θ) (g.hTransf θ)
+      hTransf  := fun θ hθ => le_trans (f.hTransf θ hθ) (g.hTransf θ hθ)
       h_spread := by
         have hsum : (fun θ => m''.mech.q θ - m.mech.q θ) =
             fun θ => (m''.mech.q θ - m'.mech.q θ) + (m'.mech.q θ - m.mech.q θ) :=
@@ -181,24 +183,17 @@ interval, a mimicry deviation by higher types would be profitable, violating IC.
 *Reference*: Myerson (1981) Lemma 2; Mirrlees (1971) Eq. (27). -/
 lemma IC_implies_monotone {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     {D : Set ℝ} (hSC : SingleCrossing v D) (hD : ∀ θ, θ ∈ D)
-    (m : ICIRMechanism A v θ_min) : Monotone m.mech.q := by
-  intro θ₁ θ₂ h12
+    (m : ICIRMechanism A v θ_min) : MonotoneOn m.mech.q (Set.Ici θ_min) := by
+  intro θ₁ hθ₁ θ₂ hθ₂ h12
   by_contra hlt
   rw [not_le] at hlt
   -- `hlt : m.mech.q θ₂ < m.mech.q θ₁`
-  -- IC for type θ₁ (truth) vs misreport θ₂:
-  have h1 := m.hIC θ₁ θ₂
-  -- IC for type θ₂ (truth) vs misreport θ₁:
-  have h2 := m.hIC θ₂ θ₁
-  -- Case split on θ₁ = θ₂ vs θ₁ < θ₂
+  have h1 := m.hIC θ₁ θ₂ hθ₁ hθ₂
+  have h2 := m.hIC θ₂ θ₁ hθ₂ hθ₁
   rcases eq_or_lt_of_le h12 with heq | hlt_θ
-  · -- θ₁ = θ₂: then q θ₁ = q θ₂, contradicting hlt
-    rw [heq] at hlt
+  · rw [heq] at hlt
     exact lt_irrefl _ hlt
-  · -- θ₁ < θ₂: apply SingleCrossing strictly
-    have hSC' := hSC (m.mech.q θ₁) (m.mech.q θ₂) hlt
-    -- hSC' : StrictMonoOn (fun θ => v (q θ₁) θ - v (q θ₂) θ) D
-    -- Combined with h1 and h2, this gives a contradiction.
+  · have hSC' := hSC (m.mech.q θ₁) (m.mech.q θ₂) hlt
     linarith [hSC' (hD θ₁) (hD θ₂) hlt_θ]
 
 /-- **Q : Mech → Alloc** — the forgetful functor that drops the transfer rule and
@@ -207,7 +202,7 @@ retains only the allocation rule.  Well-defined by `IC_implies_monotone`.
 noncomputable def Q {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ}
     {θ_min : ℝ} {D : Set ℝ} (hSC : SingleCrossing v D) (hD : ∀ θ, θ ∈ D) :
     ICIRMechanism A v θ_min ⥤ MonotoneAlloc A where
-  obj m       := ⟨m.mech.q, IC_implies_monotone hSC hD m⟩
+  obj m       := ⟨m.mech.q, m.hMono⟩
   map f       :=
     { h        := f.hAlloc
       h_spread := f.h_spread }

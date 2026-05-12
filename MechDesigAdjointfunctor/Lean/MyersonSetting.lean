@@ -87,8 +87,8 @@ Proof sketch: for any misreport `r`, the payoff difference is
 lemma myerson_IC_of_monotone_transfer (q : ℝ → ℝ) (hq : Monotone q)
     (hq_range : ∀ θ, 0 ≤ q θ ∧ q θ ≤ 1)
     (hq_int : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b) :
-    IsIC myersonValue ⟨fun θ => ⟨q θ, (hq_range θ).1, (hq_range θ).2⟩, myersonTransfer q⟩ := by
-  intro θ θ'
+    IsIC myersonValue 0 ⟨fun θ => ⟨q θ, (hq_range θ).1, (hq_range θ).2⟩, myersonTransfer q⟩ := by
+  intro θ θ' _hθ _hθ'
   unfold myersonValue myersonTransfer
   simp only
   -- Goal reduces to: ∫ s in θ'..θ, q s ≥ (θ - θ') * q θ'
@@ -130,7 +130,7 @@ is non-decreasing.  The envelope theorem gives `V'(θ) = q(θ)` a.e.; integratin
 with `V(0) = 0` and substituting yields the formula. -/
 lemma myerson_transfer_unique {q : ℝ → ℝ} {t : ℝ → ℝ}
     (hq_range : ∀ θ, 0 ≤ q θ ∧ q θ ≤ 1)
-    (hIC : IsIC myersonValue ⟨fun θ => ⟨q θ, (hq_range θ).1, (hq_range θ).2⟩, t⟩)
+    (hIC : IsIC myersonValue 0 ⟨fun θ => ⟨q θ, (hq_range θ).1, (hq_range θ).2⟩, t⟩)
     (hIR : t 0 = 0 * q 0)
     (hEnv : ∀ θ, HasDerivAt (fun s => s * q s - t s) (q θ) θ)
     (hint : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b) :

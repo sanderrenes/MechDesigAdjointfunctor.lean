@@ -190,8 +190,10 @@ lemma mirrlees_IC_of_envelope (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → �
     (hvθ : ∀ θ, vθ_partial θ = deriv (v (y θ)) θ)
     (hint : ∀ a b, IntervalIntegrable vθ_partial MeasureTheory.volume a b)
     (hintC : ∀ (a : ℝ) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c) :
-    IsIC v ⟨y, fun θ => v (y θ) θ - mirrleesRent vθ_partial V₀ θ_min θ⟩ := by
-  intro θ θ'
+    IsIC v θ_min ⟨y, fun θ => v (y θ) θ - mirrleesRent vθ_partial V₀ θ_min θ⟩ := by
+  intro θ θ' hθ_lb hθ'_lb
+  have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ_lb
+  have hθ'_pos : 0 < θ' := lt_of_lt_of_le hθ_pos hθ'_lb
   change v (y θ) θ - (v (y θ) θ - mirrleesRent vθ_partial V₀ θ_min θ) ≥
       v (y θ') θ - (v (y θ') θ' - mirrleesRent vθ_partial V₀ θ_min θ')
   simp only [mirrleesRent]
@@ -202,76 +204,73 @@ lemma mirrlees_IC_of_envelope (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → �
     rw [hIθ_def, hIθ'_def, hIθ'θ_def]
     exact intervalIntegral.integral_add_adjacent_intervals (hint θ_min θ') (hint θ' θ)
   suffices h : Iθ'_θ ≥ v (y θ') θ - v (y θ') θ' by linarith
-  by_cases hpos : 0 < θ' ∧ 0 < θ
-  · obtain ⟨hθ'_pos, hθ_pos'⟩ := hpos
-    have hFTC : (∫ s in θ'..θ, deriv (v (y θ')) s) = v (y θ') θ - v (y θ') θ' := by
-      apply intervalIntegral.integral_eq_sub_of_hasDerivAt
-      · intro s hs
-        have hs_pos : 0 < s := by
-          rcases le_total θ' θ with hle | hle
-          · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ'_pos hs.1
-          · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ_pos' hs.1
-        exact ((hdiff (y θ')) s hs_pos).differentiableAt
-          (IsOpen.mem_nhds isOpen_Ioi hs_pos) |>.hasDerivAt
-      · exact hintC (y θ') θ' θ
-    rw [← hFTC]
-    rcases le_or_gt θ' θ with hle | hlt
-    · rw [hIθ'θ_def]
-      apply intervalIntegral.integral_mono_on hle (hintC (y θ') θ' θ) (hint θ' θ)
-      intro s hs
-      rw [hvθ s]
-      have hqle : y θ' ≤ y s := hy_mono hs.1
-      rcases lt_or_eq_of_le hqle with hqlt | hqeq
-      · have hSCq := hySC (y s) (y θ') hqlt
-        have hs_pos : 0 < s := lt_of_lt_of_le hθ'_pos hs.1
-        have hd1 : DifferentiableAt ℝ (v (y s)) s :=
-          ((hdiff (y s)) s hs_pos).differentiableAt
-            (IsOpen.mem_nhds isOpen_Ioi hs_pos)
-        have hd2 : DifferentiableAt ℝ (v (y θ')) s :=
-          ((hdiff (y θ')) s hs_pos).differentiableAt
-            (IsOpen.mem_nhds isOpen_Ioi hs_pos)
-        have hhas : HasDerivAt (fun x => v (y s) x - v (y θ') x)
-            (deriv (v (y s)) s - deriv (v (y θ')) s) s :=
-          HasDerivAt.sub hd1.hasDerivAt hd2.hasDerivAt
-        have hacc : AccPt s (𝓟 D) := by
-          rw [accPt_principal_iff_nhdsWithin]
-          apply Filter.NeBot.mono (right_nhdsWithin_Ioo_neBot hs_pos)
-          exact nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩)
-        linarith [hhas.hasDerivWithinAt.nonneg_of_monotoneOn hacc hSCq.monotoneOn]
-      · rw [← hqeq]
-    · have hle : θ ≤ θ' := le_of_lt hlt
-      have key : ∫ s in θ..θ', vθ_partial s ≤
-                 ∫ s in θ..θ', deriv (v (y θ')) s :=
-        intervalIntegral.integral_mono_on hle (hint θ θ') (hintC (y θ') θ θ') (by
-          intro s hs
-          rw [hvθ s]
-          have hqle : y s ≤ y θ' := hy_mono hs.2
-          rcases lt_or_eq_of_le hqle with hqlt | hqeq
-          · have hSCq := hySC (y θ') (y s) hqlt
-            have hs_pos : 0 < s := lt_of_lt_of_le hθ_pos' hs.1
-            have hd1 : DifferentiableAt ℝ (v (y s)) s :=
-              ((hdiff (y s)) s hs_pos).differentiableAt
-                (IsOpen.mem_nhds isOpen_Ioi hs_pos)
-            have hd2 : DifferentiableAt ℝ (v (y θ')) s :=
-              ((hdiff (y θ')) s hs_pos).differentiableAt
-                (IsOpen.mem_nhds isOpen_Ioi hs_pos)
-            have hhas : HasDerivAt (fun x => v (y θ') x - v (y s) x)
-                (deriv (v (y θ')) s - deriv (v (y s)) s) s :=
-              HasDerivAt.sub hd2.hasDerivAt hd1.hasDerivAt
-            have hacc : AccPt s (𝓟 D) := by
-              rw [accPt_principal_iff_nhdsWithin]
-              apply Filter.NeBot.mono (right_nhdsWithin_Ioo_neBot hs_pos)
-              exact nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩)
-            linarith [hhas.hasDerivWithinAt.nonneg_of_monotoneOn hacc hSCq.monotoneOn]
-          · rw [← hqeq])
-      have h1 : ∫ s in θ'..θ, vθ_partial s = -∫ s in θ..θ', vθ_partial s :=
-        intervalIntegral.integral_symm θ θ'
-      have h2 : ∫ s in θ'..θ, deriv (v (y θ')) s = -∫ s in θ..θ', deriv (v (y θ')) s :=
-        intervalIntegral.integral_symm θ θ'
-      rw [hIθ'θ_def, h1]
-      linarith [h2]
-  · -- Non-physical case: θ ≤ 0 or θ' ≤ 0 — known design limitation.
-    sorry
+  -- θ, θ' > 0 from hθ_lb, hθ'_lb, hθ_pos — no non-physical case.
+  have hFTC : (∫ s in θ'..θ, deriv (v (y θ')) s) = v (y θ') θ - v (y θ') θ' := by
+    apply intervalIntegral.integral_eq_sub_of_hasDerivAt
+    · intro s hs
+      have hs_pos : 0 < s := by
+        rcases le_total θ' θ with hle | hle
+        · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ'_pos hs.1
+        · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ_pos' hs.1
+      exact ((hdiff (y θ')) s hs_pos).differentiableAt
+        (IsOpen.mem_nhds isOpen_Ioi hs_pos) |>.hasDerivAt
+    · exact hintC (y θ') θ' θ
+  rw [← hFTC]
+  rcases le_or_gt θ' θ with hle | hlt
+  · rw [hIθ'θ_def]
+    apply intervalIntegral.integral_mono_on hle (hintC (y θ') θ' θ) (hint θ' θ)
+    intro s hs
+    rw [hvθ s]
+    have hqle : y θ' ≤ y s := hy_mono hs.1
+    rcases lt_or_eq_of_le hqle with hqlt | hqeq
+    · have hSCq := hySC (y s) (y θ') hqlt
+      have hs_pos : 0 < s := lt_of_lt_of_le hθ'_pos hs.1
+      have hd1 : DifferentiableAt ℝ (v (y s)) s :=
+        ((hdiff (y s)) s hs_pos).differentiableAt
+          (IsOpen.mem_nhds isOpen_Ioi hs_pos)
+      have hd2 : DifferentiableAt ℝ (v (y θ')) s :=
+        ((hdiff (y θ')) s hs_pos).differentiableAt
+          (IsOpen.mem_nhds isOpen_Ioi hs_pos)
+      have hhas : HasDerivAt (fun x => v (y s) x - v (y θ') x)
+          (deriv (v (y s)) s - deriv (v (y θ')) s) s :=
+        HasDerivAt.sub hd1.hasDerivAt hd2.hasDerivAt
+      have hacc : AccPt s (𝓟 D) := by
+        rw [accPt_principal_iff_nhdsWithin]
+        apply Filter.NeBot.mono (right_nhdsWithin_Ioo_neBot hs_pos)
+        exact nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩)
+      linarith [hhas.hasDerivWithinAt.nonneg_of_monotoneOn hacc hSCq.monotoneOn]
+    · rw [← hqeq]
+  · have hle : θ ≤ θ' := le_of_lt hlt
+    have key : ∫ s in θ..θ', vθ_partial s ≤
+               ∫ s in θ..θ', deriv (v (y θ')) s :=
+      intervalIntegral.integral_mono_on hle (hint θ θ') (hintC (y θ') θ θ') (by
+        intro s hs
+        rw [hvθ s]
+        have hqle : y s ≤ y θ' := hy_mono hs.2
+        rcases lt_or_eq_of_le hqle with hqlt | hqeq
+        · have hSCq := hySC (y θ') (y s) hqlt
+          have hs_pos : 0 < s := lt_of_lt_of_le hθ_pos' hs.1
+          have hd1 : DifferentiableAt ℝ (v (y s)) s :=
+            ((hdiff (y s)) s hs_pos).differentiableAt
+              (IsOpen.mem_nhds isOpen_Ioi hs_pos)
+          have hd2 : DifferentiableAt ℝ (v (y θ')) s :=
+            ((hdiff (y θ')) s hs_pos).differentiableAt
+              (IsOpen.mem_nhds isOpen_Ioi hs_pos)
+          have hhas : HasDerivAt (fun x => v (y θ') x - v (y s) x)
+              (deriv (v (y θ')) s - deriv (v (y s)) s) s :=
+            HasDerivAt.sub hd2.hasDerivAt hd1.hasDerivAt
+          have hacc : AccPt s (𝓟 D) := by
+            rw [accPt_principal_iff_nhdsWithin]
+            apply Filter.NeBot.mono (right_nhdsWithin_Ioo_neBot hs_pos)
+            exact nhdsWithin_mono _ (fun x hx => ⟨hD_Ioi (Set.mem_Ioi.mpr hx.1), hx.2.ne⟩)
+          linarith [hhas.hasDerivWithinAt.nonneg_of_monotoneOn hacc hSCq.monotoneOn]
+        · rw [← hqeq])
+    have h1 : ∫ s in θ'..θ, vθ_partial s = -∫ s in θ..θ', vθ_partial s :=
+      intervalIntegral.integral_symm θ θ'
+    have h2 : ∫ s in θ'..θ, deriv (v (y θ')) s = -∫ s in θ..θ', deriv (v (y θ')) s :=
+      intervalIntegral.integral_symm θ θ'
+    rw [hIθ'θ_def, h1]
+    linarith [h2]
 
 /-- **Lemma 3.1 (Taxation Principle — only-if direction)**: if `(y(θ), c(θ))` is IC
 with `V(θ_min) = V₀`, then `y` is monotone and the rent `V(θ)` satisfies the envelope
@@ -284,10 +283,29 @@ property), so `y` is non-decreasing (MON).  The envelope theorem gives
 *Reference*: Mirrlees (1971), Eqs. (26)–(27); Hammond (1979), Thm. 1; Rochet (1985), Prop. 1. -/
 lemma mirrlees_unique_from_IC (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → ℝ)
     (V₀ θ_min : ℝ) (y t : ℝ → ℝ)
-    (hIC : IsIC v ⟨y, t⟩)
-    (hIR : v (y θ_min) θ_min - t θ_min = V₀) :
-    Monotone y ∧ ∀ θ, t θ = v (y θ) θ - mirrleesRent vθ_partial V₀ θ_min θ := by
-  sorry
+    (hIC : IsIC v θ_min ⟨y, t⟩)
+    (hIR : v (y θ_min) θ_min - t θ_min = V₀)
+    {D : Set ℝ} (hySC : SingleCrossing v D) (hD : ∀ θ, θ ∈ D)
+    (hEnv : ∀ θ, HasDerivAt (fun s => v (y s) s - t s) (vθ_partial θ) θ)
+    (hint : ∀ a b, IntervalIntegrable vθ_partial MeasureTheory.volume a b) :
+    MonotoneOn y (Set.Ici θ_min) ∧ ∀ θ, t θ = v (y θ) θ - mirrleesRent vθ_partial V₀ θ_min θ := by
+  refine ⟨?_, ?_⟩
+  · -- MonotoneOn y (Set.Ici θ_min): by IC + SC (mirrors IC_implies_monotone)
+    intro θ₁ hθ₁ θ₂ hθ₂ h12
+    by_contra hlt
+    rw [not_le] at hlt
+    have h1 := hIC θ₁ θ₂ hθ₁ hθ₂
+    have h2 := hIC θ₂ θ₁ hθ₂ hθ₁
+    rcases eq_or_lt_of_le h12 with heq | hlt_θ
+    · rw [heq] at hlt; exact lt_irrefl _ hlt
+    · linarith [hySC (y θ₁) (y θ₂) hlt (hD θ₁) (hD θ₂) hlt_θ]
+  · -- Transfer formula: FTC + boundary condition
+    intro θ
+    simp only [mirrleesRent]
+    have hFTC : ∫ s in θ_min..θ, vθ_partial s =
+        (v (y θ) θ - t θ) - (v (y θ_min) θ_min - t θ_min) :=
+      intervalIntegral.integral_eq_sub_of_hasDerivAt (fun s _ => hEnv s) (hint θ_min θ)
+    linarith [hFTC, hIR]
 
 /-- **Remark (Taxation Principle)**: any IC direct mechanism `(y(θ), c(θ))` can be
 implemented by a unique nonlinear tax schedule `T : Y → ℝ` defined by `T(y) = y - c`
@@ -296,8 +314,8 @@ produce identical tax schedules.
 *Reference*: Hammond (1979); Rochet (1985). -/
 theorem taxation_principle (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → ℝ)
     (V₀ θ_min : ℝ) (y₁ y₂ t₁ t₂ : ℝ → ℝ)
-    (hIC₁ : IsIC v ⟨y₁, t₁⟩) (hIR₁ : v (y₁ θ_min) θ_min - t₁ θ_min = V₀)
-    (hIC₂ : IsIC v ⟨y₂, t₂⟩) (hIR₂ : v (y₂ θ_min) θ_min - t₂ θ_min = V₀)
+    (hIC₁ : IsIC v θ_min ⟨y₁, t₁⟩) (hIR₁ : v (y₁ θ_min) θ_min - t₁ θ_min = V₀)
+    (hIC₂ : IsIC v θ_min ⟨y₂, t₂⟩) (hIR₂ : v (y₂ θ_min) θ_min - t₂ θ_min = V₀)
     (hy_eq : y₁ = y₂)
     (hEnv₁ : ∀ θ, HasDerivAt (fun s => v (y₁ s) s - t₁ s) (vθ_partial θ) θ)
     (hEnv₂ : ∀ θ, HasDerivAt (fun s => v (y₂ s) s - t₂ s) (vθ_partial θ) θ)

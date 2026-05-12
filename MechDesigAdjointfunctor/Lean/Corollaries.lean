@@ -23,7 +23,7 @@ QI + SC  →  MON  (IC_implies_monotone)
                ↓
        Alloc is complete  (alloc_hasLimits)
                ↓
-       Q preserves limits  (Q_preservesLimits)
+       Q preserves colimits  (Q_preservesColimits)
                ↓
        T(q) is BIC-IR  (T_wellDefined)
                ↓
@@ -79,17 +79,20 @@ theorem revenueEquivalence
       IntervalIntegrable (deriv (Myerson.myersonValue a)) MeasureTheory.volume b c)
     (F : ℝ → ℝ) (f : ℝ → ℝ) (hf : ∀ θ, 0 < f θ)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
-    ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
-  -- NOTE: `masterTheorem_transferInvariance` now requires `0 < θ_min`; the Myerson
-  -- setting uses `θ_min = 0` so this corollary is currently blocked at the
-  -- boundary-condition argument (sorry below).  Recovering the result for Myerson
-  -- needs a separate argument that handles the `θ_min = 0` boundary directly.
-  masterTheorem_transferInvariance
-    (sorry : (0 : ℝ) < 0)
-    Myerson.myerson_singleCrossing
-    (Set.subset_univ _)
-    q₀ Myerson.myerson_vDiff hint hintC m₁ m₂ hm₁_alloc hm₂_alloc
-    (sorry) (sorry) (sorry) (sorry) μ
+    ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ := by
+  -- NOTE (spread-monotone-allochom branch):
+  --   `MyersonAlloc = Set.Icc (0 : ℝ) 1` is a subset of ℝ and does NOT carry an
+  --   `AddCommGroup` instance (it is closed under neither addition nor negation).
+  --   The spread-enriched `AllocHom` requires `[AddCommGroup A] [IsOrderedAddMonoid A]`,
+  --   and `masterTheorem_transferInvariance` inherits that constraint.
+  --
+  --   Recovering this Myerson corollary on the new branch therefore requires
+  --   either: (a) replacing `MyersonAlloc` with `ℝ` (or `ℝ≥0`) and adding a
+  --   coercion / range constraint, or (b) generalising `AllocHom` to a structure
+  --   that doesn't insist on `AddCommGroup` (e.g. by axiomatising the spread
+  --   monotonicity property abstractly).  Pre-existing blockers (θ_min = 0
+  --   boundary condition; missing only-if envelope hypothesis) also remain.
+  sorry
 
 /-- **Myerson expected revenue formula**: for any BIC-IR mechanism with allocation `q`
 and `V(0) = 0`, expected revenue equals expected virtual surplus.
