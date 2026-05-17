@@ -68,7 +68,7 @@ def IsIR {A : Type*} (v : A → ℝ → ℝ) (θ_min : ℝ) (m : Mechanism A) : 
 
 /-- A **BIC-IR mechanism**: a mechanism satisfying both `IsIC` and `IsIR`. -/
 structure ICIRMechanism (A : Type*) [Preorder A] (v : A → ℝ → ℝ) (θ_min : ℝ) where
-  mech  : Mechanism A
+  mech : Mechanism A
   hMono : Monotone mech.q
   hIC   : IsIC v θ_min mech
   hIR   : IsIR v θ_min mech
@@ -141,7 +141,8 @@ morphisms: it is exactly the inequality required to prove `T(r).t ≤ T(r').t`.
 This makes `MonotoneAlloc A` a thin (preorder-flavoured) category, but the spread
 condition is an extra refinement beyond pure pointwise-≤. -/
 @[ext]
-structure AllocHom {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A] (r r' : MonotoneAlloc A) : Type where
+structure AllocHom {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
+    (r r' : MonotoneAlloc A) : Type where
   h        : ∀ θ, r.q θ ≤ r'.q θ
   h_spread : Monotone (fun θ => r'.q θ - r.q θ)
 
@@ -199,8 +200,9 @@ lemma IC_implies_monotone {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {�
 /-- **Q : Mech → Alloc** — the forgetful functor that drops the transfer rule and
 retains only the allocation rule.  Well-defined by `IC_implies_monotone`.
 *Reference*: Definition 1.6 and the remark on forgetful functors in Section 1.5. -/
-noncomputable def Q {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ}
-    {θ_min : ℝ} {D : Set ℝ} (hSC : SingleCrossing v D) (hD : ∀ θ, θ ∈ D) :
+noncomputable def Q {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A]
+    {v : A → ℝ → ℝ}
+    {θ_min : ℝ} {D : Set ℝ} (_hSC : SingleCrossing v D) (_hD : ∀ θ, θ ∈ D) :
     ICIRMechanism A v θ_min ⥤ MonotoneAlloc A where
   obj m       := ⟨m.mech.q, m.hMono⟩
   map f       :=

@@ -52,7 +52,7 @@ BIC transfer with boundary condition `V(θ_min) = 0` is
 
 *Reference*: Definition 4.1; Lemmas 2.1, 3.1. -/
 noncomputable def transferFormula {A : Type*} (v : A → ℝ → ℝ) (θ_min : ℝ)
-    (vθ_partial : ℝ → ℝ)   -- s ↦ (∂v/∂s)(q(s), s), the type-derivative along q
+    (vθ_partial : ℝ → ℝ) -- s ↦ (∂v/∂s)(q(s), s), the type-derivative along q
     (q : ℝ → A) (θ : ℝ) : ℝ :=
   v (q θ) θ - ∫ s in θ_min..θ, vθ_partial s
 
@@ -67,7 +67,8 @@ noncomputable def typeDerivAlongAlloc {A : Type*} [Preorder A]
 Proof uses the if-direction of Lemmas 2.1 and 3.1: the envelope formula produces
 an IC mechanism whenever `q` is non-decreasing under SC.
 *Reference*: Lemma 4.2. -/
-lemma T_wellDefined {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+lemma T_wellDefined {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A]
+    {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -82,7 +83,7 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMo
     have hθ'_pos : 0 < θ' := lt_of_lt_of_le hθ_pos hθ'
     have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ
     -- Unfold to integral inequality form.
-    show v (r.q θ) θ - transferFormula v θ_min (typeDerivAlongAlloc v r) r.q θ ≥
+    change v (r.q θ) θ - transferFormula v θ_min (typeDerivAlongAlloc v r) r.q θ ≥
         v (r.q θ') θ - transferFormula v θ_min (typeDerivAlongAlloc v r) r.q θ'
     simp only [transferFormula]
     -- After simp, need:
@@ -189,7 +190,8 @@ lemma T_wellDefined {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMo
     linarith
 
 /-- The BIC-IR mechanism `T(r) = (r.q, t*)` as an element of `ICIRMechanism`. -/
-noncomputable def Tmech {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+noncomputable def Tmech {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A]
+    {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -205,7 +207,8 @@ noncomputable def Tmech {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedA
 - On objects: `T(r) = (r.q, t*)` where `t*` is the envelope transfer formula.
 - On morphisms: `T(φ) = (φ, φ)` — the same type transformation on both components.
 *Reference*: Definition 4.1. -/
-noncomputable def T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+noncomputable def T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A]
+    {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
@@ -274,7 +277,8 @@ Naturality follows from functoriality of Q and T.
 *Reference*: Theorem 4.3; Mac Lane (1978), Chapter IV. -/
 -- `Adjunction` is a structure (Type), not a Prop, so we use `def` not `theorem`.
 -- `θ_min` must be passed explicitly: neither `Q hSC` nor `T hSC hint` carries it.
-noncomputable def adj_Q_T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} (θ_min : ℝ)
+noncomputable def adj_Q_T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A]
+    {v : A → ℝ → ℝ} (θ_min : ℝ)
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D)
     (hD : ∀ θ, θ ∈ D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -282,7 +286,7 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrdere
     (hint : ∀ (r : MonotoneAlloc A) a b,
       IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     -- Global only-if envelope condition: every BIC-IR mechanism has the envelope derivative.
-    -- This is the only-if direction of the IC envelope theorem (IC + diff of t → V' = typeDerivAlongAlloc).
+    -- Only-if direction: IC + diff of t → V' = typeDerivAlongAlloc.
     (hEnv : ∀ (m : ICIRMechanism A v θ_min) (θ : ℝ), 0 < θ →
         HasDerivAt (fun s => v (m.mech.q s) s - m.mech.t s)
             (typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ θ) θ) :
@@ -299,7 +303,7 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrdere
           h_spread := by
             -- T(Q(m)).q = m.q definitionally, so spread = m.q θ - m.q θ = 0.
             change Monotone (fun θ => m.mech.q θ - m.mech.q θ)
-            simp [sub_self]; exact monotone_const
+            simp only [sub_self]; exact monotone_const
           hTransf := fun θ hθ => by
             -- Goal: m.mech.t θ ≤ T(Q(m)).mech.t θ
             -- Physical case only (θ ≥ θ_min > 0). FTC on hEnv + IR gives the envelope.
@@ -337,7 +341,8 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrdere
 
 /-- **Lemma 1.8 (proved)**: Q preserves all small colimits.
 Q is the left adjoint in `adj_Q_T`, so `leftAdjoint_preservesColimits` applies directly. -/
-noncomputable instance Q_preservesColimits {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ}
+noncomputable instance Q_preservesColimits {A : Type*} [LinearOrder A] [AddCommGroup A]
+    [IsOrderedAddMonoid A] {v : A → ℝ → ℝ}
     (θ_min : ℝ) (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D)
     (hD : ∀ θ, θ ∈ D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -353,7 +358,8 @@ noncomputable instance Q_preservesColimits {A : Type*} [LinearOrder A] [AddCommG
 /-! ### 4.3 Terminality of T(q) in **Mech_q** (Corollary 4.4) -/
 
 /-- The set of all BIC-IR mechanisms with allocation rule equal to `r.q` pointwise. -/
-def MechWithAlloc {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+def MechWithAlloc {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A]
+    {v : A → ℝ → ℝ} {θ_min : ℝ}
     (r : MonotoneAlloc A) : Set (ICIRMechanism A v θ_min) :=
   {m | ∀ θ, m.mech.q θ = r.q θ}
 
@@ -367,7 +373,8 @@ morphism to `T(r)`.
 - *Uniqueness*: any morphism `φ : (r.q, t) → T(r)` must satisfy `r.q ∘ φ = r.q`.
   If `r.q` is strictly increasing, this forces `φ = id`.
 *Reference*: Corollary 4.4; Mac Lane (1978), Section IV.1. -/
-theorem T_terminal {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+theorem T_terminal {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A]
+    {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -409,7 +416,7 @@ theorem T_terminal {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMon
     · -- h_spread (field 3): Tmech.q = r.q definitionally; m.q = r.q from hm; spread = 0.
       have hzero : (fun θ => (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.q θ -
                               m.mech.q θ) = fun _ => (0 : A) :=
-        funext fun θ => by show r.q θ - m.mech.q θ = 0; rw [← hm θ]; exact sub_self _
+        funext fun θ => by change r.q θ - m.mech.q θ = 0; rw [← hm θ]; exact sub_self _
       rw [hzero]; exact monotone_const
   · intro f g
     exact @Subsingleton.elim _ mechHom_subsingleton _ _
@@ -422,7 +429,8 @@ with allocation `r.q`.  It is the explicit mechanism `T(r)`.
 
 Uniqueness: terminal objects are unique up to unique isomorphism (Mac Lane, Sec. III.1).
 *Reference*: Theorem 4.5(i). -/
-theorem masterTheorem_existence {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+theorem masterTheorem_existence {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A]
+    {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -448,7 +456,8 @@ and `V(θ_min) = 0` is isomorphic to `T(r)` in **Mech**.
 
 Proof: the unique morphism from Corollary 4.4 is `id_Θ`, which is an isomorphism.
 *Reference*: Theorem 4.5(ii). -/
-theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] [AddCommGroup A]
+    [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
     (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
     (r : MonotoneAlloc A)
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
@@ -481,13 +490,16 @@ theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] [AddCommGroup A] [
   -- Both allocation rules agree; the isomorphism hom/inv identities hold by subsingleton.
   have hqeq : ∀ θ, (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.q θ = m.mech.q θ :=
     fun θ => (hm θ).symm
-  have hom_transf : ∀ θ, θ_min ≤ θ → m.mech.t θ ≤ (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ :=
+  have hom_transf : ∀ θ, θ_min ≤ θ →
+      m.mech.t θ ≤ (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ :=
     fun θ hθ_lb => le_of_eq (htransf_eq θ (lt_of_lt_of_le hθ_pos hθ_lb))
-  have inv_transf : ∀ θ, θ_min ≤ θ → (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ ≤ m.mech.t θ :=
+  have inv_transf : ∀ θ, θ_min ≤ θ →
+      (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ ≤ m.mech.t θ :=
     fun θ hθ_lb => le_of_eq (htransf_eq θ (lt_of_lt_of_le hθ_pos hθ_lb)).symm
   have hspread_zero : ∀ (f g : ℝ → A), (∀ θ, f θ = g θ) →
       Monotone (fun θ => f θ - g θ) := fun f g heq => by
-    have : (fun θ => f θ - g θ) = fun _ => (0 : A) := funext fun θ => by rw [heq θ]; exact sub_self _
+    have : (fun θ => f θ - g θ) = fun _ => (0 : A) :=
+      funext fun θ => by rw [heq θ]; exact sub_self _
     rw [this]; exact monotone_const
   exact ⟨{
     hom := ⟨fun θ => le_of_eq (hm θ), hom_transf,

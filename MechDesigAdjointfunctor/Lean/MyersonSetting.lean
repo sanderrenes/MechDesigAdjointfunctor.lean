@@ -129,7 +129,7 @@ Proof sketch: `V(θ) = max_r U(θ, r)` is convex (max of affine functions), so `
 is non-decreasing.  The envelope theorem gives `V'(θ) = q(θ)` a.e.; integrating
 with `V(0) = 0` and substituting yields the formula. -/
 lemma myerson_transfer_unique {q : ℝ → ℝ} {t : ℝ → ℝ}
-    (hIC : IsIC myersonValue 0 ⟨q, t⟩)
+    (_hIC : IsIC myersonValue 0 ⟨q, t⟩)
     (hIR : t 0 = 0 * q 0)
     (hEnv : ∀ θ, HasDerivAt (fun s => s * q s - t s) (q θ) θ)
     (hint : ∀ a b, IntervalIntegrable q MeasureTheory.volume a b) :
@@ -193,7 +193,7 @@ theorem myerson_expectedRevenue (q : ℝ → ℝ) (F f : ℝ → ℝ)
       fun θ => by ring
     have hrw : (fun θ => (θ * q θ - ∫ s in (0:ℝ)..θ, q s) * f θ) =
         (fun θ => θ * q θ * f θ - G θ * f θ) := by
-      funext θ; show (θ * q θ - G θ) * f θ = _; exact heq θ
+      funext θ; change (θ * q θ - G θ) * f θ = _; exact heq θ
     rw [hrw]
     refine intervalIntegral.integral_sub ?_ ?_
     · exact ((continuous_id.mul hq_cont).mul hf_cont).intervalIntegrable 0 1

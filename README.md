@@ -14,13 +14,11 @@ See `MechDesigAdjointfunctor/Unification.md` for the mathematical write-up.
 | `MirrleesSetting.lean` | Mirrlees taxation instantiation, Taxation Principle |
 | `Corollaries.lean` | Corollaries 5.1 and 5.2 as instances of the Master Theorem |
 
-## Proof status — branch `spread-monotone-allochom` (as of 2026-05-11)
+## Proof status — branch `master` (as of 2026-05-17)
 
-This branch enriches `AllocHom` with a spread-monotonicity field
-`h_spread : Monotone (fun θ => r'.q θ - r.q θ)`, needed to prove `T.map.hTransf`.
-See `Unification.md` §7.1–7.5 for the mathematical analysis.
+This is the **master branch** which has merged the `spread-monotone-allochom` branch. The `h_spread` field has been added to both `MechHom` and `AllocHom` to ensure `Q` maps morphisms without sorries.
 
-Build: `lake build` — completes successfully (only `sorry` warnings, 8 remaining).
+Build: `lake build` — completes successfully (only `sorry` warnings, 4 remaining).
 
 ### Completed ✓
 
@@ -48,22 +46,16 @@ Build: `lake build` — completes successfully (only `sorry` warnings, 8 remaini
 | `taxationPrinciple` | Corollaries | Delegates to `masterTheorem_transferInvariance` |
 | `myerson_expectedRevenue` | MyersonSetting | IBP via `integral_hasStrictDerivAt` |
 | `myerson_revenueFormula` | Corollaries | Delegates to `myerson_expectedRevenue` |
+| `revenueEquivalence` | Corollaries | `MyersonAlloc = ℝ`; delegates to `masterTheorem_transferInvariance` |
 
-### Remaining sorry stubs (11)
+### Remaining sorry stubs (4)
 
 | Lemma | File | Obstacle |
 |-------|------|----------|
 | `alloc_hasLimitsOfShape` cone `h_spread` | Framework | Pointwise `sInf` does not preserve spread monotonicity (counterexample: θ² vs θ) |
 | `alloc_hasLimitsOfShape` lift `h_spread` | Framework | Same obstruction as cone |
-| `T_wellDefined` (θ ≤ 0 case) | MasterTheorem | Design limitation: FTC requires `Set.Ioi 0` |
 | `T.map hTransf` | MasterTheorem | Needs structural assumption on `v` beyond `h_spread`; see Unification.md §7.1–7.2 |
-| `adj_Q_T` unit (θ ≤ 0 case) | MasterTheorem | Design limitation |
-| `T_terminal` (θ ≤ 0 case) | MasterTheorem | Design limitation |
-| `masterTheorem_isomorphism` hom/inv (θ ≤ 0 case, ×2) | MasterTheorem | Design limitation |
-| `mirrlees_IC_of_envelope` (θ ≤ 0 case) | MirrleesSetting | Design limitation |
-| `revenueEquivalence` | Corollaries | `MyersonAlloc = Set.Icc 0 1` is not `AddCommGroup`; see Unification.md §7.5 |
-
-The `master` branch has 7 of these sorries (`Q.map h_spread` is closed on this branch by adding `h_spread` to `MechHom`; the 2 limit stubs remain).
+| `masterTheorem_transferInvariance` (θ < θ_min case) | MasterTheorem | Design limitation: FTC requires `Set.Ioi 0` |
 
 ## Key proof patterns
 
@@ -80,3 +72,5 @@ The `master` branch has 7 of these sorries (`Q.map h_spread` is closed on this b
 cd /path/to/MechDesigAdjointfunctor.lean
 lake build
 ```
+
+See `Unification.md` §7.1–7.5 for detailed mathematical analysis of the remaining obstructions.

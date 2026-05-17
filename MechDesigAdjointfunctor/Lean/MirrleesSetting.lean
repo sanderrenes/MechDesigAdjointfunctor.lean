@@ -62,8 +62,8 @@ def SpenceMirrlees (v : ℝ → ℝ → ℝ) : Prop :=
 The Spence-Mirrlees condition `SpenceMirrlees v = SingleCrossing v` (by definition),
 so this lemma establishes SC from differentiability assumptions on `h` and `g`.
 *Reference*: Mirrlees (1971), Lemma 1; Fudenberg–Tirole (1991), Ch. 7. -/
-lemma mirrlees_singleCrossing (h g : ℝ → ℝ) (hh : Differentiable ℝ h)
-    (hg : Differentiable ℝ g) (hg_pos : ∀ l, 0 < deriv g l)
+lemma mirrlees_singleCrossing (h g : ℝ → ℝ) (_hh : Differentiable ℝ h)
+    (hg : Differentiable ℝ g) (_hg_pos : ∀ l, 0 < deriv g l)
     (hh_mono : StrictMono h)
     (hSM : StrictMono (fun l => l * deriv g l)) :
     SingleCrossing (A := ℝ) (mirrleesValue h g) (Set.Ioi 0) := by
@@ -314,8 +314,8 @@ produce identical tax schedules.
 *Reference*: Hammond (1979); Rochet (1985). -/
 theorem taxation_principle (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → ℝ)
     (V₀ θ_min : ℝ) (y₁ y₂ t₁ t₂ : ℝ → ℝ)
-    (hIC₁ : IsIC v θ_min ⟨y₁, t₁⟩) (hIR₁ : v (y₁ θ_min) θ_min - t₁ θ_min = V₀)
-    (hIC₂ : IsIC v θ_min ⟨y₂, t₂⟩) (hIR₂ : v (y₂ θ_min) θ_min - t₂ θ_min = V₀)
+    (_hIC₁ : IsIC v θ_min ⟨y₁, t₁⟩) (hIR₁ : v (y₁ θ_min) θ_min - t₁ θ_min = V₀)
+    (_hIC₂ : IsIC v θ_min ⟨y₂, t₂⟩) (hIR₂ : v (y₂ θ_min) θ_min - t₂ θ_min = V₀)
     (hy_eq : y₁ = y₂)
     (hEnv₁ : ∀ θ, HasDerivAt (fun s => v (y₁ s) s - t₁ s) (vθ_partial θ) θ)
     (hEnv₂ : ∀ θ, HasDerivAt (fun s => v (y₂ s) s - t₂ s) (vθ_partial θ) θ)
