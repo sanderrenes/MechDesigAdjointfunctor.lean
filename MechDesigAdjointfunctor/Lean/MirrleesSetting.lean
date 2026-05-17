@@ -331,4 +331,97 @@ theorem taxation_principle (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → ℝ)
   rw [← hy_eq] at hFTC₂ hIR₂
   linarith [hFTC₁, hFTC₂, hIR₁, hIR₂]
 
+/-! ### 3.3 Monotonicity of Allocations (Mirrlees)
+
+Under the Spence-Mirrlees condition and IC, the information rent `V(θ)` and the
+agent's equilibrium utility are strictly increasing in type.  This formalises
+the key monotonicity properties of optimal income taxation.
+
+*Reference*: Mirrlees (1971), Eq. (26); Seade (1977), Prop. 1. -/
+
+/-- The θ-partial derivative of `mirrleesValue h g y` at `θ ≠ 0`:
+`d/dθ [θ · h y − g (y/θ)] = h y + (y/θ²) · g' (y/θ)`.
+
+This equals the **local-IC surplus rate** `du/dθ` along an allocation `y(θ)`, and
+governs the sign of `dV/dθ`. -/
+lemma mirrleesValue_hasDerivAt (h g : ℝ → ℝ) (_hh : Differentiable ℝ h)
+    (hg : Differentiable ℝ g) (y θ : ℝ) (hθ : θ ≠ 0) :
+    HasDerivAt (mirrleesValue h g y) (h y + (y / θ ^ 2) * deriv g (y / θ)) θ := by
+  unfold mirrleesValue
+  -- d/dθ [θ * h y] = h y
+  have ha : HasDerivAt (fun x => x * h y) (1 * h y) θ :=
+    (hasDerivAt_id θ).mul_const _
+  -- d/dθ [y / θ] = -(y / θ²)
+  have hdy : HasDerivAt (fun x => y / x) (-(y / θ ^ 2)) θ := by
+    have hraw := (hasDerivAt_const θ y).div (hasDerivAt_id θ) hθ
+    simp only [id] at hraw
+    convert hraw using 1; ring
+  -- chain rule for g(y/θ)
+  have hdgy : HasDerivAt (fun x => g (y / x)) (deriv g (y / θ) * -(y / θ ^ 2)) θ :=
+    (hg (y / θ)).hasDerivAt.comp θ hdy
+  have hstep := ha.sub hdgy
+  convert hstep using 1; ring
+
+/-- The information rent `V(θ) = V₀ + ∫_{θ_min}^θ vθ_partial s ds` is strictly
+monotone on `[θ_min, ∞)` whenever `vθ_partial` is continuous and positive on `(0, ∞)`.
+
+Proof: for `θ₁ < θ₂` in `[θ_min, ∞)`,
+`V(θ₂) − V(θ₁) = ∫_{θ₁}^{θ₂} vθ_partial s ds > 0`
+by positivity and the fact that the interval has positive length. -/
+theorem mirrlees_strictMono_rent (vθ_partial : ℝ → ℝ) (V₀ θ_min : ℝ)
+    (hθ_pos : 0 < θ_min)
+    (hcont : ContinuousOn vθ_partial (Set.Ioi 0))
+    (hpos : ∀ θ ∈ Set.Ioi 0, 0 < vθ_partial θ) :
+    StrictMonoOn (mirrleesRent vθ_partial V₀ θ_min) (Set.Ici θ_min) := by
+  intro θ₁ hθ₁ θ₂ hθ₂ h12
+  have hθ₁_pos : 0 < θ₁ := lt_of_lt_of_le hθ_pos hθ₁
+  have hθ₂_pos : 0 < θ₂ := lt_of_lt_of_le hθ_pos hθ₂
+  -- IntervalIntegrable on subintervals of Ioi 0
+  have hii : ∀ a b : ℝ, 0 < a → 0 < b →
+      IntervalIntegrable vθ_partial MeasureTheory.volume a b := by
+    intro a b ha hb
+    apply ContinuousOn.intervalIntegrable
+    apply hcont.mono
+    intro x hx
+    have hlb : min a b ≤ x := hx.1
+    exact lt_of_lt_of_le (lt_min ha hb) hlb
+  simp only [mirrleesRent]
+  have hsplit : (∫ s in θ_min..θ₁, vθ_partial s) + (∫ s in θ₁..θ₂, vθ_partial s) =
+      ∫ s in θ_min..θ₂, vθ_partial s :=
+    intervalIntegral.integral_add_adjacent_intervals
+      (hii θ_min θ₁ hθ_pos hθ₁_pos) (hii θ₁ θ₂ hθ₁_pos hθ₂_pos)
+  have hpos_int : 0 < ∫ s in θ₁..θ₂, vθ_partial s := by
+    apply intervalIntegral.intervalIntegral_pos_of_pos_on
+      (hii θ₁ θ₂ hθ₁_pos hθ₂_pos)
+    · intro x hx
+      exact hpos x (lt_trans hθ₁_pos hx.1)
+    · exact h12
+  linarith [hsplit, hpos_int]
+
+/-- Under IC and the envelope formula, the equilibrium utility
+`V(θ) = v(y(θ), θ) − t(θ)` is strictly increasing on `[θ_min, ∞)`
+when `vθ_partial θ > 0` for all `θ > 0`.
+
+This is the strict-monotonicity counterpart of `mirrlees_unique_from_IC`, which
+gives only `MonotoneOn y`.  The proof identifies `V(θ)` with the information rent
+via the envelope formula, then applies `mirrlees_strictMono_rent`. -/
+theorem mirrlees_strictMono_utility (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ → ℝ)
+    (V₀ θ_min : ℝ) (y t : ℝ → ℝ)
+    (hθ_pos : 0 < θ_min)
+    (hIC : IsIC v θ_min ⟨y, t⟩)
+    (hIR : v (y θ_min) θ_min - t θ_min = V₀)
+    {D : Set ℝ} (hySC : SingleCrossing v D) (hD : ∀ θ, θ ∈ D)
+    (hEnv : ∀ θ, HasDerivAt (fun s => v (y s) s - t s) (vθ_partial θ) θ)
+    (hint : ∀ a b, IntervalIntegrable vθ_partial MeasureTheory.volume a b)
+    (hcont : ContinuousOn vθ_partial (Set.Ioi 0))
+    (hpos : ∀ θ ∈ Set.Ioi 0, 0 < vθ_partial θ) :
+    StrictMonoOn (fun θ => v (y θ) θ - t θ) (Set.Ici θ_min) := by
+  obtain ⟨_, htransf⟩ :=
+    mirrlees_unique_from_IC v vθ_partial V₀ θ_min y t hIC hIR hySC hD hEnv hint
+  have heq : (fun θ => v (y θ) θ - t θ) = mirrleesRent vθ_partial V₀ θ_min := by
+    funext θ
+    rw [htransf θ]; ring
+  rw [heq]
+  exact mirrlees_strictMono_rent vθ_partial V₀ θ_min hθ_pos hcont hpos
+
 end MechDesign.Mirrlees
