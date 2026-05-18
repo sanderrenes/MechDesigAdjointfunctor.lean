@@ -424,4 +424,49 @@ theorem mirrlees_strictMono_utility (v : ℝ → ℝ → ℝ) (vθ_partial : ℝ
   rw [heq]
   exact mirrlees_strictMono_rent vθ_partial V₀ θ_min hθ_pos hcont hpos
 
+/-! ### 3.4 Strict Monotonicity of Allocation and Consumption (Mirrlees)
+
+The optimal allocation `y(θ)` is strictly increasing in type under regularity (the
+first-order condition for optimality and strict concavity of the objective imply
+`dy/dθ > 0`).  Given strict monotonicity of allocation, the after-tax consumption
+`c(θ) = y(θ) − T(y(θ))` is also strictly increasing whenever the marginal tax rate
+is below 100 % (i.e., `T′ < 1`).
+
+*References*: Mirrlees (1971), Eq. (27); Diamond-Saez (2011), §2.1. -/
+
+/-- **Strict monotonicity of the Mirrlees allocation** conditional on a positive
+allocation derivative.  The hypothesis `hderiv : ∀ θ ∈ (θ_min, ∞), 0 < deriv y θ`
+holds at the optimum under Mirrlees regularity (positive virtual surplus). -/
+theorem mirrlees_strictMono_alloc (y : ℝ → ℝ) (θ_min : ℝ)
+    (hcont : ContinuousOn y (Set.Ici θ_min))
+    (hderiv : ∀ θ ∈ Set.Ioi θ_min, 0 < deriv y θ) :
+    StrictMonoOn y (Set.Ici θ_min) := by
+  apply strictMonoOn_of_deriv_pos (convex_Ici θ_min) hcont
+  rw [interior_Ici]
+  exact hderiv
+
+/-- **Strict monotonicity of after-tax consumption** given strictly monotone allocation
+and a sub-unitary marginal tax rate (`T′(z) < 1` for all `z`).
+
+Proof: the net-income function `g(z) = z − T(z)` has `g′(z) = 1 − T′(z) > 0`,
+so `g` is strictly increasing.  Since `c(θ) = g(y(θ))` and `y` is strictly
+increasing, the composition is strictly increasing.
+
+*Reference*: Mirrlees (1971), §5 (no 100%-taxation at any income level). -/
+theorem mirrlees_strictMono_consumption (y T : ℝ → ℝ) (θ_min : ℝ)
+    (hmono_y : StrictMonoOn y (Set.Ici θ_min))
+    (hdiff_T : Differentiable ℝ T)
+    (hT_lt1 : ∀ z, deriv T z < 1) :
+    StrictMonoOn (fun θ => y θ - T (y θ)) (Set.Ici θ_min) := by
+  -- g(z) = z − T(z) is strictly increasing because g′ = 1 − T′ > 0.
+  have hg_mono : StrictMono (fun z : ℝ => z - T z) := by
+    rw [← strictMonoOn_univ]
+    apply strictMonoOn_of_deriv_pos convex_univ
+    · exact (continuous_id.sub hdiff_T.continuous).continuousOn
+    · intro z _
+      have hd : HasDerivAt (fun z => z - T z) (1 - deriv T z) z :=
+        (hasDerivAt_id z).sub hdiff_T.differentiableAt.hasDerivAt
+      linarith [hd.deriv, hT_lt1 z]
+  exact hg_mono.comp_strictMonoOn hmono_y
+
 end MechDesign.Mirrlees

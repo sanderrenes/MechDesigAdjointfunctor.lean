@@ -59,7 +59,8 @@ lemma myerson_singleCrossing : SingleCrossing myersonValue Set.univ := by
 
 /-- The Myerson value function `v(q, θ) = θ * q.val` is differentiable (in fact
 polynomial) in the type argument `θ`, for any fixed allocation `q`. -/
-lemma myerson_vDiff : ∀ (q : MyersonAlloc), DifferentiableOn ℝ (myersonValue q) (Set.Ioi 0) := by
+lemma myerson_vDiff :
+    ∀ (q : MyersonAlloc), DifferentiableOn ℝ (myersonValue q) (Set.Ioi 0) := by
   intro q
   unfold myersonValue
   fun_prop
@@ -228,5 +229,103 @@ theorem myerson_expectedRevenue (q : ℝ → ℝ) (F f : ℝ → ℝ)
     linarith [hsplit, hG1]
   -- Assemble.
   linarith [hLHS_split, hIBP', hRHS_split, h1F_q]
+
+/-! ### 2.5 Multi-Agent IC and Monotone Allocation -/
+
+/-- **Multi-agent IC (reduced form)**: the conditional winning probability `Q` and
+expected payment `X` satisfy the two-sided IC constraints for all `s, t ≥ θ_min`.
+Captures Bayes-IC in Myerson (1981) for one bidder's reduced-form allocation. -/
+def IsMultiAgentIC (Q X : ℝ → ℝ) (θ_min : ℝ) : Prop :=
+  ∀ s t : ℝ, θ_min ≤ s → θ_min ≤ t →
+    t * Q t - X t ≥ t * Q s - X s ∧ s * Q s - X s ≥ s * Q t - X t
+
+/-- **IC → Monotone Q** (Myerson 1981, Lemma 2): from two-sided IC, the conditional
+winning probability `Q` is non-decreasing on `[θ_min, ∞)`.
+
+Proof: the two IC inequalities add to `(t-s)·Q(t) ≥ (t-s)·Q(s)`; for `s < t`
+divide by `t - s > 0`. -/
+theorem multiAgent_IC_implies_monotone (Q X : ℝ → ℝ) (θ_min : ℝ)
+    (hIC : IsMultiAgentIC Q X θ_min) :
+    MonotoneOn Q (Set.Ici θ_min) := by
+  intro s hs t ht hst
+  rcases eq_or_lt_of_le hst with rfl | hlt
+  · exact le_refl _
+  · have hpos : (0 : ℝ) < t - s := sub_pos.mpr hlt
+    obtain ⟨hIC_t, hIC_s⟩ := hIC s t hs ht
+    have hkey : (t - s) * Q s ≤ (t - s) * Q t := by nlinarith
+    exact le_of_mul_le_mul_left hkey hpos
+
+/-- **IC + regularity → Strict Monotone Q**: if `Q` has a strictly positive
+derivative on `(θ_min, ∞)` — a consequence of Myerson's regularity condition
+`c(θ) = θ - (1-F(θ))/f(θ)` strictly increasing — then `Q` is strictly increasing
+on `[θ_min, ∞)`. -/
+theorem multiAgent_IC_implies_strictMono (Q X : ℝ → ℝ) (θ_min : ℝ)
+    (_hIC : IsMultiAgentIC Q X θ_min)
+    (hCont : ContinuousOn Q (Set.Ici θ_min))
+    (hPos : ∀ θ ∈ Set.Ioi θ_min, 0 < deriv Q θ) :
+    StrictMonoOn Q (Set.Ici θ_min) := by
+  apply strictMonoOn_of_deriv_pos (convex_Ici θ_min) hCont
+  rw [interior_Ici]
+  exact hPos
+
+/-! ### 2.6 Two-Bidder Expected Allocation and BIC -/
+
+/-- Expected allocation for bidder 1 in a 2-bidder auction: winning probability
+integrated over bidder 2's type `t₂ ∈ [a₂, b₂]` with density `f₂`. -/
+noncomputable def expAlloc₁
+    (p : ℝ → ℝ → ℝ) (f₂ : ℝ → ℝ) (a₂ b₂ : ℝ) (t₁ : ℝ) : ℝ :=
+  ∫ t₂ in a₂..b₂, p t₁ t₂ * f₂ t₂
+
+/-- Expected payment for bidder 1 in a 2-bidder auction: payment integrated over
+bidder 2's type `t₂ ∈ [a₂, b₂]` with density `f₂`. -/
+noncomputable def expPayment₁
+    (x₁ : ℝ → ℝ → ℝ) (f₂ : ℝ → ℝ) (a₂ b₂ : ℝ) (t₁ : ℝ) : ℝ :=
+  ∫ t₂ in a₂..b₂, x₁ t₁ t₂ * f₂ t₂
+
+/-- **Two-bidder BIC**: the joint mechanism `(p, x₁)` is Bayes incentive compatible
+for bidder 1 on `[a₁, ∞)` — reporting truthfully maximizes expected utility for
+every type pair `(s, t)`, in both orderings. -/
+def IsBIC₂ (p x₁ : ℝ → ℝ → ℝ) (f₂ : ℝ → ℝ) (a₁ a₂ b₂ : ℝ) : Prop :=
+  ∀ s t : ℝ, a₁ ≤ s → a₁ ≤ t →
+    (∫ t₂ in a₂..b₂, (t * p t t₂ - x₁ t t₂) * f₂ t₂ ≥
+     ∫ t₂ in a₂..b₂, (t * p s t₂ - x₁ s t₂) * f₂ t₂) ∧
+    (∫ t₂ in a₂..b₂, (s * p s t₂ - x₁ s t₂) * f₂ t₂ ≥
+     ∫ t₂ in a₂..b₂, (s * p t t₂ - x₁ t t₂) * f₂ t₂)
+
+private lemma expAlloc₁_eq_linear (p x₁ : ℝ → ℝ → ℝ) (f₂ : ℝ → ℝ)
+    (a₂ b₂ r u : ℝ)
+    (hint_p : IntervalIntegrable (fun t₂ => p u t₂ * f₂ t₂) volume a₂ b₂)
+    (hint_x : IntervalIntegrable (fun t₂ => x₁ u t₂ * f₂ t₂) volume a₂ b₂) :
+    r * expAlloc₁ p f₂ a₂ b₂ u - expPayment₁ x₁ f₂ a₂ b₂ u =
+    ∫ t₂ in a₂..b₂, (r * p u t₂ - x₁ u t₂) * f₂ t₂ := by
+  simp only [expAlloc₁, expPayment₁]
+  have hrp : IntervalIntegrable (fun t₂ => r * (p u t₂ * f₂ t₂)) volume a₂ b₂ := by
+    simpa [smul_eq_mul] using hint_p.smul r
+  have hmul : ∫ t₂ in a₂..b₂, r * (p u t₂ * f₂ t₂) =
+      r * ∫ t₂ in a₂..b₂, p u t₂ * f₂ t₂ := by
+    rw [show (fun t₂ => r * (p u t₂ * f₂ t₂)) = fun t₂ => r • (p u t₂ * f₂ t₂) from by
+      ext; simp [smul_eq_mul]]
+    rw [intervalIntegral.integral_smul (𝕜 := ℝ)]
+    simp [smul_eq_mul]
+  symm
+  rw [show (fun t₂ => (r * p u t₂ - x₁ u t₂) * f₂ t₂) =
+      fun t₂ => r * (p u t₂ * f₂ t₂) - x₁ u t₂ * f₂ t₂ from by ext; ring,
+    integral_sub hrp hint_x, hmul]
+
+/-- **BIC implies reduced-form IC** (Myerson 1981): two-bidder BIC for bidder 1
+implies the expected allocation `expAlloc₁` satisfies `IsMultiAgentIC`. The proof
+factors each joint integral into `expAlloc₁` and `expPayment₁` via linearity. -/
+theorem expAlloc₁_satisfies_IC (p x₁ : ℝ → ℝ → ℝ) (f₂ : ℝ → ℝ) (a₁ a₂ b₂ : ℝ)
+    (hBIC : IsBIC₂ p x₁ f₂ a₁ a₂ b₂)
+    (hint_p : ∀ t₁, IntervalIntegrable (fun t₂ => p t₁ t₂ * f₂ t₂) volume a₂ b₂)
+    (hint_x : ∀ t₁, IntervalIntegrable (fun t₂ => x₁ t₁ t₂ * f₂ t₂) volume a₂ b₂) :
+    IsMultiAgentIC (expAlloc₁ p f₂ a₂ b₂) (expPayment₁ x₁ f₂ a₂ b₂) a₁ := by
+  intro s t hs ht
+  obtain ⟨hBIC_t, hBIC_s⟩ := hBIC s t hs ht
+  refine ⟨?_, ?_⟩
+  · linarith [expAlloc₁_eq_linear p x₁ f₂ a₂ b₂ t t (hint_p t) (hint_x t),
+              expAlloc₁_eq_linear p x₁ f₂ a₂ b₂ t s (hint_p s) (hint_x s)]
+  · linarith [expAlloc₁_eq_linear p x₁ f₂ a₂ b₂ s s (hint_p s) (hint_x s),
+              expAlloc₁_eq_linear p x₁ f₂ a₂ b₂ s t (hint_p t) (hint_x t)]
 
 end MechDesign.Myerson
