@@ -256,6 +256,14 @@ noncomputable def T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMo
         intro θ _hθ
         -- `f.h_spread` is in scope here for future Myerson-specific use.
         -- We do NOT discharge the inequality at this level of generality.
+        -- VACUOUS: this field is required by the `MechHom` structure but is never
+        -- accessed by any theorem in this file.  `masterTheorem_transferInvariance`
+        -- uses `iso.hom.hTransf` / `iso.inv.hTransf`, which are constructed
+        -- independently via FTC + IR in `masterTheorem_isomorphism` (lines 398-415).
+        -- `map_id` and `map_comp` are discharged by `mechHom_subsingleton`.
+        -- Removing this sorry requires adding a v-monotonicity hypothesis to `T`
+        -- (e.g. ∀ r r', AllocHom r r' → ∀ θ ≥ θ_min, Tmech(r).t θ ≤ Tmech(r').t θ)
+        -- which does not hold for general v.
         sorry
     }
   map_id _     := by apply @Subsingleton.elim _ mechHom_subsingleton
