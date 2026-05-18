@@ -3,6 +3,7 @@ import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.IntegrationByParts
 import Mathlib.Analysis.Calculus.Deriv.Basic
+import Mathlib.MeasureTheory.Constructions.Pi
 
 /-!
 # Stage 2: The Myerson Auction Setting
@@ -327,5 +328,95 @@ theorem expAlloc₁_satisfies_IC (p x₁ : ℝ → ℝ → ℝ) (f₂ : ℝ → 
               expAlloc₁_eq_linear p x₁ f₂ a₂ b₂ t s (hint_p s) (hint_x s)]
   · linarith [expAlloc₁_eq_linear p x₁ f₂ a₂ b₂ s s (hint_p s) (hint_x s),
               expAlloc₁_eq_linear p x₁ f₂ a₂ b₂ s t (hint_p t) (hint_x t)]
+
+/-! ### 2.7 N-Bidder Expected Allocation and BIC (Measure.pi Formulation)
+
+Full n-bidder generalisation of the 2-bidder results in §2.6.  The type space
+for `n` bidders is `Fin n → ℝ` with product measure `Measure.pi μ`.  Bidder
+`i`'s **reduced-form allocation** is the integral of `p (t[i ← s]) i` over all
+type profiles, holding bidder `i`'s type fixed at `s` via `Function.update`. -/
+
+section NBidderAuction
+
+variable {n : ℕ}
+
+/-- **Expected allocation for bidder i** in an n-bidder auction: the winning probability
+integrated over all type profiles `t : Fin n → ℝ` under the product measure `Measure.pi μ`,
+holding bidder `i`'s type fixed at `s` via `Function.update t i s`.
+This marginalises over opponents' types `t_{-i}` while keeping `t_i = s`.
+
+*Reference*: Myerson (1981), §3, Equation (1.3) for the reduced-form. -/
+noncomputable def expAllocN
+    (p : (Fin n → ℝ) → Fin n → ℝ)
+    (μ : Fin n → Measure ℝ) (i : Fin n) (s : ℝ) : ℝ :=
+  ∫ t : Fin n → ℝ, p (Function.update t i s) i ∂Measure.pi μ
+
+/-- **Expected payment for bidder i** in an n-bidder auction: the transfer integrated
+over all type profiles under the product measure. -/
+noncomputable def expPaymentN
+    (x : (Fin n → ℝ) → Fin n → ℝ)
+    (μ : Fin n → Measure ℝ) (i : Fin n) (s : ℝ) : ℝ :=
+  ∫ t : Fin n → ℝ, x (Function.update t i s) i ∂Measure.pi μ
+
+/-- **n-Bidder Bayes Incentive Compatibility (BIC_N)**: the joint mechanism `(p, x)`
+is Bayes IC for bidder `i` on `[θ_min, ∞)`.  Truth-telling maximises expected utility
+in expectation over opponents' types, with both one-sided IC constraints holding.
+
+*Reference*: Myerson (1981), §3, Condition (4.6) generalised to n bidders. -/
+def IsBICN
+    (p : (Fin n → ℝ) → Fin n → ℝ) (x : (Fin n → ℝ) → Fin n → ℝ)
+    (μ : Fin n → Measure ℝ) (i : Fin n) (θ_min : ℝ) : Prop :=
+  ∀ s r : ℝ, θ_min ≤ s → θ_min ≤ r →
+    (∫ t : Fin n → ℝ, (s * p (Function.update t i s) i - x (Function.update t i s) i)
+        ∂Measure.pi μ ≥
+     ∫ t : Fin n → ℝ, (s * p (Function.update t i r) i - x (Function.update t i r) i)
+        ∂Measure.pi μ) ∧
+    (∫ t : Fin n → ℝ, (r * p (Function.update t i r) i - x (Function.update t i r) i)
+        ∂Measure.pi μ ≥
+     ∫ t : Fin n → ℝ, (r * p (Function.update t i s) i - x (Function.update t i s) i)
+        ∂Measure.pi μ)
+
+/-- Linearisation lemma: the expected-utility difference at type `c` reporting `s` equals
+`c * expAllocN p μ i s - expPaymentN x μ i s`.  Used to connect `IsBICN` to
+`IsMultiAgentIC` by factoring out the constant type weight `c`. -/
+private lemma expAllocN_eq_linear
+    (p : (Fin n → ℝ) → Fin n → ℝ) (x : (Fin n → ℝ) → Fin n → ℝ)
+    (μ : Fin n → Measure ℝ) [∀ j, SigmaFinite (μ j)]
+    (i : Fin n) (c s : ℝ)
+    (hint_p : Integrable (fun t : Fin n → ℝ => p (Function.update t i s) i) (Measure.pi μ))
+    (hint_x : Integrable (fun t : Fin n → ℝ => x (Function.update t i s) i) (Measure.pi μ)) :
+    c * expAllocN p μ i s - expPaymentN x μ i s =
+    ∫ t : Fin n → ℝ,
+      (c * p (Function.update t i s) i - x (Function.update t i s) i) ∂Measure.pi μ := by
+  simp only [expAllocN, expPaymentN]
+  symm
+  rw [integral_sub (hint_p.const_mul c) hint_x, MeasureTheory.integral_const_mul]
+
+/-- **BIC_N implies reduced-form IC** (n-bidder, Myerson 1981 Lemma 2): if the joint
+mechanism `(p, x)` is Bayes IC for bidder `i`, the reduced-form expected allocation
+`expAllocN p μ i` and payment `expPaymentN x μ i` satisfy the two-sided IC condition
+`IsMultiAgentIC`.
+
+The proof uses only linearity of the Bochner integral over `Measure.pi μ` — no
+Fubini / product-integral factorisation is needed.
+
+*Reference*: Myerson (1981), Lemma 2; generalisation from §2.6 to arbitrary n. -/
+theorem expAllocN_satisfies_IC
+    (p : (Fin n → ℝ) → Fin n → ℝ) (x : (Fin n → ℝ) → Fin n → ℝ)
+    (μ : Fin n → Measure ℝ) [∀ j, SigmaFinite (μ j)]
+    (i : Fin n) (θ_min : ℝ)
+    (hBIC : IsBICN p x μ i θ_min)
+    (hint_p : ∀ s, Integrable (fun t : Fin n → ℝ => p (Function.update t i s) i) (Measure.pi μ))
+    (hint_x : ∀ s, Integrable (fun t : Fin n → ℝ => x (Function.update t i s) i) (Measure.pi μ)) :
+    IsMultiAgentIC (expAllocN p μ i) (expPaymentN x μ i) θ_min := by
+  intro s r hs hr
+  obtain ⟨hBIC_s, hBIC_r⟩ := hBIC s r hs hr
+  refine ⟨?_, ?_⟩
+  · linarith [expAllocN_eq_linear p x μ i r r (hint_p r) (hint_x r),
+              expAllocN_eq_linear p x μ i r s (hint_p s) (hint_x s)]
+  · linarith [expAllocN_eq_linear p x μ i s s (hint_p s) (hint_x s),
+              expAllocN_eq_linear p x μ i s r (hint_p r) (hint_x r)]
+
+end NBidderAuction
 
 end MechDesign.Myerson
