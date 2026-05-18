@@ -390,12 +390,9 @@ theorem mirrlees_strictMono_rent (vθ_partial : ℝ → ℝ) (V₀ θ_min : ℝ)
       ∫ s in θ_min..θ₂, vθ_partial s :=
     intervalIntegral.integral_add_adjacent_intervals
       (hii θ_min θ₁ hθ_pos hθ₁_pos) (hii θ₁ θ₂ hθ₁_pos hθ₂_pos)
-  have hpos_int : 0 < ∫ s in θ₁..θ₂, vθ_partial s := by
-    apply intervalIntegral.intervalIntegral_pos_of_pos_on
-      (hii θ₁ θ₂ hθ₁_pos hθ₂_pos)
-    · intro x hx
-      exact hpos x (lt_trans hθ₁_pos hx.1)
-    · exact h12
+  have hpos_int : 0 < ∫ s in θ₁..θ₂, vθ_partial s :=
+    intervalIntegral.intervalIntegral_pos_of_pos_on
+      (hii θ₁ θ₂ hθ₁_pos hθ₂_pos) (fun x hx => hpos x (lt_trans hθ₁_pos hx.1)) h12
   linarith [hsplit, hpos_int]
 
 /-- Under IC and the envelope formula, the equilibrium utility
@@ -440,10 +437,8 @@ holds at the optimum under Mirrlees regularity (positive virtual surplus). -/
 theorem mirrlees_strictMono_alloc (y : ℝ → ℝ) (θ_min : ℝ)
     (hcont : ContinuousOn y (Set.Ici θ_min))
     (hderiv : ∀ θ ∈ Set.Ioi θ_min, 0 < deriv y θ) :
-    StrictMonoOn y (Set.Ici θ_min) := by
-  apply strictMonoOn_of_deriv_pos (convex_Ici θ_min) hcont
-  rw [interior_Ici]
-  exact hderiv
+    StrictMonoOn y (Set.Ici θ_min) :=
+  strictMonoOn_of_deriv_pos (convex_Ici θ_min) hcont (interior_Ici (a := θ_min) ▸ hderiv)
 
 /-- **Strict monotonicity of after-tax consumption** given strictly monotone allocation
 and a sub-unitary marginal tax rate (`T′(z) < 1` for all `z`).

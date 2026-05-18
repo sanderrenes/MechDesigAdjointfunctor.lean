@@ -264,10 +264,8 @@ theorem multiAgent_IC_implies_strictMono (Q X : ℝ → ℝ) (θ_min : ℝ)
     (_hIC : IsMultiAgentIC Q X θ_min)
     (hCont : ContinuousOn Q (Set.Ici θ_min))
     (hPos : ∀ θ ∈ Set.Ioi θ_min, 0 < deriv Q θ) :
-    StrictMonoOn Q (Set.Ici θ_min) := by
-  apply strictMonoOn_of_deriv_pos (convex_Ici θ_min) hCont
-  rw [interior_Ici]
-  exact hPos
+    StrictMonoOn Q (Set.Ici θ_min) :=
+  strictMonoOn_of_deriv_pos (convex_Ici θ_min) hCont (interior_Ici (a := θ_min) ▸ hPos)
 
 /-! ### 2.6 Two-Bidder Expected Allocation and BIC -/
 

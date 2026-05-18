@@ -540,10 +540,9 @@ theorem masterTheorem_transferInvariance {A : Type*} [LinearOrder A]
   -- Both mechanisms are isomorphic to Tmech; transfers agree pointwise on [θ_min, ∞).
   obtain ⟨iso1⟩ := masterTheorem_isomorphism hθ_pos hSC hD_Ioi r hdiff hint hintC m₁ hm₁ hEnv₁ hBC₁
   obtain ⟨iso2⟩ := masterTheorem_isomorphism hθ_pos hSC hD_Ioi r hdiff hint hintC m₂ hm₂ hEnv₂ hBC₂
-  apply MeasureTheory.setIntegral_congr_fun measurableSet_Ici
-  intro θ hθ
-  exact le_antisymm
-    (le_trans (iso1.hom.hTransf θ hθ) (iso2.inv.hTransf θ hθ))
-    (le_trans (iso2.hom.hTransf θ hθ) (iso1.inv.hTransf θ hθ))
+  exact MeasureTheory.setIntegral_congr_fun measurableSet_Ici fun θ hθ =>
+    le_antisymm
+      (le_trans (iso1.hom.hTransf θ hθ) (iso2.inv.hTransf θ hθ))
+      (le_trans (iso2.hom.hTransf θ hθ) (iso1.inv.hTransf θ hθ))
 
 end MechDesign
