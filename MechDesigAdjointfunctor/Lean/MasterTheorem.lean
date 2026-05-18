@@ -511,10 +511,15 @@ theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] [AddCommGroup A]
   }⟩
 
 /-- **Theorem 4.5(iii) — Transfer Invariance**: Any two BIC-IR mechanisms with the
-same allocation rule and `V(θ_min) = 0` generate the **same expected transfer**.
+same allocation rule and `V(θ_min) = 0` generate the **same expected transfer on the
+physical type domain `[θ_min, ∞)`**.
+
+The integral is taken over `Set.Ici θ_min` because the envelope FTC only applies for
+`θ ≥ θ_min > 0`.  The model has no economic content below `θ_min`; the restriction
+makes the domain assumption explicit in the type.
 
 Proof: by Thm 4.5(ii), both are isomorphic to `T(r)`, so their transfers coincide
-pointwise, and hence their expected transfers are equal.
+pointwise on `[θ_min, ∞)`, and hence their restricted expected transfers are equal.
 *Reference*: Theorem 4.5(iii); Myerson (1981), Theorem 2. -/
 theorem masterTheorem_transferInvariance {A : Type*} [LinearOrder A]
     [AddCommGroup A] [IsOrderedAddMonoid A]
@@ -531,18 +536,14 @@ theorem masterTheorem_transferInvariance {A : Type*} [LinearOrder A]
     (hEnv₂ : ∀ θ > 0, HasDerivAt (fun s => v (r.q s) s - m₂.mech.t s) (typeDerivAlongAlloc v r θ) θ)
     (hBC₂ : v (m₂.mech.q θ_min) θ_min = m₂.mech.t θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
-    ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ := by
-  -- Both mechanisms are isomorphic to Tmech; squeeze the two iso morphisms to get t₁ = t₂.
+    ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ := by
+  -- Both mechanisms are isomorphic to Tmech; transfers agree pointwise on [θ_min, ∞).
   obtain ⟨iso1⟩ := masterTheorem_isomorphism hθ_pos hSC hD_Ioi r hdiff hint hintC m₁ hm₁ hEnv₁ hBC₁
   obtain ⟨iso2⟩ := masterTheorem_isomorphism hθ_pos hSC hD_Ioi r hdiff hint hintC m₂ hm₂ hEnv₂ hBC₂
-  have heq : m₁.mech.t = m₂.mech.t :=
-    funext fun θ => by
-      rcases le_or_gt θ_min θ with hθ_lb | hθ_lt
-      · exact le_antisymm
-          (le_trans (iso1.hom.hTransf θ hθ_lb) (iso2.inv.hTransf θ hθ_lb))
-          (le_trans (iso2.hom.hTransf θ hθ_lb) (iso1.inv.hTransf θ hθ_lb))
-      · -- θ < θ_min: design limitation (same as other non-physical cases).
-        sorry
-  rw [heq]
+  apply MeasureTheory.setIntegral_congr_fun measurableSet_Ici
+  intro θ hθ
+  exact le_antisymm
+    (le_trans (iso1.hom.hTransf θ hθ) (iso2.inv.hTransf θ hθ))
+    (le_trans (iso2.hom.hTransf θ hθ) (iso1.inv.hTransf θ hθ))
 
 end MechDesign

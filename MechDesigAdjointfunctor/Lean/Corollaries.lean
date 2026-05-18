@@ -87,7 +87,7 @@ theorem revenueEquivalence
       (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) θ)
     (hBC₂ : Myerson.myersonValue (m₂.mech.q θ_min) θ_min = m₂.mech.t θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
-    ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
+    ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance
     hθ_pos
     Myerson.myerson_singleCrossing
@@ -154,7 +154,7 @@ theorem taxationPrinciple
       (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) θ)
     (hBC₂ : Mirrlees.mirrleesValue h g (m₂.mech.q θ_min) θ_min = m₂.mech.t θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
-    ∫ θ, m₁.mech.t θ ∂μ = ∫ θ, m₂.mech.t θ ∂μ :=
+    ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance
     hθ_pos
     (Mirrlees.mirrlees_singleCrossing h g hh hg hg_pos hh_mono hSM)
