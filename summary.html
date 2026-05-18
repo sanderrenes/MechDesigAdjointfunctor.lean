@@ -483,81 +483,144 @@ Right: two mechanisms with the same allocation are each isomorphic to T(r), forc
 
 <!-- ============================================================ ASSUMPTIONS TABLE -->
 <h2>Full Assumption Table</h2>
+<p>Each assumption is listed with its Lean statement and its economic meaning — what the
+condition says about agent behaviour or market structure, and what breaks if it fails.</p>
 
 <table class="hyp">
   <tr>
-    <th>Label</th><th>Kind</th><th>Statement</th><th>Where required</th>
+    <th>Label</th><th>Kind</th><th>Lean statement</th>
+    <th>Economic interpretation</th><th>Where required</th>
   </tr>
   <tr>
     <td><strong>QI</strong></td>
     <td><span class="tag tag-struct">structural</span></td>
-    <td>Utility = v(q(θ),θ) − t(θ); linearity in t baked into <code>Mechanism</code></td>
+    <td>Utility = v(q(θ),θ) − t(θ); linearity in <em>t</em> baked into <code>Mechanism</code></td>
+    <td><strong>No wealth effects.</strong> A euro transferred has the same marginal value regardless
+    of the agent's wealth. Equivalently, money and the allocation are separable in utility.
+    Without QI, the trade-off between allocation and payment depends on the agent's type,
+    entangling the two components and breaking the revenue equivalence argument
+    (Maskin–Riley 1984).</td>
     <td>All theorems</td>
   </tr>
   <tr>
     <td><strong>SC</strong></td>
     <td><span class="tag tag-econ">economic</span></td>
     <td><code>StrictMonoOn (v a − v a′) D</code> for all a &gt; a′</td>
+    <td><strong>Higher types value better allocations strictly more.</strong>
+    In auctions: a higher-valuation bidder gains more from winning than a lower-valuation one.
+    In taxation: a higher-ability worker benefits more from supplying extra income.
+    SC is the ordering condition that makes the revelation principle give a <em>monotone</em>
+    allocation; without it IC no longer implies MON and the envelope theorem fails.</td>
     <td>IC_implies_monotone, T_wellDefined, mirrlees_IC_of_envelope</td>
   </tr>
   <tr>
     <td><strong>hθ_pos</strong></td>
     <td><span class="tag tag-econ">economic</span></td>
-    <td><code>0 &lt; θ_min</code> — lowest type is strictly positive</td>
+    <td><code>0 &lt; θ_min</code> — lowest type strictly positive</td>
+    <td><strong>The type space excludes zero-ability agents.</strong>
+    In Mirrlees, v(y,θ) = θ·h(y) − g(y/θ) involves division by θ, so θ = 0 is
+    economically meaningless (a worker with zero ability cannot supply any income).
+    In Myerson, a bidder with value 0 is indifferent and adds no economic content.
+    Technically this ensures differentiability of v(a,·) on (0,∞) so the FTC applies.</td>
     <td>T_wellDefined, adj_Q_T, T_terminal, masterTheorem_*</td>
   </tr>
   <tr>
     <td><strong>hMono</strong></td>
     <td><span class="tag tag-econ">economic</span></td>
-    <td><code>Monotone mech.q</code> — allocation is non-decreasing</td>
-    <td>ICIRMechanism field; derived from IC+SC in applications</td>
+    <td><code>Monotone mech.q</code> — allocation non-decreasing in type</td>
+    <td><strong>Efficient discrimination: better types receive weakly better allocations.</strong>
+    In auctions: higher-valuation bidders win with at least as high probability.
+    In taxation: higher-ability workers supply at least as much income.
+    This is a necessary condition for IC under SC — if a higher type received a strictly
+    worse allocation, they could profitably mimic a lower type (IC_implies_monotone).
+    In optimal mechanisms this is guaranteed; when it fails, ironing is required.</td>
+    <td>ICIRMechanism field; derived from IC + SC in applications</td>
   </tr>
   <tr>
     <td><strong>hdiff</strong></td>
     <td><span class="tag tag-anal">analytic</span></td>
     <td><code>DifferentiableOn ℝ (v a) (Set.Ioi 0)</code> for all a</td>
+    <td><strong>Utility is smooth in the type dimension.</strong>
+    Small changes in ability or valuation produce smoothly varying utility, so the
+    agent's rent V(θ) = v(q(θ),θ) − t(θ) is differentiable.  This is the technical
+    prerequisite for the envelope theorem: V′(θ) = ∂v/∂θ evaluated at q(θ).</td>
     <td>T_wellDefined, adj_Q_T, masterTheorem_*</td>
   </tr>
   <tr>
     <td><strong>hint</strong></td>
     <td><span class="tag tag-anal">analytic</span></td>
     <td><code>IntervalIntegrable (typeDerivAlongAlloc v r) μ a b</code></td>
+    <td><strong>Information rents are integrable along the allocation path.</strong>
+    The type-derivative ∂v(q(θ),θ)/∂θ — the rate at which the agent's informational
+    advantage grows — must be integrable so the FTC can reconstruct total rent from
+    its derivative: V(θ) = V(θ_min) + ∫ V′(s) ds.</td>
     <td>T_wellDefined, T_terminal, masterTheorem_*</td>
   </tr>
   <tr>
     <td><strong>hintC</strong></td>
     <td><span class="tag tag-anal">analytic</span></td>
     <td><code>IntervalIntegrable (deriv (v a)) μ b c</code> for all a, b, c</td>
+    <td><strong>The marginal type-value is integrable for each fixed allocation.</strong>
+    For any fixed allocation level a, the derivative ∂v(a,θ)/∂θ is integrable.
+    This is needed for the IC-implies-envelope direction: comparing utility under
+    truthful and mimicking reports requires integrating the marginal value over
+    the type interval.</td>
     <td>T_wellDefined IC branch, mirrlees_IC_of_envelope</td>
   </tr>
   <tr>
     <td><strong>hEnv</strong></td>
     <td><span class="tag tag-anal">analytic</span></td>
     <td><code>HasDerivAt (fun s ↦ v(r.q s, s) − t s) (typeDerivAlongAlloc v r θ) θ</code> for θ &gt; 0</td>
+    <td><strong>The first-order condition of IC holds: V′(θ) = ∂v/∂θ(q(θ),θ).</strong>
+    This is the envelope theorem — a truthful agent at type θ cannot gain by a marginal
+    type perturbation, so the surplus derivative equals the direct type-effect of the
+    value function.  In Myerson: V′(θ) = q(θ).  In Mirrlees: V′(θ) equals the
+    Spence-Mirrlees cross-partial.  This is the key condition that pins down the
+    transfer formula uniquely.</td>
     <td>adj_Q_T (unit), T_terminal, masterTheorem_isomorphism</td>
   </tr>
   <tr>
     <td><strong>hBC</strong></td>
     <td><span class="tag tag-econ">economic</span></td>
     <td><code>v(m.q θ_min, θ_min) = m.t θ_min</code> — binding IR at the boundary</td>
+    <td><strong>The designer extracts all surplus from the lowest type.</strong>
+    V(θ_min) = 0: the marginal bidder or worker is left with exactly zero rent.
+    This is the standard "participation constraint binds at the bottom" normalization.
+    It fixes the integration constant in the envelope formula, making the transfer
+    schedule unique.  Two mechanisms with the same allocation but different boundary
+    values produce different expected revenues.</td>
     <td>masterTheorem_isomorphism, masterTheorem_transferInvariance</td>
   </tr>
   <tr>
     <td><strong>hD_Ioi</strong></td>
     <td><span class="tag tag-anal">analytic</span></td>
-    <td><code>Set.Ioi 0 ⊆ D</code> — SC domain contains the positive reals</td>
+    <td><code>Set.Ioi 0 ⊆ D</code> — SC domain contains (0,∞)</td>
+    <td><strong>The type ordering is globally consistent across all positive types.</strong>
+    SC must hold on the entire physical domain, not just locally.  This ensures that
+    the revelation principle produces a globally monotone allocation, not merely
+    locally non-decreasing.</td>
     <td>T_wellDefined, masterTheorem_*</td>
   </tr>
   <tr>
     <td><strong>A : AddCommGroup</strong></td>
     <td><span class="tag tag-cat">categorical</span></td>
-    <td>Allocation space has additive group structure (needed for AllocHom.h_spread)</td>
+    <td>Allocation space has additive group structure</td>
+    <td><strong>Allocation differences are well-defined.</strong>
+    The spread Δ(θ) = q′(θ) − q(θ) between two allocation rules must be meaningful.
+    In auctions A = ℝ corresponds to probability differences; in taxation to income
+    differences.  The spread-monotonicity condition on morphisms (<code>h_spread</code>)
+    requires subtraction, which needs the group structure.</td>
     <td>MechHom, AllocHom, T functor on morphisms (T.map)</td>
   </tr>
   <tr>
     <td><strong>A : LinearOrder</strong></td>
     <td><span class="tag tag-cat">categorical</span></td>
-    <td>Total order on allocations (for IC mimicry argument)</td>
+    <td>Total order on allocations</td>
+    <td><strong>Allocations can be unambiguously ranked.</strong>
+    Needed for the mimicry argument: if q(θ₂) &lt; q(θ₁) for θ₂ &gt; θ₁,
+    type θ₂ can profitably pretend to be θ₁ (since they strictly prefer the
+    higher allocation under SC), contradicting IC.  In auctions and taxation
+    A = ℝ provides a canonical total order on probabilities or income levels.</td>
     <td>IC_implies_monotone, masterTheorem_*</td>
   </tr>
 </table>
@@ -650,39 +713,84 @@ and the Mirrlees income-tax setting.  Both use A = ℝ, which provides AddCommGr
 </div>
 
 <!-- ============================================================ OPEN QUESTIONS -->
-<h2>Remaining Sorries and Design Limitations</h2>
+<h2>Remaining Sorry and Design Limitations</h2>
 
 <div class="box box-warn">
-  <div class="label">Sorry — T.map.hTransf (MasterTheorem.lean)</div>
-  <p><strong>Status: mathematically false</strong> for general AllocHoms.<br>
-  <em>T(r).t θ</em> is not pointwise-monotone in <em>r.q</em> under general monotone
-  allocation morphisms.  A counterexample exists with oscillating spread
-  Δ(θ) = r′.q(θ) − r.q(θ).  A spread-monotonicity hypothesis on AllocHom
-  (<code>h_spread</code>) was added to make the T functor well-defined on morphisms;
-  the sorry in T.map is the residual gap for the general case.</p>
-</div>
-
-<div class="box box-warn">
-  <div class="label">Sorry — non-physical θ &lt; θ_min (MasterTheorem.lean)</div>
-  <p><strong>Status: design limitation.</strong>
-  The FTC-based proofs require 0 &lt; θ (differentiability of v(a,·) on (0,∞)).
-  For θ ≤ 0 (or θ &lt; θ_min in transfer invariance) the physical model breaks down
-  — Lean's convention 0/0 = 0 means v(y,0) is economically meaningless.
-  These sorrys are intentional scope limitations, not proof gaps.</p>
+  <div class="label">Sorry — T.map.hTransf (MasterTheorem.lean:259) — <em>vacuous</em></div>
+  <p><strong>Status: mathematically false for general v, but never exercised.</strong><br>
+  The field <code>hTransf</code> in <code>T.map f</code> would require
+  <em>T(r).t θ ≤ T(r′).t θ</em> whenever <em>r.q θ ≤ r′.q θ</em> — an inequality that
+  holds in the Myerson case (v linear in a) but is false for general v.
+  However, this field is <strong>never accessed</strong> by any proved theorem:
+  the functor laws (<code>map_id</code>, <code>map_comp</code>) are discharged by
+  <code>mechHom_subsingleton</code>, and the <code>hTransf</code> used in
+  <code>masterTheorem_transferInvariance</code> is constructed independently via
+  FTC + IR (MasterTheorem.lean:398–415), not through <code>T.map</code>.
+  Removing it would require adding a v-monotonicity hypothesis to <code>T</code>
+  that does not hold for general v.</p>
 </div>
 
 <div class="box box-warn">
   <div class="label">Failure conditions (formal stubs)</div>
   <ul style="margin:.4em 0 .4em 1.2em">
-    <li><strong>Non-QI:</strong> without quasilinearity, Q no longer factors through Alloc; adjunction breaks (Maskin–Riley 1984).</li>
-    <li><strong>Multi-dimensional types:</strong> no total order on ℝᵏ for k ≥ 2; completeness argument fails (Rochet 1987).</li>
-    <li><strong>Non-regular:</strong> without MON, ironing is needed; uniqueness of T(q) recovers only in expectation (Myerson 1981 §6).</li>
+    <li><strong>Non-QI:</strong> without quasilinearity, Q no longer factors through Alloc;
+    the adjunction breaks and revenue equivalence fails (Maskin–Riley 1984).</li>
+    <li><strong>Multi-dimensional types:</strong> no total order on ℝᵏ for k ≥ 2;
+    the completeness argument for Alloc fails and the Adjoint Functor Theorem
+    does not directly apply (Rochet 1987; Armstrong 1996).</li>
+    <li><strong>Non-regular (ironing):</strong> without the regularity condition the optimal
+    allocation is non-monotone; ironing (concavification) is required and uniqueness of
+    T(q) recovers only in expectation (Myerson 1981 §6; Ebert 1992).</li>
   </ul>
+</div>
+
+<!-- ============================================================ RECENT EXTENSIONS -->
+<h2>Recent Extensions</h2>
+
+<div class="two-col">
+<div>
+<div class="box box-lem">
+  <div class="label">Mirrlees Monotonicity (MirrleesSetting.lean)</div>
+  <p>Under the envelope formula and positive partial derivative ∂v/∂θ &gt; 0:</p>
+  <ul style="margin:.4em 0 .4em 1.2em">
+    <li><strong>mirrlees_strictMono_rent</strong>: information rent V(θ) = ∫ ∂v/∂s ds
+    is strictly increasing — higher-ability workers earn strictly more surplus.</li>
+    <li><strong>mirrlees_strictMono_utility</strong>: equilibrium utility is strictly
+    increasing in type — a direct consequence of the envelope theorem.</li>
+    <li><strong>mirrlees_strictMono_alloc</strong>: income assignment y(θ) is strictly
+    increasing — higher ability implies higher gross earnings.</li>
+    <li><strong>mirrlees_strictMono_consumption</strong>: consumption c(θ) = y(θ) − T(y(θ))
+    is strictly increasing when T′ &lt; 1 — a sub-unitary marginal tax rate is the
+    condition that no worker faces a 100% effective tax rate.</li>
+  </ul>
+</div>
+</div>
+
+<div>
+<div class="box box-lem">
+  <div class="label">N-Bidder BIC → Reduced-Form IC (MyersonSetting.lean §2.7)</div>
+  <p>Full formalization of Myerson's reduced-form approach for n-bidder auctions
+  using <code>Measure.pi μ</code> product measures:</p>
+  <ul style="margin:.4em 0 .4em 1.2em">
+    <li><strong>expAllocN</strong>: Q<sub>i</sub>(s) = ∫ p(t<sub>−i</sub>, s) i ∂Π<sub>j</sub>μ<sub>j</sub>
+    — the reduced-form winning probability for bidder i at type s, integrating over all
+    opponents' types using <code>Function.update t i s</code>.</li>
+    <li><strong>IsBICN</strong>: joint Bayes-IC condition on the full product-measure
+    integral — truthful reporting is optimal in expectation over opponents.</li>
+    <li><strong>expAllocN_satisfies_IC</strong>: IsBICN → IsMultiAgentIC for the
+    reduced-form functions.  Proof is purely algebraic (integral linearity via
+    <code>integral_sub</code> + <code>integral_const_mul</code>); no Fubini needed.</li>
+  </ul>
+  <p><em>Key design choice:</em> <code>Function.update t i s</code> fixes bidder i's
+  type at s in the full profile t : Fin n → ℝ, avoiding Fin(n−1) arithmetic entirely.</p>
+</div>
+</div>
 </div>
 
 <!-- ============================================================ REFERENCES -->
 <h2>References</h2>
 
+<p class="ref">Armstrong, M. (1996). <em>Multiproduct Nonlinear Pricing.</em> Econometrica 64(1), 51–75.</p>
 <p class="ref">Hammond, P. (1979). <em>Straightforward Individual Incentive Compatibility in Large Economies.</em> Review of Economic Studies 46(2), 263–282.</p>
 <p class="ref">Mac Lane, S. (1978). <em>Categories for the Working Mathematician</em>, 2nd ed. Springer.</p>
 <p class="ref">Mirrlees, J. A. (1971). <em>An Exploration in the Theory of Optimum Income Taxation.</em> Review of Economic Studies 38(2), 175–208.</p>
@@ -694,7 +802,7 @@ and the Mirrlees income-tax setting.  Both use A = ℝ, which provides AddCommGr
 <p class="ref" style="text-align:center">
   Lean 4 source:
   <code>MechDesigAdjointfunctor/Lean/{Framework,MasterTheorem,MyersonSetting,MirrleesSetting,Corollaries}.lean</code><br>
-  Build: <code>lake build</code> — 3 sorry-bearing declarations remain (all documented design limitations).
+  Build: <code>lake build</code> — 1 sorry-bearing declaration remains (<code>T.map.hTransf</code>, vacuous — never exercised by any proved theorem).
 </p>
 
 </div><!-- /.container -->
