@@ -1,7 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "Bash(lake build *)"
+      "Bash(lake build *)",
+      "Bash(awk 'length > 100 {print NR\": \"length\" chars: \"$0}' MechDesigAdjointfunctor/Lean/MyersonSetting.lean)",
+      "Bash(cd /home/sander/claude_projects/Lean/MechDesign_AdjoindFunctor 2>/dev/null; find . -maxdepth 4 -type d -name Mathlib 2>/dev/null | head; echo \"---LAKE---\"; find ~/.cache -maxdepth 6 -type d -name MeasureTheory 2>/dev/null | head; find . -maxdepth 6 -type d -name MeasureTheory 2>/dev/null | head)",
+      "Read(//home/sander/claude_projects/Lean/MechDesign_AdjoindFunctor/**)",
+      "Read(//home/sander/.cache/**)",
+      "Skill(lean4:lean4)",
+      "Skill(lean4:lean4:*)",
+      "Skill(lean4:prove)",
+      "Skill(lean4:prove:*)",
+      "Bash(grep -r \"set_integral_congr\\\\|setIntegral_congr\" ~/.elan/toolchains/leanprover-lean4-v4.14.0/lib/lean4/library/ 2>/dev/null | head -5; grep -r \"setIntegral_congr\" .lake/packages/mathlib/Mathlib/MeasureTheory/ 2>/dev/null | grep \"^.*:theorem\\\\|^.*:lemma\" | head -10)",
+      "Read(//home/sander/.elan/toolchains/leanprover-lean4-v4.14.0/lib/lean4/**)",
+      "Bash(cat > *)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
     ]
   }
 }
