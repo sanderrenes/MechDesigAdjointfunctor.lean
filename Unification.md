@@ -597,24 +597,19 @@ Two resolution paths exist:
 
 The Mirrlees corollary (`taxationPrinciple` in `Corollaries.lean`) is unaffected since `A = ℝ` is already an `AddCommGroup`.
 
-### 7.6 Proof Status (as of 2026-05-11)
+### 7.6 Proof Status (as of 2026-05-21)
 
-The main proof chain is complete on the `master` branch. The following sorry stubs remain:
+The main proof chain is complete on the `master` branch. One sorry stub remains:
 
 | File | Declaration | Status |
 |------|-------------|--------|
-| `MasterTheorem.lean` | `T_wellDefined` (θ ≤ 0 case) | Design limitation: FTC requires θ > 0 |
-| `MasterTheorem.lean` | `T.map.hTransf` | False for general AllocHoms; see §7.1 |
-| `MasterTheorem.lean` | `adj_Q_T` unit (θ ≤ 0 case) | Design limitation |
-| `MasterTheorem.lean` | `T_terminal` (θ ≤ 0 case) | Design limitation |
-| `MasterTheorem.lean` | `masterTheorem_isomorphism` (θ ≤ 0 case) | Design limitation |
-| `MirrleesSetting.lean` | `mirrlees_IC_of_envelope` (θ ≤ 0 case) | Design limitation |
-| `MirrleesSetting.lean` | `mirrlees_unique_from_IC` | Proved; needs SC + envelope hypotheses |
-| `Corollaries.lean` | `revenueEquivalence` | Blocked by MyersonAlloc ≠ AddCommGroup (§7.5) |
+| `MasterTheorem.lean` | `T.map.hTransf` | **Vacuous** — false for general `v` (see §7.1); never accessed by any proved theorem. Functor laws use `mechHom_subsingleton`; `masterTheorem_transferInvariance` constructs `hTransf` independently via FTC + IR. |
 
-The non-physical (θ ≤ 0) sorry stubs are design limitations arising from `DifferentiableOn (Set.Ioi 0)`: the Mirrlees value function and the FTC machinery are set up for strictly positive types, leaving the boundary case formally open but economically irrelevant.
+All other previously-noted sorry stubs have been resolved:
 
-The branch `spread-monotone-allochom` explores the enriched AllocHom structure described in §7.2–7.4. On that branch `T.map.hTransf` is still sorry (the enrichment is necessary but the proof additionally needs a structural assumption on `v`); `alloc_hasLimitsOfShape` is sorry (incompatible with spread condition); `revenueEquivalence` is sorry with the MyersonAlloc explanation from §7.5.
+- **Non-physical (θ ≤ 0) cases** (`T_wellDefined`, `adj_Q_T` unit, `T_terminal`, `masterTheorem_isomorphism`, `mirrlees_IC_of_envelope`): resolved by restricting all proofs to `Set.Ici θ_min` (with `hθ_pos : 0 < θ_min`). The FTC is applied only for `θ ≥ θ_min > 0`; no economically relevant types are excluded.
+- **`revenueEquivalence`**: proved by instantiating `masterTheorem_transferInvariance` with `MyersonAlloc = ℝ` (the §7.5 `AddCommGroup` obstruction was resolved by setting `MyersonAlloc := ℝ` with a range hypothesis rather than `Set.Icc 0 1`).
+- **`mirrlees_unique_from_IC`**: proved with SC + envelope hypotheses.
 
 ---
 

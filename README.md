@@ -14,11 +14,11 @@ See `MechDesigAdjointfunctor/Unification.md` for the mathematical write-up.
 | `MirrleesSetting.lean` | Mirrlees taxation instantiation, Taxation Principle |
 | `Corollaries.lean` | Corollaries 5.1 and 5.2 as instances of the Master Theorem |
 
-## Proof status — branch `master` (as of 2026-05-17)
+## Proof status — branch `master` (as of 2026-05-21)
 
 This is the **master branch** which has merged the `spread-monotone-allochom` branch. The `h_spread` field has been added to both `MechHom` and `AllocHom` to ensure `Q` maps morphisms without sorries.
 
-Build: `lake build` — completes successfully (only `sorry` warnings, 4 remaining).
+Build: `lake build` — completes successfully (1 `sorry` warning remaining; vacuous — never exercised).
 
 ### Completed ✓
 
@@ -30,32 +30,28 @@ Build: `lake build` — completes successfully (only `sorry` warnings, 4 remaini
 | `myerson_vDiff` | MyersonSetting | `unfold myersonValue; fun_prop` |
 | `mirrlees_vDiff` | MirrleesSetting | `DifferentiableOn.sub` + `DifferentiableOn.div`; domain `Set.Ioi 0` |
 | `mirrlees_singleCrossing` | MirrleesSetting | `deriv_sub` + `hg_pos` + `linarith` |
-| `T_wellDefined` (IR + IC branches, physical) | MasterTheorem | FTC + SC + `integral_mono_on`; non-physical left as sorry |
+| `T_wellDefined` | MasterTheorem | FTC + SC + `integral_mono_on`; both IR and IC proved for all `θ ≥ θ_min > 0` |
 | `myerson_IC_of_monotone_transfer` | MyersonSetting | `integral_add_adjacent_intervals` + `integral_mono_on` + case split |
-| `mirrlees_IC_of_envelope` (physical) | MirrleesSetting | Mirrors T_wellDefined |
+| `mirrlees_IC_of_envelope` | MirrleesSetting | Mirrors T_wellDefined; FTC on `Set.Ici θ_min` |
 | `myerson_transfer_unique` | MyersonSetting | FTC + linarith |
 | `mirrlees_unique_from_IC` | MirrleesSetting | SC + IC by-contradiction + FTC |
 | `taxation_principle` (local) | MirrleesSetting | FTC twice + linarith |
-| `alloc_hasLimitsOfShape` / `alloc_hasLimits` | Framework | Pointwise `sInf` (spread fields sorry'd — see below) |
 | `adj_Q_T` | MasterTheorem | `Adjunction.mkOfUnitCounit`; unit via FTC + IR |
 | `Q_preservesColimits` | MasterTheorem | `adj_Q_T.leftAdjoint_preservesColimits` (Q is LEFT adjoint) |
-| `T_terminal` | MasterTheorem | From `adj_Q_T` + envelope formula (non-physical sorry retained) |
+| `T_terminal` | MasterTheorem | FTC + IR; `hTransf` via envelope on `[θ_min, ∞)`; uniqueness by `mechHom_subsingleton` |
 | `masterTheorem_existence` | MasterTheorem | `T_terminal` + FTC |
-| `masterTheorem_isomorphism` | MasterTheorem | FTC + BC (non-physical sorrys retained) |
-| `masterTheorem_transferInvariance` | MasterTheorem | `le_antisymm` + linarith from two isomorphisms |
+| `masterTheorem_isomorphism` | MasterTheorem | FTC + BC; integral restricted to `Set.Ici θ_min` |
+| `masterTheorem_transferInvariance` | MasterTheorem | `le_antisymm` + linarith from two isomorphisms; integral over `Set.Ici θ_min` |
 | `taxationPrinciple` | Corollaries | Delegates to `masterTheorem_transferInvariance` |
 | `myerson_expectedRevenue` | MyersonSetting | IBP via `integral_hasStrictDerivAt` |
 | `myerson_revenueFormula` | Corollaries | Delegates to `myerson_expectedRevenue` |
 | `revenueEquivalence` | Corollaries | `MyersonAlloc = ℝ`; delegates to `masterTheorem_transferInvariance` |
 
-### Remaining sorry stubs (4)
+### Remaining sorry stubs (1)
 
 | Lemma | File | Obstacle |
 |-------|------|----------|
-| `alloc_hasLimitsOfShape` cone `h_spread` | Framework | Pointwise `sInf` does not preserve spread monotonicity (counterexample: θ² vs θ) |
-| `alloc_hasLimitsOfShape` lift `h_spread` | Framework | Same obstruction as cone |
-| `T.map hTransf` | MasterTheorem | Needs structural assumption on `v` beyond `h_spread`; see Unification.md §7.1–7.2 |
-| `masterTheorem_transferInvariance` (θ < θ_min case) | MasterTheorem | Design limitation: FTC requires `Set.Ioi 0` |
+| `T.map hTransf` | MasterTheorem | False for general `v`; needs a v-monotonicity hypothesis. **Vacuous**: never accessed by any proved theorem — functor laws use `mechHom_subsingleton` and `masterTheorem_transferInvariance` constructs `hTransf` independently via FTC + IR. See Unification.md §7.1–7.2 |
 
 ## Key proof patterns
 
@@ -63,7 +59,7 @@ Build: `lake build` — completes successfully (only `sorry` warnings, 4 remaini
 - **`intervalIntegrable_const`**: root namespace, not `intervalIntegral.`
 - **`le_or_gt`**: case split in this Mathlib version (not `le_or_lt`)
 - **`integral_symm θ θ'`**: gives `∫ in θ'..θ = -∫ in θ..θ'`
-- **Non-physical sorry**: IC proofs leave `¬(0 < θ' ∧ 0 < θ)` as sorry — `DifferentiableOn (Set.Ioi 0)` makes FTC unavailable outside positive reals
+- **Non-physical case avoided**: `masterTheorem_transferInvariance` integrates over `Set.Ici θ_min`; FTC is only needed for `θ ≥ θ_min > 0`, so no sorry is required for non-physical types
 - **`hvθ` correction**: partial derivative `deriv (v (y θ)) θ`, not total `deriv (fun s => v (y s) s) θ`
 
 ## Build
@@ -73,4 +69,4 @@ cd /path/to/MechDesigAdjointfunctor.lean
 lake build
 ```
 
-See `Unification.md` §7.1–7.5 for detailed mathematical analysis of the remaining obstructions.
+See `Unification.md` §7.1–7.2 for mathematical analysis of the `T.map hTransf` obstruction.
