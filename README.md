@@ -51,7 +51,7 @@ Build: `lake build` — completes successfully (1 `sorry` warning remaining; vac
 
 | Lemma | File | Obstacle |
 |-------|------|----------|
-| `T.map hTransf` | MasterTheorem | False for general `v`; needs a v-monotonicity hypothesis. **Vacuous**: never accessed by any proved theorem — functor laws use `mechHom_subsingleton` and `masterTheorem_transferInvariance` constructs `hTransf` independently via FTC + IR. See Unification.md §7.1–7.2 |
+| `T.map hTransf` | MasterTheorem | False for general `v`; needs a v-monotonicity hypothesis. **Immaterial to this prVacuous**: never accessed by any proved theorem — functor laws use `mechHom_subsingleton` and `masterTheorem_transferInvariance` constructs `hTransf` independently via FTC + IR. See Unification.md §7.1–7.2 |
 
 ## Key proof patterns
 
