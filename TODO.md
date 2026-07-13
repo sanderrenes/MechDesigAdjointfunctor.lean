@@ -3,17 +3,7 @@
 Living list. Update it in the same commit as the work — see `CLAUDE.md`.
 Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped (say why)
 
-## Now — Phase 0: weaken `hEnv` to the right-derivative form
-See `PLAN.md` § Phase 0.
-
-- [ ] Swap `surplus_split`'s FTC call to `intervalIntegral.integral_eq_sub_of_hasDeriv_right_of_le`
-- [ ] Weaken `hEnv` to `HasDerivWithinAt … (Set.Ioi θ) θ` + `ContinuousOn` across
-      `MasterTheorem.lean` and `Corollaries.lean`
-- [ ] Regression example: posted price `q θ = if p ≤ θ then 1 else 0` satisfies the new
-      hypothesis (acceptance test for the phase — the current `hEnv` is false for it)
-- [ ] Commit
-
-## Next — Phase 1: `V` Lipschitz from IC
+## Now — Phase 1: `V` Lipschitz from IC
 - [ ] Check the "`∂_θ v` locally bounded, uniformly in the allocation" hypothesis discharges
       for `myersonValue` **and** `mirrleesValue` *before* touching the abstract layer
 - [ ] `surplus_ic_sandwich` from `m.hIC`
@@ -42,6 +32,12 @@ See `PLAN.md` § Phase 0.
       placeholders in `Corollaries.lean`. Either state them or delete them.
 
 ## Done
+- [x] **Phase 0** — `hEnv` weakened to `ContinuousOn` + `HasDerivWithinAt … (Set.Ioi θ) θ`
+      throughout (D7). `surplus_split` now uses
+      `intervalIntegral.integral_eq_sub_of_hasDeriv_right`. Acceptance test landed:
+      `PostedPrice.postedPrice_hasEnvelope` (the reserve-price auction *does* satisfy the new
+      hypothesis) and `PostedPrice.postedPrice_not_hasDerivAt` (it does **not** satisfy the
+      old one — no derivative at the reserve, for any candidate value).
 - [x] Order `MechHom` by surplus rather than transfer; `T` becomes a functor (D1, D2)
 - [x] `adj_T_Q` : `T ⊣ Q`; `T(r)` initial, not terminal (D3)
 - [x] Relax the boundary condition to equal rent, `hV₀` (D5)

@@ -78,19 +78,26 @@ theorem revenueEquivalence
       MeasureTheory.volume a b)
     (hintC : ∀ (a : Myerson.MyersonAlloc) b c,
       IntervalIntegrable (deriv (Myerson.myersonValue a)) MeasureTheory.volume b c)
-    (hEnv₁ : ∀ θ > 0, HasDerivAt
+    -- Envelope condition: continuity plus a RIGHT derivative.  One-sided on purpose — a
+    -- two-sided derivative would exclude posted-price auctions, whose surplus has a kink
+    -- at the reserve.  See `surplus_split` and `Myerson.postedPrice_hasEnvelope`.
+    (hVcont₁ : ContinuousOn
+      (fun s => Myerson.myersonValue (q₀.q s) s - m₁.mech.t s) (Set.Ioi 0))
+    (hEnv₁ : ∀ θ > 0, HasDerivWithinAt
       (fun s => Myerson.myersonValue (q₀.q s) s - m₁.mech.t s)
-      (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) θ)
-    (hEnv₂ : ∀ θ > 0, HasDerivAt
+      (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) (Set.Ioi θ) θ)
+    (hVcont₂ : ContinuousOn
+      (fun s => Myerson.myersonValue (q₀.q s) s - m₂.mech.t s) (Set.Ioi 0))
+    (hEnv₂ : ∀ θ > 0, HasDerivWithinAt
       (fun s => Myerson.myersonValue (q₀.q s) s - m₂.mech.t s)
-      (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) θ)
+      (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) (Set.Ioi θ) θ)
     -- RELAXED boundary condition: the two mechanisms leave the lowest type the SAME rent.
     -- (Revenue equivalence needs equal rent, not zero rent.)
     (hV₀ : surplus m₁ θ_min = surplus m₂ θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance hθ_pos q₀ hint m₁ m₂ hm₁_alloc hm₂_alloc
-    hEnv₁ hEnv₂ hV₀ μ
+    hVcont₁ hEnv₁ hVcont₂ hEnv₂ hV₀ μ
 
 /-- **Myerson expected revenue formula**: for any BIC-IR mechanism with allocation `q`
 and `V(0) = 0`, expected revenue equals expected virtual surplus.
@@ -142,19 +149,157 @@ theorem taxationPrinciple
       MeasureTheory.volume a b)
     (hintC : ∀ (a : ℝ) b c,
       IntervalIntegrable (deriv (Mirrlees.mirrleesValue h g a)) MeasureTheory.volume b c)
-    (hEnv₁ : ∀ θ > 0, HasDerivAt
+    -- Envelope condition: continuity plus a RIGHT derivative.  One-sided on purpose — a
+    -- two-sided derivative would exclude allocations with a bunching region.
+    (hVcont₁ : ContinuousOn
+      (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₁.mech.t s) (Set.Ioi 0))
+    (hEnv₁ : ∀ θ > 0, HasDerivWithinAt
       (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₁.mech.t s)
-      (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) θ)
-    (hEnv₂ : ∀ θ > 0, HasDerivAt
+      (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) (Set.Ioi θ) θ)
+    (hVcont₂ : ContinuousOn
+      (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₂.mech.t s) (Set.Ioi 0))
+    (hEnv₂ : ∀ θ > 0, HasDerivWithinAt
       (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₂.mech.t s)
-      (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) θ)
+      (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) (Set.Ioi θ) θ)
     -- RELAXED boundary condition: identical rent at the lowest type (a common `V₀`),
     -- matching what `mirrlees_unique_from_IC` already assumed.
     (hV₀ : surplus m₁ θ_min = surplus m₂ θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance hθ_pos q₀ hint m₁ m₂ hm₁_alloc hm₂_alloc
-    hEnv₁ hEnv₂ hV₀ μ
+    hVcont₁ hEnv₁ hVcont₂ hEnv₂ hV₀ μ
+
+/-! ### 5.2b The posted price — why the envelope hypothesis must be one-sided
+
+The mechanism that forces the design of `surplus_split`'s hypothesis.  A **posted price**
+with reserve `p`: sell iff `θ ≥ p`, charge `p` on a sale.  It is the canonical optimal
+auction under regularity, it is monotone, IC and IR — and its surplus
+
+  `V θ = θ·q θ - t θ = max (θ - p) 0`
+
+has a **kink at `p`**.  It has no two-sided derivative there.
+
+So a `HasDerivAt` envelope hypothesis is not merely inconvenient, it is **unsatisfiable**
+for every auction with a reserve price, and `revenueEquivalence` would be inapplicable to
+the mechanisms it most wants to talk about.  The right derivative survives the kink — at
+`p` it equals `1 = q p` — which is all `integral_eq_sub_of_hasDeriv_right` ever needed.
+
+`postedPrice_hasEnvelope` discharges the hypothesis the framework now takes.
+`postedPrice_not_hasDerivAt` shows the hypothesis it used to take is false. -/
+
+namespace PostedPrice
+
+variable {p : ℝ}
+
+/-- Sell iff the type clears the reserve. -/
+noncomputable def alloc (p : ℝ) : ℝ → Myerson.MyersonAlloc := fun θ => if p ≤ θ then 1 else 0
+
+/-- Charge the reserve on a sale, nothing otherwise. -/
+noncomputable def transfer (p : ℝ) : ℝ → ℝ := fun θ => if p ≤ θ then p else 0
+
+lemma alloc_mono : Monotone (alloc p) := by
+  intro a b hab
+  rcases le_or_gt p a with ha | ha
+  · have hb : p ≤ b := ha.trans hab
+    simp [alloc, ha, hb]
+  · rcases le_or_gt p b with hb | hb
+    · simp [alloc, not_le.mpr ha, hb]
+    · simp [alloc, not_le.mpr ha, not_le.mpr hb]
+
+/-- The surplus of the posted price is `max (θ - p) 0` — the kinked function. -/
+lemma surplus_eq (θ : ℝ) :
+    Myerson.myersonValue (alloc p θ) θ - transfer p θ = max (θ - p) 0 := by
+  simp only [Myerson.myersonValue, alloc, transfer]
+  split_ifs with h
+  · rw [max_eq_left (by linarith : (0:ℝ) ≤ θ - p)]; ring
+  · rw [max_eq_right (by linarith [not_le.mp h] : θ - p ≤ (0:ℝ))]; ring
+
+/-- The Myerson envelope integrand along any allocation is the allocation itself:
+`D_r(θ) = ∂/∂θ (θ · r.q θ) = r.q θ`. -/
+lemma typeDeriv_eq (r : MonotoneAlloc Myerson.MyersonAlloc) (θ : ℝ) :
+    typeDerivAlongAlloc Myerson.myersonValue r θ = r.q θ := by
+  simp only [typeDerivAlongAlloc, Myerson.myersonValue]
+  have h : HasDerivAt (fun s : ℝ => s * r.q θ) (r.q θ) θ := by
+    simpa using (hasDerivAt_id θ).mul_const (r.q θ)
+  exact h.deriv
+
+/-- **The posted price satisfies the framework's envelope hypothesis.**
+Continuity plus a *right* derivative at every physical type — including at the reserve `p`,
+where the right derivative is `1 = q p`. -/
+theorem postedPrice_hasEnvelope :
+    ContinuousOn (fun s => Myerson.myersonValue (alloc p s) s - transfer p s) (Set.Ioi 0) ∧
+    ∀ θ > 0, HasDerivWithinAt
+      (fun s => Myerson.myersonValue (alloc p s) s - transfer p s)
+      (typeDerivAlongAlloc Myerson.myersonValue ⟨alloc p, alloc_mono⟩ θ) (Set.Ioi θ) θ := by
+  have hV : (fun s => Myerson.myersonValue (alloc p s) s - transfer p s)
+      = fun s => max (s - p) 0 := funext fun s => surplus_eq s
+  constructor
+  · rw [hV]
+    exact (Continuous.max (continuous_id.sub continuous_const) continuous_const).continuousOn
+  · intro θ _
+    rw [hV, typeDeriv_eq ⟨alloc p, alloc_mono⟩ θ]
+    change HasDerivWithinAt (fun s => max (s - p) 0) (alloc p θ) (Set.Ioi θ) θ
+    by_cases hpθ : p ≤ θ
+    · -- Above the reserve: V agrees with `s - p` to the right of θ, slope 1 = q θ.
+      have hEq : Set.EqOn (fun s => max (s - p) 0) (fun s => s - p) (Set.Ici θ) := by
+        intro s hs
+        exact max_eq_left (by linarith [hs, le_trans hpθ hs] : (0:ℝ) ≤ s - p)
+      have h1 : HasDerivWithinAt (fun s : ℝ => s - p) 1 (Set.Ioi θ) θ :=
+        ((hasDerivAt_id θ).sub_const p).hasDerivWithinAt
+      have hres : HasDerivWithinAt (fun s => max (s - p) 0) 1 (Set.Ioi θ) θ :=
+        h1.congr (fun s hs => hEq (Set.mem_Ici.mpr (le_of_lt hs)))
+          (hEq (Set.mem_Ici.mpr (le_refl θ)))
+      simpa [alloc, if_pos hpθ] using hres
+    · -- Below the reserve: V is eventually 0 to the right of θ, slope 0 = q θ.
+      push_neg at hpθ
+      have hev : (fun s => max (s - p) 0) =ᶠ[nhdsWithin θ (Set.Ioi θ)] fun _ => (0:ℝ) := by
+        have hmem : Set.Iio p ∈ nhdsWithin θ (Set.Ioi θ) :=
+          nhdsWithin_le_nhds (Iio_mem_nhds hpθ)
+        filter_upwards [hmem] with s hs
+        exact max_eq_right (by linarith [Set.mem_Iio.mp hs] : s - p ≤ (0:ℝ))
+      have h0 : HasDerivWithinAt (fun _ : ℝ => (0:ℝ)) 0 (Set.Ioi θ) θ :=
+        (hasDerivAt_const θ (0:ℝ)).hasDerivWithinAt
+      have : HasDerivWithinAt (fun s => max (s - p) 0) 0 (Set.Ioi θ) θ :=
+        h0.congr_of_eventuallyEq hev (max_eq_right (by linarith : θ - p ≤ (0:ℝ)))
+      simpa [alloc, if_neg (not_le.mpr hpθ)] using this
+
+/-- **The posted price does NOT satisfy a two-sided envelope hypothesis.**
+
+At the reserve `p` the surplus `max (θ - p) 0` has slope `0` from the left and `1` from the
+right, so it has **no** derivative there — for *any* candidate value `c`.
+
+This is the theorem that justifies Phase 0.  The framework previously demanded
+`HasDerivAt`, and this shows that demand is unsatisfiable for the canonical optimal
+auction: `revenueEquivalence` could not be applied to any mechanism with a reserve. -/
+theorem postedPrice_not_hasDerivAt (c : ℝ) :
+    ¬ HasDerivAt (fun s => max (s - p) 0) c p := by
+  intro h
+  have hslope := hasDerivAt_iff_tendsto_slope.mp h
+  -- From the left the slope is identically 0.
+  have hleft : Filter.Tendsto (slope (fun s => max (s - p) 0) p) (nhdsWithin p (Set.Iio p))
+      (nhds c) :=
+    hslope.mono_left (nhdsWithin_mono p (fun x hx => ne_of_lt (Set.mem_Iio.mp hx)))
+  have hL0 : slope (fun s => max (s - p) 0) p =ᶠ[nhdsWithin p (Set.Iio p)] fun _ => (0:ℝ) := by
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    have hxp : x - p ≤ 0 := by linarith [Set.mem_Iio.mp hx]
+    simp [slope_def_field, max_eq_right hxp, max_eq_right (le_of_eq (sub_self p))]
+  have hc0 : c = 0 :=
+    tendsto_nhds_unique (hleft.congr' hL0) tendsto_const_nhds
+  -- From the right the slope is identically 1.
+  have hright : Filter.Tendsto (slope (fun s => max (s - p) 0) p) (nhdsWithin p (Set.Ioi p))
+      (nhds c) :=
+    hslope.mono_left (nhdsWithin_mono p (fun x hx => ne_of_gt (Set.mem_Ioi.mp hx)))
+  have hR1 : slope (fun s => max (s - p) 0) p =ᶠ[nhdsWithin p (Set.Ioi p)] fun _ => (1:ℝ) := by
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    have hxp : (0:ℝ) ≤ x - p := by linarith [Set.mem_Ioi.mp hx]
+    have hne : x - p ≠ 0 := sub_ne_zero.mpr (ne_of_gt (Set.mem_Ioi.mp hx))
+    simp [slope_def_field, max_eq_left hxp, max_eq_right (le_of_eq (sub_self p)),
+      div_self hne]
+  have hc1 : c = 1 :=
+    tendsto_nhds_unique (hright.congr' hR1) tendsto_const_nhds
+  exact absurd (hc0 ▸ hc1 : (0:ℝ) = 1) (by norm_num)
+
+end PostedPrice
 
 /-! ### 5.3 Conditions for Failure (Stage 6 placeholders)
 

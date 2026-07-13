@@ -1,6 +1,6 @@
 # Plan — closing the IC ⟹ envelope bridge
 
-Status: **not started.** Branch: `surplus-order`.
+Status: **Phase 0 done.** Phases 1–2 open. Branch: `surplus-order`.
 
 ## Why
 
@@ -29,7 +29,12 @@ Closing this bridge fixes both at once.
 
 ---
 
-## Phase 0 — weaken `hEnv` to the right-derivative form
+## Phase 0 — weaken `hEnv` to the right-derivative form ✅ **DONE**
+
+Landed. `hEnv` is now `ContinuousOn` + `HasDerivWithinAt … (Set.Ioi θ) θ`; `surplus_split`
+uses `integral_eq_sub_of_hasDeriv_right`; the posted price is proved to satisfy the new
+hypothesis (`PostedPrice.postedPrice_hasEnvelope`) and to **violate** the old one
+(`PostedPrice.postedPrice_not_hasDerivAt`). See `DECISIONS.md` D7. Original write-up follows.
 
 **Do this regardless of the rest.** It is an independent correctness-of-scope fix.
 

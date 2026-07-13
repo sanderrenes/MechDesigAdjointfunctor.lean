@@ -100,6 +100,38 @@ the paper rather than letting a referee say it.
 
 ---
 
+## D7 — The envelope hypothesis is **one-sided**: continuity + a right derivative
+**Date:** 2026-07-13 · **Branch:** `surplus-order` · **Phase 0**
+
+`hEnv` now reads
+
+```lean
+hVcont : ContinuousOn (fun s => v (r.q s) s - m.mech.t s) (Set.Ioi 0)
+hEnv   : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m.mech.t s)
+                    (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ
+```
+
+**Rejected: the two-sided `HasDerivAt` we had.** It is not merely stronger than needed — it
+is **false** for the canonical optimal auction. A posted price with reserve `p`
+(`q θ = 1{p ≤ θ}`) is monotone, IC and IR, and has surplus `V θ = max (θ - p) 0`, which has
+slope `0` from the left and `1` from the right at `p`. It has *no* derivative there, for any
+candidate value — proved as `PostedPrice.postedPrice_not_hasDerivAt`.
+
+So the old hypothesis was **unsatisfiable** for every auction with a reserve price and every
+allocation with a bunching region: `revenueEquivalence` could not be applied to the
+mechanisms it most wants to talk about. This was a scope hole, not a stylistic choice.
+
+**Why one-sided works:** the right derivative survives the kink — at `p` it is `1 = q p` —
+and mathlib's `integral_eq_sub_of_hasDeriv_right` only ever needed
+`ContinuousOn` + `HasDerivWithinAt … (Set.Ioi x) x` on the open interval. The envelope
+identity holds; only two-sidedness fails. Discharged for the posted price in
+`PostedPrice.postedPrice_hasEnvelope`.
+
+Every previous caller still typechecks: `HasDerivAt.hasDerivWithinAt` makes this a strict
+weakening. Cost: one extra hypothesis (`hVcont`) at each site.
+
+---
+
 ## Pending — record before implementing
 
 * **Phase 2:** right-continuity of `q` — a field of `MonotoneAlloc`, or a hypothesis?
