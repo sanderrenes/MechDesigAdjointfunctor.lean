@@ -26,6 +26,8 @@ allocation rule is isomorphic to `T(q)`.
 * `MechDesign.T` — the Transfer Functor `T : Alloc → Mech` (Definition 4.1)
 * `MechDesign.adj_Q_T` — the adjunction `Q ⊣ T` (Theorem 4.3)
 * `MechDesign.T_terminal` — `T(q)` is terminal in **Mech_q** (Corollary 4.4)
+* `MechDesign.envelope_transfer_le` — any BIC-IR transfer is dominated by `t*`
+* `MechDesign.envelope_transfer_unique` — with `V(θ_min) = 0`, that transfer *is* `t*`
 * `MechDesign.masterTheorem_existence` — existence and uniqueness (Thm 4.5 i)
 * `MechDesign.masterTheorem_isomorphism` — every BIC mechanism ≅ `T(q)` (Thm 4.5 ii)
 * `MechDesign.masterTheorem_transferInvariance` — transfer invariance (Thm 4.5 iii)
@@ -205,7 +207,15 @@ noncomputable def Tmech {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedA
 
 /-- **T : Alloc → Mech** — the Transfer Functor (Definition 4.1).
 - On objects: `T(r) = (r.q, t*)` where `t*` is the envelope transfer formula.
-- On morphisms: `T(φ) = (φ, φ)` — the same type transformation on both components.
+- On morphisms: `T(φ) = φ` — the same type transformation, carried over to the
+  allocation component of the mechanism.
+
+Note that `MechHom` deliberately does **not** impose an order relation on transfers
+(see the design note on `MechHom` in `Framework`): `t*(r) ≤ t*(r')` does not follow
+from `r.q ≤ r'.q` for a general value function `v`, so a transfer field would prevent
+`T` from being a functor at all.  The transfer content is recovered as the explicit
+theorems `envelope_transfer_unique` and `masterTheorem_transferInvariance`.
+
 *Reference*: Definition 4.1. -/
 noncomputable def T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A]
     {v : A → ℝ → ℝ} {θ_min : ℝ}
@@ -219,52 +229,6 @@ noncomputable def T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMo
   map {r r'} f :=
     { hAlloc   := f.h
       h_spread := f.h_spread
-      hTransf  := by
-        -- Goal: ∀ θ, T(r).t θ ≤ T(r').t θ, i.e.
-        --   v(r.q θ, θ) - ∫_{θ_min}^θ deriv(v(r.q ·)) s ds ≤
-        --   v(r'.q θ, θ) - ∫_{θ_min}^θ deriv(v(r'.q ·)) s ds
-        --
-        -- After rearranging, this is the inequality
-        --   v(r'.q θ, θ) - v(r.q θ, θ) ≥
-        --   ∫_{θ_min}^θ [deriv(v(r'.q s)) s - deriv(v(r.q s)) s] ds.
-        --
-        -- The spread-monotone-allochom branch enriches `AllocHom` with
-        --   `f.h_spread : Monotone (fun θ => r'.q θ - r.q θ)`.
-        -- In the Myerson case `v(a, θ) = a · θ`:
-        --   LHS = (r'.q θ - r.q θ) · θ,
-        --   RHS = ∫_{θ_min}^θ (r'.q s - r.q s) ds,
-        -- and the inequality reduces to
-        --   θ · Δ(θ) ≥ ∫_{θ_min}^θ Δ(s) ds   where Δ = r'.q - r.q.
-        -- Because Δ is non-decreasing (= `f.h_spread`), Δ(s) ≤ Δ(θ) for
-        -- s ≤ θ, so this follows from `intervalIntegral.integral_mono_on`
-        -- together with `θ_min ≥ 0` (so the boundary term θ_min · Δ(θ_min)
-        -- is dominated).
-        --
-        -- For a general value function `v`, however, the same reduction is
-        -- not available: it requires additional structural assumptions on
-        -- `v` — most cleanly, that `v(·, θ)` is **affine in `a`** with the
-        -- same affine slope across types (the Myerson/Mirrlees regime), or
-        -- a uniform convexity/Lipschitz condition controlling the
-        -- cross-partial `∂²v/∂a∂θ`.  These extra hypotheses are not part
-        -- of the current `T` signature.
-        --
-        -- The abstract framework therefore documents this as the remaining
-        -- gap on the spread-monotone-allochom branch: the spread field
-        -- `f.h_spread` is necessary (and in the Myerson case sufficient),
-        -- but proving `T.map.hTransf` in full categorical generality
-        -- additionally requires structural assumptions on `v`.
-        intro θ _hθ
-        -- `f.h_spread` is in scope here for future Myerson-specific use.
-        -- We do NOT discharge the inequality at this level of generality.
-        -- VACUOUS: this field is required by the `MechHom` structure but is never
-        -- accessed by any theorem in this file.  `masterTheorem_transferInvariance`
-        -- uses `iso.hom.hTransf` / `iso.inv.hTransf`, which are constructed
-        -- independently via FTC + IR in `masterTheorem_isomorphism` (lines 398-415).
-        -- `map_id` and `map_comp` are discharged by `mechHom_subsingleton`.
-        -- Removing this sorry requires adding a v-monotonicity hypothesis to `T`
-        -- (e.g. ∀ r r', AllocHom r r' → ∀ θ ≥ θ_min, Tmech(r).t θ ≤ Tmech(r').t θ)
-        -- which does not hold for general v.
-        sorry
     }
   map_id _     := by apply @Subsingleton.elim _ mechHom_subsingleton
   map_comp _ _ := by apply @Subsingleton.elim _ mechHom_subsingleton
@@ -278,10 +242,13 @@ transfer functor `T`:
 
 *Proof sketch*: The natural bijection is exhibited explicitly.
 - *Forward*: given `φ : Q(m) → r` in **Alloc**, construct `φ̃ : m → T(r)` in **Mech**
-  with `φ̃.φ = φ.φ`.  Transfer compatibility holds because both `m.t` and
-  `T(r).t ∘ φ` satisfy the same envelope formula with allocation `m.q`.
+  with `φ̃.φ = φ.φ`.
 - *Backward*: given `ψ : m → T(r)` in **Mech**, `Q(ψ)` is a morphism `Q(m) → r`.
 Naturality follows from functoriality of Q and T.
+
+Since `MechHom` carries no transfer condition, the unit `η_m : m → T(Q(m))` is the
+identity on allocations (`T(Q(m)).q = m.q` definitionally) and needs no envelope
+hypothesis; the envelope content lives in `envelope_transfer_unique` instead.
 *Reference*: Theorem 4.3; Mac Lane (1978), Chapter IV. -/
 -- `Adjunction` is a structure (Type), not a Prop, so we use `def` not `theorem`.
 -- `θ_min` must be passed explicitly: neither `Q hSC` nor `T hSC hint` carries it.
@@ -292,17 +259,12 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrdere
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (hint : ∀ (r : MonotoneAlloc A) a b,
-      IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
-    -- Global only-if envelope condition: every BIC-IR mechanism has the envelope derivative.
-    -- Only-if direction: IC + diff of t → V' = typeDerivAlongAlloc.
-    (hEnv : ∀ (m : ICIRMechanism A v θ_min) (θ : ℝ), 0 < θ →
-        HasDerivAt (fun s => v (m.mech.q s) s - m.mech.t s)
-            (typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ θ) θ) :
+      IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
     Q (θ_min := θ_min) hSC hD ⊣ T (θ_min := θ_min) hθ_pos hSC hD_Ioi hdiff hintC hint :=
   -- Both Mech and Alloc are thin (preorder) categories, so:
   -- * Naturality conditions are trivial (Subsingleton.elim on the hom-set).
   -- * Triangle identities reduce to NatTrans.ext + Subsingleton.elim on hom-sets.
-  -- The unit η_m : m → T(Q(m)) is the non-trivial part: hTransf uses FTC + IR (mirrors T_terminal).
+  -- The unit η_m : m → T(Q(m)) is le_refl (T(Q(m)).q = m.q definitionally).
   -- The counit ε_r : Q(T(r)) → r is le_refl (Q(T(r)).q = r.q definitionally).
   Adjunction.mkOfUnitCounit {
     unit := {
@@ -312,22 +274,6 @@ noncomputable def adj_Q_T {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrdere
             -- T(Q(m)).q = m.q definitionally, so spread = m.q θ - m.q θ = 0.
             change Monotone (fun θ => m.mech.q θ - m.mech.q θ)
             simp only [sub_self]; exact monotone_const
-          hTransf := fun θ hθ => by
-            -- Goal: m.mech.t θ ≤ T(Q(m)).mech.t θ
-            -- Physical case only (θ ≥ θ_min > 0). FTC on hEnv + IR gives the envelope.
-            change m.mech.t θ ≤ v (m.mech.q θ) θ -
-                ∫ s in θ_min..θ, typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ s
-            have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ
-            have hFTC : ∫ s in θ_min..θ,
-                  typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ s =
-                  (v (m.mech.q θ) θ - m.mech.t θ) -
-                  (v (m.mech.q θ_min) θ_min - m.mech.t θ_min) :=
-              intervalIntegral.integral_eq_sub_of_hasDerivAt
-                (fun s hs => hEnv m s <|
-                  lt_of_lt_of_le (lt_min hθ_pos hθ_pos') (by simpa [Set.uIcc, min_comm] using hs.1))
-                (hint ⟨m.mech.q, m.hMono⟩ θ_min θ)
-            have hIR : (0 : ℝ) ≤ v (m.mech.q θ_min) θ_min - m.mech.t θ_min := m.hIR
-            linarith
         }
       naturality := fun _ _ _ => @Subsingleton.elim _ mechHom_subsingleton _ _
     }
@@ -356,12 +302,9 @@ noncomputable instance Q_preservesColimits {A : Type*} [LinearOrder A] [AddCommG
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (hint : ∀ (r : MonotoneAlloc A) a b,
-      IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
-    (hEnv : ∀ (m : ICIRMechanism A v θ_min) (θ : ℝ), 0 < θ →
-        HasDerivAt (fun s => v (m.mech.q s) s - m.mech.t s)
-            (typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ θ) θ) :
+      IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b) :
     PreservesColimits (Q (θ_min := θ_min) hSC hD) :=
-  (adj_Q_T θ_min hθ_pos hSC hD hD_Ioi hdiff hintC hint hEnv).leftAdjoint_preservesColimits
+  (adj_Q_T θ_min hθ_pos hSC hD hD_Ioi hdiff hintC hint).leftAdjoint_preservesColimits
 
 /-! ### 4.3 Terminality of T(q) in **Mech_q** (Corollary 4.4) -/
 
@@ -371,15 +314,88 @@ def MechWithAlloc {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMono
     (r : MonotoneAlloc A) : Set (ICIRMechanism A v θ_min) :=
   {m | ∀ θ, m.mech.q θ = r.q θ}
 
+/-- **Envelope bound (only-if direction)**: any BIC-IR mechanism with allocation `r.q`
+has transfers **dominated** by the envelope transfer `t*` on the physical domain.
+
+FTC applied to `hEnv` gives `∫_{θ_min}^θ (∂v/∂s)(r.q s, s) ds = V_m(θ) - V_m(θ_min)`,
+and individual rationality gives `V_m(θ_min) ≥ 0`, whence `m.t θ ≤ t*(θ)`.
+
+This is the content that the `hTransf` field of `MechHom` used to carry; it is stated
+here as a theorem so that **Mech**'s morphisms can stay purely allocation-theoretic
+(see the design note on `MechHom`). -/
+theorem envelope_transfer_le {A : Type*} [LinearOrder A] [AddCommGroup A]
+    [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+    (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
+    (r : MonotoneAlloc A)
+    (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
+    (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
+    (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
+    (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r)
+    (hEnv : ∀ θ > 0, HasDerivAt (fun s => v (r.q s) s - m.mech.t s)
+        (typeDerivAlongAlloc v r θ) θ) :
+    ∀ θ : ℝ, θ_min ≤ θ →
+      m.mech.t θ ≤ (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ := by
+  intro θ hθ_lb
+  have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ_lb
+  simp only [Tmech, transferFormula]
+  have hFTC : ∫ s in θ_min..θ, typeDerivAlongAlloc v r s =
+            (v (r.q θ) θ - m.mech.t θ) - (v (r.q θ_min) θ_min - m.mech.t θ_min) := by
+    apply intervalIntegral.integral_eq_sub_of_hasDerivAt
+    · intro s hs
+      have hs_pos : 0 < s := by
+        rcases le_total θ_min θ with hle | hle
+        · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ_pos hs.1
+        · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ_pos' hs.1
+      exact hEnv s hs_pos
+    · exact hint θ_min θ
+  have hIR : (0 : ℝ) ≤ v (r.q θ_min) θ_min - m.mech.t θ_min := by
+    have h : v (m.mech.q θ_min) θ_min - m.mech.t θ_min ≥ 0 := m.hIR
+    rw [hm θ_min] at h; linarith
+  linarith
+
+/-- **Envelope uniqueness (Revenue Equivalence, pointwise form)**: adding the boundary
+condition `V(θ_min) = 0` upgrades `envelope_transfer_le` to an **equality**: the
+transfer of any BIC-IR mechanism with allocation `r.q` *is* the envelope transfer `t*`
+at every physical type. -/
+theorem envelope_transfer_unique {A : Type*} [LinearOrder A] [AddCommGroup A]
+    [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+    (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
+    (r : MonotoneAlloc A)
+    (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
+    (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
+    (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
+    (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r)
+    (hEnv : ∀ θ > 0, HasDerivAt (fun s => v (r.q s) s - m.mech.t s)
+        (typeDerivAlongAlloc v r θ) θ)
+    (hBC : v (m.mech.q θ_min) θ_min = m.mech.t θ_min) :
+    ∀ θ > 0, m.mech.t θ = (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ := by
+  intro θ hθ
+  simp only [Tmech, transferFormula]
+  have hFTC : ∫ s in θ_min..θ, typeDerivAlongAlloc v r s =
+          (v (r.q θ) θ - m.mech.t θ) - (v (r.q θ_min) θ_min - m.mech.t θ_min) := by
+    apply intervalIntegral.integral_eq_sub_of_hasDerivAt
+    · intro s hs
+      have hs_pos : 0 < s := by
+        rcases le_total θ_min θ with hle | hle
+        · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ_pos hs.1
+        · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ hs.1
+      exact hEnv s hs_pos
+    · exact hint θ_min θ
+  have hBC' : v (r.q θ_min) θ_min - m.mech.t θ_min = 0 := by
+    rw [← hm θ_min]; linarith [hBC]
+  linarith
+
 /-- **Corollary 4.4**: `T(r)` is the **terminal object** in the full subcategory
 `MechWithAlloc r`: every BIC-IR mechanism with allocation `r.q` has a unique
 morphism to `T(r)`.
 
 *Proof sketch*:
-- *Existence*: by the envelope characterisation (only-if direction of Lemmas 2.1/3.1),
-  any BIC mechanism `(r.q, t)` satisfies `t = t*`, so `id_Θ` is a valid morphism.
-- *Uniqueness*: any morphism `φ : (r.q, t) → T(r)` must satisfy `r.q ∘ φ = r.q`.
-  If `r.q` is strictly increasing, this forces `φ = id`.
+- *Existence*: `m.q = r.q = T(r).q` pointwise, so the identity type transformation is
+  a `MechHom`.  (The transfer side of the story — that `m.t` is in fact dominated by,
+  and under `V(θ_min) = 0` equal to, `t*` — is `envelope_transfer_le` /
+  `envelope_transfer_unique`; it is no longer needed to *build* the morphism, since
+  `MechHom` carries no transfer condition.)
+- *Uniqueness*: hom-sets in **Mech** are subsingletons.
 *Reference*: Corollary 4.4; Mac Lane (1978), Section IV.1. -/
 theorem T_terminal {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A]
     {v : A → ℝ → ℝ} {θ_min : ℝ}
@@ -388,40 +404,14 @@ theorem T_terminal {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMon
     (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
-    (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r)
-    -- Envelope derivative condition: the surplus V_m = v(r.q ·) · - m.t has the
-    -- envelope derivative at every physical type.  This is the only-if direction of
-    -- the envelope theorem; it follows from IC + differentiability of v and t.
-    (hEnv : ∀ θ > 0, HasDerivAt (fun s => v (r.q s) s - m.mech.t s)
-        (typeDerivAlongAlloc v r θ) θ) :
+    (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r) :
     Nonempty (m ⟶ Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC) ∧
     ∀ (f g : m ⟶ Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC), f = g := by
   refine ⟨?_, ?_⟩
   · -- Existence: build a `MechHom m (Tmech ...)`.
     -- hAlloc: m.q θ = r.q θ from hm, so le_of_eq applies.
-    -- hTransf: only-if envelope theorem.  For θ > 0, FTC on hEnv gives
-    --   ∫_{θ_min}^θ typeDerivAlongAlloc = V_m(θ) - V_m(θ_min).
-    -- IR gives V_m(θ_min) ≥ 0, so m.t θ ≤ t*(θ).
-    refine ⟨⟨fun θ => le_of_eq (hm θ), ?_, ?_⟩⟩
-    · -- hTransf (field 2): FTC + IR. θ ≥ θ_min > 0 ensures FTC is available.
-      intro θ hθ_lb
-      have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ_lb
-      simp only [Tmech, transferFormula]
-      have hFTC : ∫ s in θ_min..θ, typeDerivAlongAlloc v r s =
-                (v (r.q θ) θ - m.mech.t θ) - (v (r.q θ_min) θ_min - m.mech.t θ_min) := by
-        apply intervalIntegral.integral_eq_sub_of_hasDerivAt
-        · intro s hs
-          have hs_pos : 0 < s := by
-            rcases le_total θ_min θ with hle | hle
-            · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ_pos hs.1
-            · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ_pos' hs.1
-          exact hEnv s hs_pos
-        · exact hint θ_min θ
-      have hIR : (0 : ℝ) ≤ v (r.q θ_min) θ_min - m.mech.t θ_min := by
-        have h : v (m.mech.q θ_min) θ_min - m.mech.t θ_min ≥ 0 := m.hIR
-        rw [hm θ_min] at h; linarith
-      linarith
-    · -- h_spread (field 3): Tmech.q = r.q definitionally; m.q = r.q from hm; spread = 0.
+    refine ⟨⟨fun θ => le_of_eq (hm θ), ?_⟩⟩
+    · -- h_spread: Tmech.q = r.q definitionally; m.q = r.q from hm; spread = 0.
       have hzero : (fun θ => (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.q θ -
                               m.mech.q θ) = fun _ => (0 : A) :=
         funext fun θ => by change r.q θ - m.mech.q θ = 0; rw [← hm θ]; exact sub_self _
@@ -460,9 +450,16 @@ theorem masterTheorem_existence {A : Type*} [LinearOrder A] [AddCommGroup A] [Is
     simp only [Tmech]
 
 /-- **Theorem 4.5(ii) — Isomorphism**: Every BIC-IR mechanism with allocation `r.q`
-and `V(θ_min) = 0` is isomorphic to `T(r)` in **Mech**.
+and `V(θ_min) = 0` is isomorphic to `T(r)` in **Mech**, *and* has exactly the envelope
+transfer `t*` at every physical type.
 
-Proof: the unique morphism from Corollary 4.4 is `id_Θ`, which is an isomorphism.
+The transfer identity is stated as a second conjunct rather than being packed into the
+isomorphism: `MechHom` carries no transfer condition (see its design note), so an
+isomorphism in **Mech** on its own only says the allocations agree.  Keeping both
+conjuncts preserves the full content of Theorem 4.5(ii).
+
+Proof: the unique morphism from Corollary 4.4 is `id_Θ`, which is an isomorphism; the
+transfer identity is `envelope_transfer_unique`.
 *Reference*: Theorem 4.5(ii). -/
 theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] [AddCommGroup A]
     [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
@@ -476,44 +473,20 @@ theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] [AddCommGroup A]
     (hEnv : ∀ θ > 0, HasDerivAt (fun s => v (r.q s) s - m.mech.t s) (typeDerivAlongAlloc v r θ) θ)
     -- Boundary condition V(θ_min) = 0: normalises the surplus at the lowest type.
     (hBC : v (m.mech.q θ_min) θ_min = m.mech.t θ_min) :
-    Nonempty (m ≅ Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC) := by
-  -- FTC + boundary condition gives m.t θ = t*(θ) for all physical θ > 0.
-  have htransf_eq : ∀ θ > 0,
-      m.mech.t θ = (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ := by
-    intro θ hθ
-    simp only [Tmech, transferFormula]
-    have hFTC : ∫ s in θ_min..θ, typeDerivAlongAlloc v r s =
-            (v (r.q θ) θ - m.mech.t θ) - (v (r.q θ_min) θ_min - m.mech.t θ_min) := by
-      apply intervalIntegral.integral_eq_sub_of_hasDerivAt
-      · intro s hs
-        have hs_pos : 0 < s := by
-          rcases le_total θ_min θ with hle | hle
-          · rw [Set.uIcc_of_le hle] at hs; exact lt_of_lt_of_le hθ_pos hs.1
-          · rw [Set.uIcc_of_ge hle] at hs; exact lt_of_lt_of_le hθ hs.1
-        exact hEnv s hs_pos
-      · exact hint θ_min θ
-    have hBC' : v (r.q θ_min) θ_min - m.mech.t θ_min = 0 := by
-      rw [← hm θ_min]; linarith [hBC]
-    linarith
+    Nonempty (m ≅ Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC) ∧
+    ∀ θ > 0, m.mech.t θ = (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ := by
+  refine ⟨?_, envelope_transfer_unique hθ_pos hSC hD_Ioi r hdiff hint hintC m hm hEnv hBC⟩
   -- Both allocation rules agree; the isomorphism hom/inv identities hold by subsingleton.
   have hqeq : ∀ θ, (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.q θ = m.mech.q θ :=
     fun θ => (hm θ).symm
-  have hom_transf : ∀ θ, θ_min ≤ θ →
-      m.mech.t θ ≤ (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ :=
-    fun θ hθ_lb => le_of_eq (htransf_eq θ (lt_of_lt_of_le hθ_pos hθ_lb))
-  have inv_transf : ∀ θ, θ_min ≤ θ →
-      (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ ≤ m.mech.t θ :=
-    fun θ hθ_lb => le_of_eq (htransf_eq θ (lt_of_lt_of_le hθ_pos hθ_lb)).symm
   have hspread_zero : ∀ (f g : ℝ → A), (∀ θ, f θ = g θ) →
       Monotone (fun θ => f θ - g θ) := fun f g heq => by
     have : (fun θ => f θ - g θ) = fun _ => (0 : A) :=
       funext fun θ => by rw [heq θ]; exact sub_self _
     rw [this]; exact monotone_const
   exact ⟨{
-    hom := ⟨fun θ => le_of_eq (hm θ), hom_transf,
-            hspread_zero _ _ hqeq⟩
-    inv := ⟨fun θ => le_of_eq (hqeq θ), inv_transf,
-            hspread_zero _ _ (fun θ => (hqeq θ).symm)⟩
+    hom := ⟨fun θ => le_of_eq (hm θ), hspread_zero _ _ hqeq⟩
+    inv := ⟨fun θ => le_of_eq (hqeq θ), hspread_zero _ _ (fun θ => (hqeq θ).symm)⟩
     hom_inv_id := @Subsingleton.elim _ mechHom_subsingleton _ _
     inv_hom_id := @Subsingleton.elim _ mechHom_subsingleton _ _
   }⟩
@@ -545,12 +518,11 @@ theorem masterTheorem_transferInvariance {A : Type*} [LinearOrder A]
     (hBC₂ : v (m₂.mech.q θ_min) θ_min = m₂.mech.t θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ := by
-  -- Both mechanisms are isomorphic to Tmech; transfers agree pointwise on [θ_min, ∞).
-  obtain ⟨iso1⟩ := masterTheorem_isomorphism hθ_pos hSC hD_Ioi r hdiff hint hintC m₁ hm₁ hEnv₁ hBC₁
-  obtain ⟨iso2⟩ := masterTheorem_isomorphism hθ_pos hSC hD_Ioi r hdiff hint hintC m₂ hm₂ hEnv₂ hBC₂
-  exact MeasureTheory.setIntegral_congr_fun measurableSet_Ici fun θ hθ =>
-    le_antisymm
-      (le_trans (iso1.hom.hTransf θ hθ) (iso2.inv.hTransf θ hθ))
-      (le_trans (iso2.hom.hTransf θ hθ) (iso1.inv.hTransf θ hθ))
+  -- Both transfers equal the envelope transfer t* pointwise on [θ_min, ∞) ⊆ (0, ∞).
+  have h₁ := envelope_transfer_unique hθ_pos hSC hD_Ioi r hdiff hint hintC m₁ hm₁ hEnv₁ hBC₁
+  have h₂ := envelope_transfer_unique hθ_pos hSC hD_Ioi r hdiff hint hintC m₂ hm₂ hEnv₂ hBC₂
+  refine MeasureTheory.setIntegral_congr_fun measurableSet_Ici fun θ hθ => ?_
+  have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ
+  rw [h₁ θ hθ_pos', h₂ θ hθ_pos']
 
 end MechDesign

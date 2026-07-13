@@ -79,23 +79,33 @@ Objects: BIC-IR mechanisms.
 Morphisms: order-preserving type-space transformations that are simultaneously
 compatible with the allocation and transfer rules. -/
 
-/-- A morphism `f : m → m'` in **Mech** is given by pointwise inequalities
-`m.mech.q θ ≤ m'.mech.q θ` and `m.mech.t θ ≤ m'.mech.t θ`, together with
-**spread monotonicity** on the allocation gap — matching the `AllocHom` condition
-so that `Q` can map `MechHom` to `AllocHom` without a sorry. -/
+/-- A morphism `f : m → m'` in **Mech** is given by the pointwise allocation
+inequality `m.mech.q θ ≤ m'.mech.q θ`, together with **spread monotonicity** on the
+allocation gap — matching the `AllocHom` condition so that `Q` can map `MechHom` to
+`AllocHom` without a sorry.
+
+**Design note (transfer condition deliberately omitted).**  An earlier version also
+carried a transfer field `hTransf : ∀ θ ≥ θ_min, m.mech.t θ ≤ m'.mech.t θ`.  That field
+makes `T : Alloc → Mech` *not a functor*: given an `AllocHom r ⟶ r'`, the envelope
+transfers satisfy no order relation in general — `t*(r) ≤ t*(r')` requires structural
+assumptions on `v` (affinity in the allocation, as in the Myerson/Mirrlees regime)
+that are not part of the abstract framework.  Since `T` is the right adjoint the whole
+Master Theorem rests on, the coherent resolution is to let **Mech**'s morphisms be
+exactly the allocation-order morphisms, and to state the transfer content as explicit
+theorems instead: `envelope_transfer_unique` (transfers of any two BIC-IR mechanisms
+with the same allocation coincide) and `masterTheorem_transferInvariance`. -/
 @[ext]
 structure MechHom {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
     {v : A → ℝ → ℝ} {θ_min : ℝ}
     (m m' : ICIRMechanism A v θ_min) : Type where
   hAlloc   : ∀ θ, m.mech.q θ ≤ m'.mech.q θ
-  hTransf  : ∀ θ : ℝ, θ_min ≤ θ → m.mech.t θ ≤ m'.mech.t θ
   h_spread : Monotone (fun θ => m'.mech.q θ - m.mech.q θ)
 
 instance mechHom_subsingleton {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
     {v : A → ℝ → ℝ} {θ_min : ℝ}
     {m m' : ICIRMechanism A v θ_min} : Subsingleton (MechHom m m') := by
   constructor; intro f g
-  obtain ⟨fa, ft, fs⟩ := f; obtain ⟨ga, gt, gs⟩ := g
+  obtain ⟨fa, fs⟩ := f; obtain ⟨ga, gs⟩ := g
   congr 1
 
 instance mechCategory {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
@@ -104,14 +114,12 @@ instance mechCategory {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMon
   Hom m m'  := MechHom m m'
   id m      :=
     { hAlloc   := fun _ => le_rfl
-      hTransf  := fun _ _ => le_rfl
       h_spread := by
         have : (fun θ => m.mech.q θ - m.mech.q θ) = fun _ => (0 : A) :=
           funext fun θ => sub_self _
         rw [this]; exact monotone_const }
   comp {m m' m''} f g  :=
     { hAlloc   := fun θ => le_trans (f.hAlloc θ) (g.hAlloc θ)
-      hTransf  := fun θ hθ => le_trans (f.hTransf θ hθ) (g.hTransf θ hθ)
       h_spread := by
         have hsum : (fun θ => m''.mech.q θ - m.mech.q θ) =
             fun θ => (m''.mech.q θ - m'.mech.q θ) + (m'.mech.q θ - m.mech.q θ) :=

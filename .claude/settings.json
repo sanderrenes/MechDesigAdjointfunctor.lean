@@ -12,7 +12,12 @@
       "Skill(lean4:prove:*)",
       "Bash(grep -r \"set_integral_congr\\\\|setIntegral_congr\" ~/.elan/toolchains/leanprover-lean4-v4.14.0/lib/lean4/library/ 2>/dev/null | head -5; grep -r \"setIntegral_congr\" .lake/packages/mathlib/Mathlib/MeasureTheory/ 2>/dev/null | grep \"^.*:theorem\\\\|^.*:lemma\" | head -10)",
       "Read(//home/sander/.elan/toolchains/leanprover-lean4-v4.14.0/lib/lean4/**)",
-      "Bash(cat > *)"
+      "Bash(cat > *)",
+      "PowerShell(lake build 2>&1)",
+      "PowerShell(git checkout -- MechDesigAdjointfunctor/Lean/MasterTheorem.lean)",
+      "PowerShell(git checkout -b weaken-mechhom 2>&1)",
+      "PowerShell($p='MechDesigAdjointfunctor/Lean/MasterTheorem.lean'; $l=Get-Content $p; $new = $l[0..228] + $l[275..\\($l.Count-1\\)]; Set-Content $p $new; $l[229]; '---'; \\(Get-Content $p\\)[226..232])",
+      "mcp__lean-lsp__lean_verify"
     ],
     "additionalDirectories": [
       "/tmp"
