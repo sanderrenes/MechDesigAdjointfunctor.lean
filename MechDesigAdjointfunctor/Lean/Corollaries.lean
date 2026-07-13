@@ -81,19 +81,16 @@ theorem revenueEquivalence
     (hEnv₁ : ∀ θ > 0, HasDerivAt
       (fun s => Myerson.myersonValue (q₀.q s) s - m₁.mech.t s)
       (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) θ)
-    (hBC₁ : Myerson.myersonValue (m₁.mech.q θ_min) θ_min = m₁.mech.t θ_min)
     (hEnv₂ : ∀ θ > 0, HasDerivAt
       (fun s => Myerson.myersonValue (q₀.q s) s - m₂.mech.t s)
       (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) θ)
-    (hBC₂ : Myerson.myersonValue (m₂.mech.q θ_min) θ_min = m₂.mech.t θ_min)
+    -- RELAXED boundary condition: the two mechanisms leave the lowest type the SAME rent.
+    -- (Revenue equivalence needs equal rent, not zero rent.)
+    (hV₀ : surplus m₁ θ_min = surplus m₂ θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ :=
-  masterTheorem_transferInvariance
-    hθ_pos
-    Myerson.myerson_singleCrossing
-    (Set.subset_univ _)
-    q₀ Myerson.myerson_vDiff
-    hint hintC m₁ m₂ hm₁_alloc hm₂_alloc hEnv₁ hBC₁ hEnv₂ hBC₂ μ
+  masterTheorem_transferInvariance hθ_pos q₀ hint m₁ m₂ hm₁_alloc hm₂_alloc
+    hEnv₁ hEnv₂ hV₀ μ
 
 /-- **Myerson expected revenue formula**: for any BIC-IR mechanism with allocation `q`
 and `V(0) = 0`, expected revenue equals expected virtual surplus.
@@ -148,19 +145,16 @@ theorem taxationPrinciple
     (hEnv₁ : ∀ θ > 0, HasDerivAt
       (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₁.mech.t s)
       (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) θ)
-    (hBC₁ : Mirrlees.mirrleesValue h g (m₁.mech.q θ_min) θ_min = m₁.mech.t θ_min)
     (hEnv₂ : ∀ θ > 0, HasDerivAt
       (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₂.mech.t s)
       (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) θ)
-    (hBC₂ : Mirrlees.mirrleesValue h g (m₂.mech.q θ_min) θ_min = m₂.mech.t θ_min)
+    -- RELAXED boundary condition: identical rent at the lowest type (a common `V₀`),
+    -- matching what `mirrlees_unique_from_IC` already assumed.
+    (hV₀ : surplus m₁ θ_min = surplus m₂ θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ :=
-  masterTheorem_transferInvariance
-    hθ_pos
-    (Mirrlees.mirrlees_singleCrossing h g hh hg hg_pos hh_mono hSM)
-    (le_refl (Set.Ioi 0))
-    q₀ (Mirrlees.mirrlees_vDiff h g hh hg)
-    hint hintC m₁ m₂ hm₁_alloc hm₂_alloc hEnv₁ hBC₁ hEnv₂ hBC₂ μ
+  masterTheorem_transferInvariance hθ_pos q₀ hint m₁ m₂ hm₁_alloc hm₂_alloc
+    hEnv₁ hEnv₂ hV₀ μ
 
 /-! ### 5.3 Conditions for Failure (Stage 6 placeholders)
 

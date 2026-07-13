@@ -77,54 +77,57 @@ structure ICIRMechanism (A : Type*) [Preorder A] (v : A → ℝ → ℝ) (θ_min
 
 Objects: BIC-IR mechanisms.
 Morphisms: order-preserving type-space transformations that are simultaneously
-compatible with the allocation and transfer rules. -/
+compatible with the allocation rule and with the agent's **surplus**. -/
 
-/-- A morphism `f : m → m'` in **Mech** is given by the pointwise allocation
-inequality `m.mech.q θ ≤ m'.mech.q θ`, together with **spread monotonicity** on the
-allocation gap — matching the `AllocHom` condition so that `Q` can map `MechHom` to
-`AllocHom` without a sorry.
+/-- The **surplus** (indirect utility) of a mechanism: `V(θ) = v(q θ, θ) - t θ`.
 
-**Design note (transfer condition deliberately omitted).**  An earlier version also
-carried a transfer field `hTransf : ∀ θ ≥ θ_min, m.mech.t θ ≤ m'.mech.t θ`.  That field
-makes `T : Alloc → Mech` *not a functor*: given an `AllocHom r ⟶ r'`, the envelope
-transfers satisfy no order relation in general — `t*(r) ≤ t*(r')` requires structural
-assumptions on `v` (affinity in the allocation, as in the Myerson/Mirrlees regime)
-that are not part of the abstract framework.  Since `T` is the right adjoint the whole
-Master Theorem rests on, the coherent resolution is to let **Mech**'s morphisms be
-exactly the allocation-order morphisms, and to state the transfer content as explicit
-theorems instead: `envelope_transfer_unique` (transfers of any two BIC-IR mechanisms
-with the same allocation coincide) and `masterTheorem_transferInvariance`. -/
+This is the canonical coordinate for a quasilinear model.  Condition QI says the
+numeraire enters utility linearly with coefficient `-1`, which is exactly what makes
+`V` well defined and makes the transfer *recoverable* from the pair `(q, V)` via
+`t θ = v (q θ) θ - V θ`.  Ordering morphisms by `V` therefore loses no information
+about transfers; it merely states the transfer condition in the coordinate the
+envelope theorem lives in. -/
+def surplus {A : Type*} [Preorder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+    (m : ICIRMechanism A v θ_min) (θ : ℝ) : ℝ :=
+  v (m.mech.q θ) θ - m.mech.t θ
+
+/-- A morphism `f : m → m'` in **Mech**: the pointwise allocation inequality
+`m.q θ ≤ m'.q θ`, together with the **surplus inequality** `V_m θ ≤ V_m' θ` on the
+physical domain `[θ_min, ∞)`.
+
+**Design note (why surplus, not transfer).**  Earlier versions ordered morphisms by the
+transfer, `hTransf : ∀ θ ≥ θ_min, m.t θ ≤ m'.t θ`.  That field makes `T : Alloc → Mech`
+*not a functor*: `t*(r) ≤ t*(r')` does not follow from `r.q ≤ r'.q` for a general `v`
+(it needs convexity of `v` in the allocation, which the Mirrlees value function fails).
+The transfer mixes the allocation into the comparison.  The surplus does not: by the
+envelope formula `V_{T(r)}(θ) = ∫_{θ_min}^θ (∂v/∂s)(r.q s, s) ds`, so
+`V_{T(r)} ≤ V_{T(r')}` reduces to a pointwise inequality between the integrands, which
+is exactly **single crossing** — an assumption the framework already makes, and one that
+holds in both the Myerson and the Mirrlees setting.  See `Tmech_surplus_mono`. -/
 @[ext]
 structure MechHom {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
     {v : A → ℝ → ℝ} {θ_min : ℝ}
     (m m' : ICIRMechanism A v θ_min) : Type where
-  hAlloc   : ∀ θ, m.mech.q θ ≤ m'.mech.q θ
-  h_spread : Monotone (fun θ => m'.mech.q θ - m.mech.q θ)
+  hAlloc : ∀ θ, m.mech.q θ ≤ m'.mech.q θ
+  hSurp  : ∀ θ : ℝ, θ_min ≤ θ → surplus m θ ≤ surplus m' θ
 
 instance mechHom_subsingleton {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
     {v : A → ℝ → ℝ} {θ_min : ℝ}
     {m m' : ICIRMechanism A v θ_min} : Subsingleton (MechHom m m') := by
   constructor; intro f g
-  obtain ⟨fa, fs⟩ := f; obtain ⟨ga, gs⟩ := g
+  obtain ⟨fa, fv⟩ := f; obtain ⟨ga, gv⟩ := g
   congr 1
 
 instance mechCategory {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
     {v : A → ℝ → ℝ} {θ_min : ℝ} :
     Category (ICIRMechanism A v θ_min) where
   Hom m m'  := MechHom m m'
-  id m      :=
-    { hAlloc   := fun _ => le_rfl
-      h_spread := by
-        have : (fun θ => m.mech.q θ - m.mech.q θ) = fun _ => (0 : A) :=
-          funext fun θ => sub_self _
-        rw [this]; exact monotone_const }
-  comp {m m' m''} f g  :=
-    { hAlloc   := fun θ => le_trans (f.hAlloc θ) (g.hAlloc θ)
-      h_spread := by
-        have hsum : (fun θ => m''.mech.q θ - m.mech.q θ) =
-            fun θ => (m''.mech.q θ - m'.mech.q θ) + (m'.mech.q θ - m.mech.q θ) :=
-          funext fun θ => by abel
-        rw [hsum]; exact Monotone.add g.h_spread f.h_spread }
+  id _      :=
+    { hAlloc := fun _ => le_rfl
+      hSurp  := fun _ _ => le_rfl }
+  comp f g  :=
+    { hAlloc := fun θ => le_trans (f.hAlloc θ) (g.hAlloc θ)
+      hSurp  := fun θ hθ => le_trans (f.hSurp θ hθ) (g.hSurp θ hθ) }
   id_comp _ := Subsingleton.elim _ _
   comp_id _ := Subsingleton.elim _ _
   assoc _ _ _ := Subsingleton.elim _ _
@@ -141,45 +144,30 @@ structure MonotoneAlloc (A : Type*) [Preorder A] where
   q : ℝ → A
   hMono : Monotone q
 
-/-- A morphism `h : r → r'` in **Alloc**: a pointwise inequality `r.q θ ≤ r'.q θ`
-together with **spread monotonicity** — the difference `r'.q - r.q` is monotone in `θ`.
-The spread condition is needed to make the functor `T : Alloc → Mech` well-defined on
-morphisms: it is exactly the inequality required to prove `T(r).t ≤ T(r').t`.
+/-- A morphism `h : r → r'` in **Alloc**: the pointwise inequality `r.q θ ≤ r'.q θ`.
+This makes `MonotoneAlloc A` a thin (preorder) category.
 
-This makes `MonotoneAlloc A` a thin (preorder-flavoured) category, but the spread
-condition is an extra refinement beyond pure pointwise-≤. -/
+**Design note.**  Earlier versions carried an additional *spread monotonicity* field,
+`Monotone (fun θ => r'.q θ - r.q θ)`.  It existed solely to prove the transfer-ordered
+`T.map`, and it is not needed once **Mech** is ordered by surplus: `T.map` then follows
+from single crossing alone (`Tmech_surplus_mono`).  Dropping it makes **Alloc** the
+plain pointwise order on monotone allocation rules, as Definition 1.5 intends. -/
 @[ext]
 structure AllocHom {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
     (r r' : MonotoneAlloc A) : Type where
-  h        : ∀ θ, r.q θ ≤ r'.q θ
-  h_spread : Monotone (fun θ => r'.q θ - r.q θ)
+  h : ∀ θ, r.q θ ≤ r'.q θ
 
 instance allocHom_subsingleton {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
     {r r' : MonotoneAlloc A} : Subsingleton (AllocHom r r') := by
   constructor; intro f g
-  obtain ⟨ha, hs⟩ := f; obtain ⟨ga, gs⟩ := g
+  obtain ⟨ha⟩ := f; obtain ⟨ga⟩ := g
   congr 1
 
 instance allocCategory {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A] :
     Category (MonotoneAlloc A) where
   Hom r r'  := AllocHom r r'
-  id r      :=
-    { h := fun _ => le_rfl
-      h_spread := by
-        -- spread = fun θ => r.q θ - r.q θ = 0, which is constant hence monotone.
-        have hzero : (fun θ => r.q θ - r.q θ) = fun _ => (0 : A) := by
-          funext θ; exact sub_self _
-        rw [hzero]; exact monotone_const }
-  comp {r r' r''} f g  :=
-    { h := fun θ => le_trans (f.h θ) (g.h θ)
-      h_spread := by
-        -- spread of (f then g) = spread(g) + spread(f) since
-        -- (r''.q θ - r.q θ) = (r''.q θ - r'.q θ) + (r'.q θ - r.q θ).
-        have hsum : (fun θ => r''.q θ - r.q θ) =
-            (fun θ => (r''.q θ - r'.q θ) + (r'.q θ - r.q θ)) := by
-          funext θ; abel
-        rw [hsum]
-        exact Monotone.add g.h_spread f.h_spread }
+  id _      := { h := fun _ => le_rfl }
+  comp f g  := { h := fun θ => le_trans (f.h θ) (g.h θ) }
   id_comp _ := Subsingleton.elim _ _
   comp_id _ := Subsingleton.elim _ _
   assoc _ _ _ := Subsingleton.elim _ _
@@ -213,9 +201,7 @@ noncomputable def Q {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMo
     {θ_min : ℝ} {D : Set ℝ} (_hSC : SingleCrossing v D) (_hD : ∀ θ, θ ∈ D) :
     ICIRMechanism A v θ_min ⥤ MonotoneAlloc A where
   obj m       := ⟨m.mech.q, m.hMono⟩
-  map f       :=
-    { h        := f.hAlloc
-      h_spread := f.h_spread }
+  map f       := { h := f.hAlloc }
   map_id _     := by apply @Subsingleton.elim _ allocHom_subsingleton
   map_comp _ _ := by apply @Subsingleton.elim _ allocHom_subsingleton
 
