@@ -62,7 +62,20 @@ def IsIC {A : Type*} (v : A → ℝ → ℝ) (θ_min : ℝ) (m : Mechanism A) : 
     v (m.q θ) θ - m.t θ ≥ v (m.q θ') θ - m.t θ'
 
 /-- **Individual Rationality (IR)**: the lowest type `θ_min` receives non-negative
-surplus.  Normalised to zero: `V(θ_min) = 0`. -/
+surplus, `V(θ_min) ≥ 0`.
+
+**This is the inequality, not the normalisation `V(θ_min) = 0`.**  The distinction is
+structural, not cosmetic:
+
+* With the inequality, the fiber of `Q` over an allocation `r` is a genuine one-parameter
+  family, indexed by the boundary rent `V(θ_min) ≥ 0` (see `surplus_split`).  `T(r)` is
+  the zero-rent member, hence *initial* in its fiber, and the adjunction runs `T ⊣ Q`
+  (`adj_T_Q`).  IR is what orients it — it is used essentially in the counit.
+* The normalisation `V(θ_min) = 0` cuts out the full subcategory `Mech₀` (`ZeroRent`),
+  on which the counit becomes invertible and `T ⊣ Q` upgrades to an adjoint equivalence
+  `Alloc ≌ Mech₀` (`equivAllocMech₀`) — the Taxation Principle.
+
+So `Mech` is *not* the category of normalised mechanisms; `Mech₀` is. -/
 def IsIR {A : Type*} (v : A → ℝ → ℝ) (θ_min : ℝ) (m : Mechanism A) : Prop :=
   v (m.q θ_min) θ_min - m.t θ_min ≥ 0
 
