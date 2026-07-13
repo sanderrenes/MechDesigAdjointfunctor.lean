@@ -310,6 +310,61 @@ def MechWithAlloc {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMono
     (r : MonotoneAlloc A) : Set (ICIRMechanism A v θ_min) :=
   {m | ∀ θ, m.mech.q θ = r.q θ}
 
+/-! #### The IC sandwich, and continuity of the surplus
+
+The first place incentive compatibility does any work.  `hIC` alone — no analysis — bounds
+the change in surplus between two types, on both sides, by the change in value along a
+*fixed* allocation. -/
+
+/-- **The IC sandwich.**  For any two physical types, using each one's report as the other's
+deviation:
+
+  `v(q θ₁, θ₂) − v(q θ₁, θ₁)  ≤  V(θ₂) − V(θ₁)  ≤  v(q θ₂, θ₂) − v(q θ₂, θ₁)`
+
+Both bounds move the *type* while holding the *allocation* fixed, which is what makes them
+usable: they are increments of `v(a, ·)` for a single `a`.  Pure `hIC`; no differentiability,
+no single crossing, no IR.  The order of `θ₁` and `θ₂` is irrelevant. -/
+theorem surplus_ic_sandwich {A : Type*} [Preorder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+    (m : ICIRMechanism A v θ_min) {θ₁ θ₂ : ℝ} (h₁ : θ_min ≤ θ₁) (h₂ : θ_min ≤ θ₂) :
+    v (m.mech.q θ₁) θ₂ - v (m.mech.q θ₁) θ₁ ≤ surplus m θ₂ - surplus m θ₁ ∧
+    surplus m θ₂ - surplus m θ₁ ≤ v (m.mech.q θ₂) θ₂ - v (m.mech.q θ₂) θ₁ := by
+  -- type θ₂ does not want to report θ₁, and type θ₁ does not want to report θ₂
+  have hA := m.hIC θ₂ θ₁ h₂ h₁
+  have hB := m.hIC θ₁ θ₂ h₁ h₂
+  simp only [surplus]
+  constructor <;> linarith
+
+/-- **The surplus is Lipschitz — derived from IC.**
+
+If the value function is `L`-Lipschitz in the *type* along every allocation the mechanism
+actually uses, then the surplus is `L`-Lipschitz on the physical domain.  Immediate from
+`surplus_ic_sandwich`: both sides of the sandwich are increments of some `v(a, ·)`, and each
+is bounded by `L·|Δθ|`.
+
+The hypothesis quantifies over the allocations `m` uses (`v (m.mech.q θ')`), not over all of
+`A` — a uniform bound over *all* allocations would be false for `MyersonAlloc = ℝ`. -/
+theorem surplus_lipschitzOn {A : Type*} [Preorder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+    (m : ICIRMechanism A v θ_min) (L : NNReal)
+    (hvLip : ∀ θ' : ℝ, LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min)) :
+    LipschitzOnWith L (surplus m) (Set.Ici θ_min) := by
+  refine LipschitzOnWith.of_dist_le_mul fun x hx y hy => ?_
+  obtain ⟨hlow, hhigh⟩ := surplus_ic_sandwich m (Set.mem_Ici.mp hy) (Set.mem_Ici.mp hx)
+  -- the two sandwich bounds are increments of `v (q y, ·)` and `v (q x, ·)` respectively
+  have hy' := (hvLip y).dist_le_mul x hx y hy
+  have hx' := (hvLip x).dist_le_mul x hx y hy
+  rw [Real.dist_eq, Real.dist_eq] at hy' hx' ⊢
+  obtain ⟨hy1, hy2⟩ := abs_le.mp hy'
+  obtain ⟨hx1, hx2⟩ := abs_le.mp hx'
+  exact abs_le.mpr ⟨by linarith, by linarith⟩
+
+/-- The surplus is continuous on the physical domain — **a consequence of IC**, not an
+assumption.  This is what `surplus_split` needs, and it is why `hIC` is load-bearing. -/
+theorem surplus_continuousOn {A : Type*} [Preorder A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+    (m : ICIRMechanism A v θ_min) (L : NNReal)
+    (hvLip : ∀ θ' : ℝ, LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min)) :
+    ContinuousOn (surplus m) (Set.Ici θ_min) :=
+  (surplus_lipschitzOn m L hvLip).continuousOn
+
 /-- **The envelope theorem, in surplus form.**  For any BIC-IR mechanism with allocation
 `r.q`, the surplus at a physical type is its boundary rent plus the envelope integral:
 
@@ -336,19 +391,28 @@ theorem surplus_split {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAdd
     (r : MonotoneAlloc A)
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r)
-    (hVcont : ContinuousOn (fun s => v (r.q s) s - m.mech.t s) (Set.Ioi 0))
+    (L : NNReal)
+    (hvLip : ∀ θ' : ℝ, LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min))
     (hEnv : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ) :
-    ∀ θ > 0, surplus m θ = surplus m θ_min + ∫ s in θ_min..θ, typeDerivAlongAlloc v r s := by
+    ∀ θ, θ_min ≤ θ →
+      surplus m θ = surplus m θ_min + ∫ s in θ_min..θ, typeDerivAlongAlloc v r s := by
   intro θ hθ
-  -- The whole integration range sits in the physical domain `(0, ∞)`.
-  have hsub : Set.uIcc θ_min θ ⊆ Set.Ioi 0 := fun x hx =>
-    lt_of_lt_of_le (lt_min hθ_pos hθ) hx.1
+  -- Continuity of the surplus is NOT assumed: it comes from IC via the sandwich.
+  have hVcont : ContinuousOn (fun s => v (r.q s) s - m.mech.t s) (Set.Ici θ_min) := by
+    have heq : (fun s => v (r.q s) s - m.mech.t s) = surplus m := by
+      funext s; simp only [surplus]; rw [hm s]
+    rw [heq]
+    exact surplus_continuousOn m L hvLip
+  -- The integration range sits in the physical domain `[θ_min, ∞)`.
+  have hsub : Set.uIcc θ_min θ ⊆ Set.Ici θ_min := by
+    rw [Set.uIcc_of_le hθ]; exact Set.Icc_subset_Ici_self
   have hFTC : ∫ s in θ_min..θ, typeDerivAlongAlloc v r s =
           (v (r.q θ) θ - m.mech.t θ) - (v (r.q θ_min) θ_min - m.mech.t θ_min) := by
     apply intervalIntegral.integral_eq_sub_of_hasDeriv_right (hVcont.mono hsub)
     · intro s hs
-      exact hEnv s (lt_of_lt_of_le (lt_min hθ_pos hθ) (le_of_lt hs.1))
+      have hs1 : θ_min < s := lt_of_le_of_lt (le_min (le_refl θ_min) hθ) hs.1
+      exact hEnv s (lt_trans hθ_pos hs1)
     · exact hint θ_min θ
   simp only [surplus]
   rw [hm θ, hm θ_min]
@@ -415,8 +479,9 @@ noncomputable def adj_T_Q {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrdere
     (hint : ∀ (r : MonotoneAlloc A) a b,
       IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     -- Only-if envelope condition: every BIC-IR mechanism has the envelope derivative.
-    (hVcont : ∀ m : ICIRMechanism A v θ_min,
-        ContinuousOn (fun s => v (m.mech.q s) s - m.mech.t s) (Set.Ioi 0))
+    (L : NNReal)
+    (hvLip : ∀ (m : ICIRMechanism A v θ_min) (θ' : ℝ),
+        LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min))
     (hEnv : ∀ (m : ICIRMechanism A v θ_min) (θ : ℝ), 0 < θ →
         HasDerivWithinAt (fun s => v (m.mech.q s) s - m.mech.t s)
             (typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ θ) (Set.Ioi θ) θ) :
@@ -441,7 +506,7 @@ noncomputable def adj_T_Q {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrdere
             rw [surplus_Tmech]
             -- V_m(θ) = V_m(θ_min) + ∫ D, by the envelope theorem.
             have hsplit := surplus_split hθ_pos ⟨m.mech.q, m.hMono⟩ (hint _) m
-              (fun _ => rfl) (hVcont m) (fun θ' hθ' => hEnv m θ' hθ') θ hθ_pos'
+              (fun _ => rfl) L (hvLip m) (fun θ' hθ' => hEnv m θ' hθ') θ hθ
             -- IR: the boundary rent is non-negative.
             have hIR : (0 : ℝ) ≤ surplus m θ_min := m.hIR
             rw [hsplit]
@@ -464,13 +529,14 @@ noncomputable instance T_preservesColimits {A : Type*} [LinearOrder A] [AddCommG
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (hint : ∀ (r : MonotoneAlloc A) a b,
       IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
-    (hVcont : ∀ m : ICIRMechanism A v θ_min,
-        ContinuousOn (fun s => v (m.mech.q s) s - m.mech.t s) (Set.Ioi 0))
+    (L : NNReal)
+    (hvLip : ∀ (m : ICIRMechanism A v θ_min) (θ' : ℝ),
+        LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min))
     (hEnv : ∀ (m : ICIRMechanism A v θ_min) (θ : ℝ), 0 < θ →
         HasDerivWithinAt (fun s => v (m.mech.q s) s - m.mech.t s)
             (typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ θ) (Set.Ioi θ) θ) :
     PreservesColimits (T (θ_min := θ_min) hθ_pos hSC hD_Ioi hdiff hintC hint) :=
-  (adj_T_Q θ_min hθ_pos hSC hD hD_Ioi hdiff hintC hint hVcont hEnv).leftAdjoint_preservesColimits
+  (adj_T_Q θ_min hθ_pos hSC hD hD_Ioi hdiff hintC hint L hvLip hEnv).leftAdjoint_preservesColimits
 
 /-- `Q`, as the **right** adjoint, preserves all small limits. -/
 noncomputable instance Q_preservesLimits {A : Type*} [LinearOrder A] [AddCommGroup A]
@@ -481,13 +547,14 @@ noncomputable instance Q_preservesLimits {A : Type*} [LinearOrder A] [AddCommGro
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (hint : ∀ (r : MonotoneAlloc A) a b,
       IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
-    (hVcont : ∀ m : ICIRMechanism A v θ_min,
-        ContinuousOn (fun s => v (m.mech.q s) s - m.mech.t s) (Set.Ioi 0))
+    (L : NNReal)
+    (hvLip : ∀ (m : ICIRMechanism A v θ_min) (θ' : ℝ),
+        LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min))
     (hEnv : ∀ (m : ICIRMechanism A v θ_min) (θ : ℝ), 0 < θ →
         HasDerivWithinAt (fun s => v (m.mech.q s) s - m.mech.t s)
             (typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ θ) (Set.Ioi θ) θ) :
     PreservesLimits (Q (θ_min := θ_min) hSC hD) :=
-  (adj_T_Q θ_min hθ_pos hSC hD hD_Ioi hdiff hintC hint hVcont hEnv).rightAdjoint_preservesLimits
+  (adj_T_Q θ_min hθ_pos hSC hD hD_Ioi hdiff hintC hint L hvLip hEnv).rightAdjoint_preservesLimits
 
 /-! ### 4.3 Initiality of T(q) in **Mech_q** (Corollary 4.4) -/
 
@@ -505,14 +572,15 @@ theorem Tmech_surplus_le {A : Type*} [LinearOrder A] [AddCommGroup A]
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r)
-    (hVcont : ContinuousOn (fun s => v (r.q s) s - m.mech.t s) (Set.Ioi 0))
+    (L : NNReal)
+    (hvLip : ∀ θ' : ℝ, LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min))
     (hEnv : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ) :
     ∀ θ : ℝ, θ_min ≤ θ →
       surplus (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC) θ ≤ surplus m θ := by
   intro θ hθ
   have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ
-  rw [surplus_Tmech, surplus_split hθ_pos r hint m hm hVcont hEnv θ hθ_pos']
+  rw [surplus_Tmech, surplus_split hθ_pos r hint m hm L hvLip hEnv θ hθ]
   have hIR : (0 : ℝ) ≤ surplus m θ_min := m.hIR
   linarith
 
@@ -528,13 +596,14 @@ theorem envelope_transfer_le {A : Type*} [LinearOrder A] [AddCommGroup A]
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r)
-    (hVcont : ContinuousOn (fun s => v (r.q s) s - m.mech.t s) (Set.Ioi 0))
+    (L : NNReal)
+    (hvLip : ∀ θ' : ℝ, LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min))
     (hEnv : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ) :
     ∀ θ : ℝ, θ_min ≤ θ →
       m.mech.t θ ≤ (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ := by
   intro θ hθ
-  have h := Tmech_surplus_le hθ_pos hSC hD_Ioi r hdiff hint hintC m hm hVcont hEnv θ hθ
+  have h := Tmech_surplus_le hθ_pos hSC hD_Ioi r hdiff hint hintC m hm L hvLip hEnv θ hθ
   simp only [surplus] at h
   have hq : v (m.mech.q θ) θ = v (r.q θ) θ := by rw [hm θ]
   have hTq : (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.q θ = r.q θ := rfl
@@ -558,13 +627,14 @@ theorem envelope_transfer_shift {A : Type*} [LinearOrder A] [AddCommGroup A]
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r)
-    (hVcont : ContinuousOn (fun s => v (r.q s) s - m.mech.t s) (Set.Ioi 0))
+    (L : NNReal)
+    (hvLip : ∀ θ' : ℝ, LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min))
     (hEnv : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ) :
-    ∀ θ > 0, m.mech.t θ =
+    ∀ θ, θ_min ≤ θ → m.mech.t θ =
       (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ - surplus m θ_min := by
   intro θ hθ
-  have h := surplus_split hθ_pos r hint m hm hVcont hEnv θ hθ
+  have h := surplus_split hθ_pos r hint m hm L hvLip hEnv θ hθ
   have hT := surplus_Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC θ
   have hTq : (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.q θ = r.q θ := rfl
   simp only [surplus] at h hT ⊢
@@ -582,13 +652,14 @@ theorem envelope_transfer_unique {A : Type*} [LinearOrder A] [AddCommGroup A]
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r)
-    (hVcont : ContinuousOn (fun s => v (r.q s) s - m.mech.t s) (Set.Ioi 0))
+    (L : NNReal)
+    (hvLip : ∀ θ' : ℝ, LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min))
     (hEnv : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ)
     (hBC : v (m.mech.q θ_min) θ_min = m.mech.t θ_min) :
-    ∀ θ > 0, m.mech.t θ = (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ := by
+    ∀ θ, θ_min ≤ θ → m.mech.t θ = (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.t θ := by
   intro θ hθ
-  have h := envelope_transfer_shift hθ_pos hSC hD_Ioi r hdiff hint hintC m hm hVcont hEnv θ hθ
+  have h := envelope_transfer_shift hθ_pos hSC hD_Ioi r hdiff hint hintC m hm L hvLip hEnv θ hθ
   have h0 : surplus m θ_min = 0 := by simp only [surplus]; linarith [hBC]
   rw [h, h0, sub_zero]
 
@@ -613,13 +684,14 @@ theorem T_initial {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMono
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r)
-    (hVcont : ContinuousOn (fun s => v (r.q s) s - m.mech.t s) (Set.Ioi 0))
+    (L : NNReal)
+    (hvLip : ∀ θ' : ℝ, LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min))
     (hEnv : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ) :
     Nonempty (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC ⟶ m) ∧
     ∀ (f g : Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC ⟶ m), f = g := by
   refine ⟨⟨⟨fun θ => le_of_eq (hm θ).symm,
-      Tmech_surplus_le hθ_pos hSC hD_Ioi r hdiff hint hintC m hm hVcont hEnv⟩⟩, ?_⟩
+      Tmech_surplus_le hθ_pos hSC hD_Ioi r hdiff hint hintC m hm L hvLip hEnv⟩⟩, ?_⟩
   intro f g
   exact @Subsingleton.elim _ mechHom_subsingleton _ _
 
@@ -686,10 +758,12 @@ def mechIso_of_sameAlloc_sameRent {A : Type*} [LinearOrder A] [AddCommGroup A]
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (m₁ m₂ : ICIRMechanism A v θ_min)
     (hm₁ : m₁ ∈ MechWithAlloc r) (hm₂ : m₂ ∈ MechWithAlloc r)
-    (hVcont₁ : ContinuousOn (fun s => v (r.q s) s - m₁.mech.t s) (Set.Ioi 0))
+    (L₁ : NNReal)
+    (hvLip₁ : ∀ θ' : ℝ, LipschitzOnWith L₁ (v (m₁.mech.q θ')) (Set.Ici θ_min))
     (hEnv₁ : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m₁.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ)
-    (hVcont₂ : ContinuousOn (fun s => v (r.q s) s - m₂.mech.t s) (Set.Ioi 0))
+    (L₂ : NNReal)
+    (hvLip₂ : ∀ θ' : ℝ, LipschitzOnWith L₂ (v (m₂.mech.q θ')) (Set.Ici θ_min))
     (hEnv₂ : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m₂.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ)
     (hV₀ : surplus m₁ θ_min = surplus m₂ θ_min) :
@@ -697,8 +771,8 @@ def mechIso_of_sameAlloc_sameRent {A : Type*} [LinearOrder A] [AddCommGroup A]
   have hVeq : ∀ θ : ℝ, θ_min ≤ θ → surplus m₁ θ = surplus m₂ θ := by
     intro θ hθ
     have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ
-    rw [surplus_split hθ_pos r hint m₁ hm₁ hVcont₁ hEnv₁ θ hθ_pos',
-        surplus_split hθ_pos r hint m₂ hm₂ hVcont₂ hEnv₂ θ hθ_pos', hV₀]
+    rw [surplus_split hθ_pos r hint m₁ hm₁ L₁ hvLip₁ hEnv₁ θ hθ,
+        surplus_split hθ_pos r hint m₂ hm₂ L₂ hvLip₂ hEnv₂ θ hθ, hV₀]
   have hqeq : ∀ θ, m₁.mech.q θ = m₂.mech.q θ := fun θ => by rw [hm₁ θ, hm₂ θ]
   { hom := ⟨fun θ => le_of_eq (hqeq θ), fun θ hθ => le_of_eq (hVeq θ hθ)⟩
     inv := ⟨fun θ => le_of_eq (hqeq θ).symm, fun θ hθ => le_of_eq (hVeq θ hθ).symm⟩
@@ -712,15 +786,17 @@ theorem mech_iso_of_sameAlloc_sameRent {A : Type*} [LinearOrder A] [AddCommGroup
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (m₁ m₂ : ICIRMechanism A v θ_min)
     (hm₁ : m₁ ∈ MechWithAlloc r) (hm₂ : m₂ ∈ MechWithAlloc r)
-    (hVcont₁ : ContinuousOn (fun s => v (r.q s) s - m₁.mech.t s) (Set.Ioi 0))
+    (L₁ : NNReal)
+    (hvLip₁ : ∀ θ' : ℝ, LipschitzOnWith L₁ (v (m₁.mech.q θ')) (Set.Ici θ_min))
     (hEnv₁ : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m₁.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ)
-    (hVcont₂ : ContinuousOn (fun s => v (r.q s) s - m₂.mech.t s) (Set.Ioi 0))
+    (L₂ : NNReal)
+    (hvLip₂ : ∀ θ' : ℝ, LipschitzOnWith L₂ (v (m₂.mech.q θ')) (Set.Ici θ_min))
     (hEnv₂ : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m₂.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ)
     (hV₀ : surplus m₁ θ_min = surplus m₂ θ_min) :
     Nonempty (m₁ ≅ m₂) :=
-  ⟨mechIso_of_sameAlloc_sameRent hθ_pos r hint m₁ m₂ hm₁ hm₂ hVcont₁ hEnv₁ hVcont₂ hEnv₂ hV₀⟩
+  ⟨mechIso_of_sameAlloc_sameRent hθ_pos r hint m₁ m₂ hm₁ hm₂ L₁ hvLip₁ hEnv₁ L₂ hvLip₂ hEnv₂ hV₀⟩
 
 /-- **Theorem 4.5(ii) — Isomorphism**: every BIC-IR mechanism with allocation `r.q` and
 `V(θ_min) = 0` is isomorphic to `T(r)` in **Mech**.
@@ -737,14 +813,15 @@ theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] [AddCommGroup A]
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (m : ICIRMechanism A v θ_min) (hm : m ∈ MechWithAlloc r)
-    (hVcont : ContinuousOn (fun s => v (r.q s) s - m.mech.t s) (Set.Ioi 0))
+    (L : NNReal)
+    (hvLip : ∀ θ' : ℝ, LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min))
     (hEnv : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ)
     -- Boundary condition V(θ_min) = 0: normalises the surplus at the lowest type.
     (hBC : v (m.mech.q θ_min) θ_min = m.mech.t θ_min) :
     Nonempty (m ≅ Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC) := by
   -- Transfers agree (revenue equivalence); allocations agree (hm); hence surpluses agree.
-  have ht := envelope_transfer_unique hθ_pos hSC hD_Ioi r hdiff hint hintC m hm hVcont hEnv hBC
+  have ht := envelope_transfer_unique hθ_pos hSC hD_Ioi r hdiff hint hintC m hm L hvLip hEnv hBC
   have hqeq : ∀ θ, m.mech.q θ = (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC).mech.q θ :=
     fun θ => hm θ
   have hVeq : ∀ θ : ℝ, θ_min ≤ θ →
@@ -752,7 +829,7 @@ theorem masterTheorem_isomorphism {A : Type*} [LinearOrder A] [AddCommGroup A]
     intro θ hθ
     have hθ_pos' : 0 < θ := lt_of_lt_of_le hθ_pos hθ
     simp only [surplus]
-    rw [hqeq θ, ht θ hθ_pos']
+    rw [hqeq θ, ht θ hθ]
   exact ⟨{
     hom := ⟨fun θ => le_of_eq (hqeq θ), fun θ hθ => le_of_eq (hVeq θ hθ)⟩
     inv := ⟨fun θ => le_of_eq (hqeq θ).symm, fun θ hθ => le_of_eq (hVeq θ hθ).symm⟩
@@ -780,10 +857,12 @@ theorem masterTheorem_transferInvariance {A : Type*} [LinearOrder A]
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (m₁ m₂ : ICIRMechanism A v θ_min)
     (hm₁ : m₁ ∈ MechWithAlloc r) (hm₂ : m₂ ∈ MechWithAlloc r)
-    (hVcont₁ : ContinuousOn (fun s => v (r.q s) s - m₁.mech.t s) (Set.Ioi 0))
+    (L₁ : NNReal)
+    (hvLip₁ : ∀ θ' : ℝ, LipschitzOnWith L₁ (v (m₁.mech.q θ')) (Set.Ici θ_min))
     (hEnv₁ : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m₁.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ)
-    (hVcont₂ : ContinuousOn (fun s => v (r.q s) s - m₂.mech.t s) (Set.Ioi 0))
+    (L₂ : NNReal)
+    (hvLip₂ : ∀ θ' : ℝ, LipschitzOnWith L₂ (v (m₂.mech.q θ')) (Set.Ici θ_min))
     (hEnv₂ : ∀ θ > 0, HasDerivWithinAt (fun s => v (r.q s) s - m₂.mech.t s)
         (typeDerivAlongAlloc v r θ) (Set.Ioi θ) θ)
     -- RELAXED: equal boundary rent, not zero boundary rent.
@@ -791,7 +870,7 @@ theorem masterTheorem_transferInvariance {A : Type*} [LinearOrder A]
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ := by
   obtain ⟨i⟩ := mech_iso_of_sameAlloc_sameRent hθ_pos r hint m₁ m₂ hm₁ hm₂
-    hVcont₁ hEnv₁ hVcont₂ hEnv₂ hV₀
+    L₁ hvLip₁ hEnv₁ L₂ hvLip₂ hEnv₂ hV₀
   exact MeasureTheory.setIntegral_congr_fun measurableSet_Ici
     fun θ hθ => transfer_eq_of_iso i θ hθ
 
@@ -903,8 +982,9 @@ noncomputable def equivAllocMech₀ {A : Type*} [LinearOrder A] [AddCommGroup A]
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
     (hint : ∀ (r : MonotoneAlloc A) a b,
       IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
-    (hVcont : ∀ m : ICIRMechanism A v θ_min,
-        ContinuousOn (fun s => v (m.mech.q s) s - m.mech.t s) (Set.Ioi 0))
+    (L : NNReal)
+    (hvLip : ∀ (m : ICIRMechanism A v θ_min) (θ' : ℝ),
+        LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min))
     (hEnv : ∀ (m : ICIRMechanism A v θ_min) (θ : ℝ), 0 < θ →
         HasDerivWithinAt (fun s => v (m.mech.q s) s - m.mech.t s)
             (typeDerivAlongAlloc v ⟨m.mech.q, m.hMono⟩ θ) (Set.Ioi θ) θ) :
@@ -922,10 +1002,10 @@ noncomputable def equivAllocMech₀ {A : Type*} [LinearOrder A] [AddCommGroup A]
         (Tmech hθ_pos hSC hD_Ioi ⟨m.obj.mech.q, m.obj.hMono⟩ hdiff
           (hint _) hintC) m.obj
         (fun _ => rfl) (fun _ => rfl)
-        (hVcont (Tmech hθ_pos hSC hD_Ioi ⟨m.obj.mech.q, m.obj.hMono⟩ hdiff (hint _) hintC))
+        L (hvLip (Tmech hθ_pos hSC hD_Ioi ⟨m.obj.mech.q, m.obj.hMono⟩ hdiff (hint _) hintC))
         (fun θ hθ => hEnv (Tmech hθ_pos hSC hD_Ioi ⟨m.obj.mech.q, m.obj.hMono⟩ hdiff
           (hint _) hintC) θ hθ)
-        (hVcont m.obj)
+        L (hvLip m.obj)
         (fun θ hθ => hEnv m.obj θ hθ) ?_)
       -- both rents are zero: T(Q(m)) by construction, m by membership in Mech₀
       rw [zeroRent_Tmech hθ_pos hSC hD_Ioi ⟨m.obj.mech.q, m.obj.hMono⟩ hdiff (hint _) hintC,

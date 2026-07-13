@@ -132,6 +132,58 @@ weakening. Cost: one extra hypothesis (`hVcont`) at each site.
 
 ---
 
+## D8 — Continuity of the surplus is **derived from IC**, not assumed
+**Date:** 2026-07-13 · **Branch:** `surplus-order` · **Phase 1**
+
+`surplus_split` no longer takes a `ContinuousOn` hypothesis. It takes a regularity
+hypothesis on the *value function* —
+
+```lean
+L : NNReal
+hvLip : ∀ θ' : ℝ, LipschitzOnWith L (v (m.mech.q θ')) (Set.Ici θ_min)
+```
+
+— and derives continuity of the surplus from `m.hIC` via `surplus_ic_sandwich`:
+
+```
+v(q θ₁, θ₂) − v(q θ₁, θ₁)  ≤  V(θ₂) − V(θ₁)  ≤  v(q θ₂, θ₂) − v(q θ₂, θ₁)
+```
+
+Both bounds move the *type* while holding the *allocation* fixed, so each is bounded by
+`L·|Δθ|`, giving `surplus_lipschitzOn` and hence `surplus_continuousOn`.
+
+**This is what finally makes `hIC` load-bearing.** Verified the only way that can be
+trusted here (see `CLAUDE.md`): commenting out `surplus_ic_sandwich` **breaks the build**.
+The chain `revenueEquivalence → masterTheorem_transferInvariance → mechIso_… →
+surplus_split → surplus_continuousOn → surplus_lipschitzOn → surplus_ic_sandwich → m.hIC`
+is real.
+
+**Rejected: keep assuming `ContinuousOn`.** It compiles, but it leaves incentive
+compatibility unused — the theorems would remain *about mechanisms that happen to have a
+continuous surplus*, not about IC mechanisms.
+
+**Note on the hypothesis shape.** `hvLip` quantifies over the allocations the mechanism
+*actually uses* (`v (m.mech.q θ')`), not over all of `A`. A bound uniform over all of `A`
+would be **false** for `MyersonAlloc = ℝ` (take `a → ∞`). Discharged for Myerson by
+`myerson_lipschitz` (allocation probabilities in `[-1,1]` give `L = 1`), and for the posted
+price by `PostedPrice.postedPrice_lipschitz`. The Mirrlees discharge is on paper but not yet
+in Lean — see `TODO.md`.
+
+---
+
+## D9 — The envelope family lives on `[θ_min, ∞)`, not `(0, ∞)`
+**Date:** 2026-07-13 · **Phase 1**
+
+`surplus_split`, `envelope_transfer_shift` and `envelope_transfer_unique` now conclude for
+`θ_min ≤ θ` rather than `0 < θ`.
+
+**Forced by D8.** `IsIC` only constrains reports and types `≥ θ_min`, so the IC sandwich —
+and therefore continuity of the surplus — is available only on `[θ_min, ∞)`. Nothing below
+`θ_min` is derivable from IC, so claiming it there was never honest. The model has no
+economic content below `θ_min` anyway, and every caller already worked on `[θ_min, ∞)`.
+
+---
+
 ## Pending — record before implementing
 
 * **Phase 2:** right-continuity of `q` — a field of `MonotoneAlloc`, or a hypothesis?

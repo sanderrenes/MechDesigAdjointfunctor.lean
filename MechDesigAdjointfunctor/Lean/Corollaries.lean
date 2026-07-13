@@ -50,6 +50,30 @@ open MeasureTheory MechDesign
 
 namespace MechDesign.Corollaries
 
+/-! ### 5.0 Discharging the Lipschitz hypothesis
+
+`surplus_split` no longer assumes the surplus is continuous — it *derives* continuity from
+incentive compatibility (`surplus_ic_sandwich` → `surplus_lipschitzOn`).  The price is a
+regularity hypothesis on the value function: `v(a, ·)` must be Lipschitz in the type, with a
+constant uniform over the allocations the mechanism actually uses.
+
+Here is that hypothesis discharged in the Myerson setting.  It is exactly the standard
+assumption that allocation probabilities lie in `[0, 1]`. -/
+
+/-- **The Myerson value function is `1`-Lipschitz in the type along any allocation in
+`[-1, 1]`** — in particular along any allocation *probability*.
+
+`v(a, θ) = θ·a`, so `|v(a, θ₂) − v(a, θ₁)| = |a|·|θ₂ − θ₁| ≤ |θ₂ − θ₁|` whenever `|a| ≤ 1`.
+Combined with `surplus_lipschitzOn`, this discharges the continuity requirement of
+`revenueEquivalence` from IC alone. -/
+theorem myerson_lipschitz {a : Myerson.MyersonAlloc} (ha : |a| ≤ 1) (S : Set ℝ) :
+    LipschitzOnWith 1 (Myerson.myersonValue a) S := by
+  refine LipschitzOnWith.of_dist_le_mul fun x _ y _ => ?_
+  simp only [Myerson.myersonValue, Real.dist_eq, NNReal.coe_one, one_mul]
+  calc |x * a - y * a| = |a| * |x - y| := by rw [← abs_mul]; ring_nf
+    _ ≤ 1 * |x - y| := by gcongr
+    _ = |x - y| := one_mul _
+
 /-! ### 5.1 Revenue Equivalence (Corollary 5.1) -/
 
 /-- **Corollary 5.1 — Myerson Revenue Equivalence Theorem**.
@@ -81,13 +105,18 @@ theorem revenueEquivalence
     -- Envelope condition: continuity plus a RIGHT derivative.  One-sided on purpose — a
     -- two-sided derivative would exclude posted-price auctions, whose surplus has a kink
     -- at the reserve.  See `surplus_split` and `Myerson.postedPrice_hasEnvelope`.
-    (hVcont₁ : ContinuousOn
-      (fun s => Myerson.myersonValue (q₀.q s) s - m₁.mech.t s) (Set.Ioi 0))
+    -- Continuity is NOT assumed: it is derived from IC, given that the value function is
+    -- Lipschitz in the type along each allocation the mechanism uses.  Discharged for
+    -- Myerson by `myerson_lipschitz` whenever the allocation is bounded.
+    (L₁ : NNReal)
+    (hvLip₁ : ∀ θ' : ℝ,
+      LipschitzOnWith L₁ (Myerson.myersonValue (m₁.mech.q θ')) (Set.Ici θ_min))
     (hEnv₁ : ∀ θ > 0, HasDerivWithinAt
       (fun s => Myerson.myersonValue (q₀.q s) s - m₁.mech.t s)
       (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) (Set.Ioi θ) θ)
-    (hVcont₂ : ContinuousOn
-      (fun s => Myerson.myersonValue (q₀.q s) s - m₂.mech.t s) (Set.Ioi 0))
+    (L₂ : NNReal)
+    (hvLip₂ : ∀ θ' : ℝ,
+      LipschitzOnWith L₂ (Myerson.myersonValue (m₂.mech.q θ')) (Set.Ici θ_min))
     (hEnv₂ : ∀ θ > 0, HasDerivWithinAt
       (fun s => Myerson.myersonValue (q₀.q s) s - m₂.mech.t s)
       (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) (Set.Ioi θ) θ)
@@ -97,7 +126,7 @@ theorem revenueEquivalence
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance hθ_pos q₀ hint m₁ m₂ hm₁_alloc hm₂_alloc
-    hVcont₁ hEnv₁ hVcont₂ hEnv₂ hV₀ μ
+    L₁ hvLip₁ hEnv₁ L₂ hvLip₂ hEnv₂ hV₀ μ
 
 /-- **Myerson expected revenue formula**: for any BIC-IR mechanism with allocation `q`
 and `V(0) = 0`, expected revenue equals expected virtual surplus.
@@ -151,13 +180,19 @@ theorem taxationPrinciple
       IntervalIntegrable (deriv (Mirrlees.mirrleesValue h g a)) MeasureTheory.volume b c)
     -- Envelope condition: continuity plus a RIGHT derivative.  One-sided on purpose — a
     -- two-sided derivative would exclude allocations with a bunching region.
-    (hVcont₁ : ContinuousOn
-      (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₁.mech.t s) (Set.Ioi 0))
+    -- Continuity is NOT assumed: it is derived from IC, given Lipschitz-in-the-type.
+    -- For Mirrlees, `∂v/∂θ = h y + g'(y/θ)·y/θ²` is bounded on `[θ_min, ∞)` for each fixed
+    -- income `y`, and uniformly so once the income range is bounded.  See TODO.md — the
+    -- Lean discharge of this is the one Phase 1 task still open.
+    (L₁ : NNReal)
+    (hvLip₁ : ∀ θ' : ℝ,
+      LipschitzOnWith L₁ (Mirrlees.mirrleesValue h g (m₁.mech.q θ')) (Set.Ici θ_min))
     (hEnv₁ : ∀ θ > 0, HasDerivWithinAt
       (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₁.mech.t s)
       (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) (Set.Ioi θ) θ)
-    (hVcont₂ : ContinuousOn
-      (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₂.mech.t s) (Set.Ioi 0))
+    (L₂ : NNReal)
+    (hvLip₂ : ∀ θ' : ℝ,
+      LipschitzOnWith L₂ (Mirrlees.mirrleesValue h g (m₂.mech.q θ')) (Set.Ici θ_min))
     (hEnv₂ : ∀ θ > 0, HasDerivWithinAt
       (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₂.mech.t s)
       (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) (Set.Ioi θ) θ)
@@ -167,7 +202,7 @@ theorem taxationPrinciple
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ :=
   masterTheorem_transferInvariance hθ_pos q₀ hint m₁ m₂ hm₁_alloc hm₂_alloc
-    hVcont₁ hEnv₁ hVcont₂ hEnv₂ hV₀ μ
+    L₁ hvLip₁ hEnv₁ L₂ hvLip₂ hEnv₂ hV₀ μ
 
 /-! ### 5.2b The posted price — why the envelope hypothesis must be one-sided
 
@@ -298,6 +333,16 @@ theorem postedPrice_not_hasDerivAt (c : ℝ) :
   have hc1 : c = 1 :=
     tendsto_nhds_unique (hright.congr' hR1) tendsto_const_nhds
   exact absurd (hc0 ▸ hc1 : (0:ℝ) = 1) (by norm_num)
+
+/-- **The posted price also discharges the Lipschitz hypothesis.**  Its allocation is `0` or
+`1`, so `myerson_lipschitz` applies.  Together with `postedPrice_hasEnvelope`, the
+reserve-price auction now satisfies *every* hypothesis the framework asks of it — continuity
+comes free from IC, and the envelope condition is one-sided. -/
+theorem postedPrice_lipschitz (θ' : ℝ) (S : Set ℝ) :
+    LipschitzOnWith 1 (Myerson.myersonValue (alloc p θ')) S := by
+  refine myerson_lipschitz ?_ S
+  simp only [alloc]
+  split_ifs <;> simp
 
 end PostedPrice
 

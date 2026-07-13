@@ -1,6 +1,6 @@
 # Plan — closing the IC ⟹ envelope bridge
 
-Status: **Phase 0 done.** Phases 1–2 open. Branch: `surplus-order`.
+Status: **Phase 0 done. Phase 1 done** (abstract layer + Myerson; the Mirrlees Lipschitz discharge remains — see TODO.md). **Phase 2 open.** Branch: `surplus-order`.
 
 ## Why
 
@@ -65,7 +65,13 @@ compiles; `git commit`.
 
 ---
 
-## Phase 1 — `V` is Lipschitz, hence continuous, *from IC*
+## Phase 1 — `V` is Lipschitz, hence continuous, *from IC* ✅ **DONE (abstract + Myerson)**
+
+Landed: `surplus_ic_sandwich` (pure IC) → `surplus_lipschitzOn` → `surplus_continuousOn`.
+`surplus_split` derives continuity instead of assuming it, so **`hIC` is now load-bearing** —
+confirmed by deletion (removing the sandwich breaks the build). Myerson discharged via
+`myerson_lipschitz`. See `DECISIONS.md` D8, D9. Remaining: the Mirrlees Lipschitz discharge
+(`TODO.md`). Original write-up follows.
 
 IC gives the sandwich directly, with no analysis — for `θ₁ < θ₂`, using each type's report
 as the other's deviation:
