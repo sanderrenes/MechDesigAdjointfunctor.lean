@@ -1,66 +1,109 @@
 # MechDesigAdjointfunctor — Lean 4 Formalization
 
-Formal proof in Lean 4 / Mathlib that Myerson's (1981) Revenue Equivalence Theorem and the Mirrlees (1971) Taxation Principle are both instances of a single categorical theorem: the allocation functor **Q : Mech → Alloc** has a right adjoint **T**, and every IC mechanism with a given allocation rule is isomorphic to T(q).
+Formal proof in Lean 4 / Mathlib that Myerson's (1981) Revenue Equivalence Theorem and the Mirrlees (1971) Taxation Principle are both instances of a single categorical theorem about the transfer functor **T : Alloc → Mech** and the allocation functor **Q : Mech → Alloc**.
 
 See `MechDesigAdjointfunctor/Unification.md` for the mathematical write-up.
+
+## The paper's arc, in three moves
+
+The categorical content is organised as a reflection followed by its normalisation. Each move is fully proved; nothing below rests on a `sorry`.
+
+### Move 1 — the general case: `T ⊣ Q`
+
+**Mech** fibers over **Alloc** via `Q`. The fiber coordinate is the *boundary rent* `V(θ_min) ≥ 0` — the surplus conceded to the lowest type. This is the content of `surplus_split`, the envelope theorem in surplus form:
+
+```
+V_m(θ)  =  V_m(θ_min)  +  ∫_{θ_min}^{θ} (∂v/∂s)(r.q s, s) ds
+```
+
+Every BIC-IR mechanism over an allocation `r` is the envelope mechanism displaced by a single constant. `T(r)` is the member with rent `0` — the rent-extracting mechanism — so it sits at the *bottom* of its fiber. Hence:
+
+- `adj_T_Q` : **`T ⊣ Q`**, with `T` the **left** adjoint (not `Q ⊣ T`).
+- `T_initial` : `T(r)` is **initial** in `Mech_r`, not terminal. Individual rationality is what pins the direction — it is used essentially in the counit.
+- `T_full`, `T_faithful` : `T` is **fully faithful**, exhibiting **Alloc** as a coreflective subcategory of **Mech**.
+- `T_preservesColimits`, `Q_preservesLimits` : the usual consequences, with the corrected variance.
+
+### Move 2 — the comonad: `T ∘ Q` strips the rent
+
+`zeroRent_TQ` : `T(Q(m))` always has zero rent, whatever rent `m` had. So the counit `ε_m : T(Q(m)) ⟶ m` is literally the operation *"remove the lowest type's rent"*, and `T ∘ Q` is the idempotent comonad that performs it. `ε_m` is an isomorphism **exactly** on the zero-rent objects.
+
+This is where revenue equivalence lives: two mechanisms over the same allocation with the same rent have the same image under the comonad and the same offset from it, hence are isomorphic (`mechIso_of_sameAlloc_sameRent`). And `transfer_eq_of_iso` shows an isomorphism in **Mech** *forces equal transfers* — so the category is genuinely load-bearing, not decorative.
+
+### Move 3 — the normalized case: `Alloc ≌ Mech₀`
+
+Restrict to `Mech₀`, the full subcategory of zero-rent mechanisms (`ZeroRent`). There the counit is an isomorphism, so `T ⊣ Q` upgrades to an **adjoint equivalence**:
+
+```
+equivAllocMech₀ :  MonotoneAlloc A  ≌  Mech₀ A v θ_min
+```
+
+`T₀ ⊣ Q₀` **and** `Q₀ ⊣ T₀` — adjoint in both directions. This is the **Taxation Principle**: normalized mechanisms *are* allocations, up to natural isomorphism.
+
+**Where the content actually is.** Move 3 is cheap, as equivalences always are. The work is in Move 1 (that `T` exists at all — `T_wellDefined`) and Move 2 (that the counit is iso *precisely* at zero rent). A reader should be pointed at those, not at the equivalence.
+
+## Why morphisms are ordered by surplus, not by transfer
+
+`MechHom` carries `hSurp : ∀ θ ≥ θ_min, V_m θ ≤ V_m' θ`, where `V(θ) = v(q θ, θ) − t θ`. It does **not** carry a transfer condition. This is forced:
+
+- Ordering by `t` makes `T` **not a functor**. `t*(r) ≤ t*(r')` does not follow from `r.q ≤ r'.q` for general `v`; it needs *convexity of `v` in the allocation*, which `mirrleesValue y θ = θ·h(y) − g(y/θ)` fails in the standard regime (`h` concave, `g` convex). A transfer field therefore breaks the Mirrlees instantiation and destroys the unification.
+- Ordering by `V` makes `T.map` follow from **single crossing alone** (`Tmech_surplus_mono`) — an assumption both settings already make. Quasilinearity (the numeraire enters utility linearly) means `t` is recoverable as `t θ = v(q θ) θ − V θ`, so **no information about transfers is lost**; the allocation simply stops contaminating the comparison.
+
+`h_spread` (spread monotonicity) existed only to prop up the transfer-ordered `T.map`. It is no longer needed and has been dropped from both `AllocHom` and `MechHom`, leaving **Alloc** as the plain pointwise order that Definition 1.5 intends.
+
+## Boundary condition: equal rent, not zero rent
+
+`masterTheorem_transferInvariance` requires `V₁(θ_min) = V₂(θ_min)` (`hV₀`), **not** `V(θ_min) = 0`. Revenue equivalence needs *equal* rent, never *zero* rent — `envelope_transfer_shift` (`m.t θ = t*(θ) − V_m(θ_min)`) makes this exact. This matches `mirrlees_unique_from_IC`, which already quantified over a common `V₀`; the abstract layer previously proved something narrower than its own instantiation.
+
+Note also that transfer invariance uses **neither single crossing nor IR** — only IC's envelope condition. SC is needed to build `T` (functoriality) and for `IC_implies_monotone`; IR is needed to orient the adjunction. Neither is needed for revenue equivalence itself.
 
 ## File structure
 
 | File | Contents |
 |------|----------|
-| `Framework.lean` | Abstract categories Mech and Alloc, functor Q, IC_implies_monotone |
-| `MasterTheorem.lean` | Transfer functor T, T_wellDefined, adj_Q_T, Master Theorem |
+| `Framework.lean` | Categories Mech (surplus-ordered) and Alloc, `surplus`, functor Q, `IC_implies_monotone` |
+| `MasterTheorem.lean` | `T`, `T_wellDefined`, `adj_T_Q`, `T_initial`, Master Theorem, `Mech₀`, `equivAllocMech₀` |
 | `MyersonSetting.lean` | Myerson auction instantiation, Revenue Equivalence |
 | `MirrleesSetting.lean` | Mirrlees taxation instantiation, Taxation Principle |
 | `Corollaries.lean` | Corollaries 5.1 and 5.2 as instances of the Master Theorem |
 
-## Proof status — branch `master` (as of 2026-05-21)
+## Proof status — branch `surplus-order`
 
-This is the **master branch** which has merged the `spread-monotone-allochom` branch. The `h_spread` field has been added to both `MechHom` and `AllocHom` to ensure `Q` maps morphisms without sorries.
+Build: `lake build` — completes successfully. **Zero sorries.** All results depend only on the standard axioms `[propext, Classical.choice, Quot.sound]`.
 
-Build: `lake build` — completes successfully (1 `sorry` warning remaining; vacuous — never exercised).
+### Key declarations
 
-### Completed ✓
-
-| Lemma | File | Notes |
-|-------|------|-------|
+| Declaration | File | Notes |
+|-------------|------|-------|
 | `IC_implies_monotone` | Framework | MON from IC + SC via mimicry argument |
-| Category laws (8 stubs) | Framework | `Subsingleton.elim` — thin category |
-| `myerson_singleCrossing` | MyersonSetting | `nlinarith` |
-| `myerson_vDiff` | MyersonSetting | `unfold myersonValue; fun_prop` |
-| `mirrlees_vDiff` | MirrleesSetting | `DifferentiableOn.sub` + `DifferentiableOn.div`; domain `Set.Ioi 0` |
-| `mirrlees_singleCrossing` | MirrleesSetting | `deriv_sub` + `hg_pos` + `linarith` |
-| `T_wellDefined` | MasterTheorem | FTC + SC + `integral_mono_on`; both IR and IC proved for all `θ ≥ θ_min > 0` |
-| `myerson_IC_of_monotone_transfer` | MyersonSetting | `integral_add_adjacent_intervals` + `integral_mono_on` + case split |
-| `mirrlees_IC_of_envelope` | MirrleesSetting | Mirrors T_wellDefined; FTC on `Set.Ici θ_min` |
-| `myerson_transfer_unique` | MyersonSetting | FTC + linarith |
-| `mirrlees_unique_from_IC` | MirrleesSetting | SC + IC by-contradiction + FTC |
-| `taxation_principle` (local) | MirrleesSetting | FTC twice + linarith |
-| `adj_Q_T` | MasterTheorem | `Adjunction.mkOfUnitCounit`; unit via FTC + IR |
-| `Q_preservesColimits` | MasterTheorem | `adj_Q_T.leftAdjoint_preservesColimits` (Q is LEFT adjoint) |
-| `T_terminal` | MasterTheorem | FTC + IR; `hTransf` via envelope on `[θ_min, ∞)`; uniqueness by `mechHom_subsingleton` |
-| `masterTheorem_existence` | MasterTheorem | `T_terminal` + FTC |
-| `masterTheorem_isomorphism` | MasterTheorem | FTC + BC; integral restricted to `Set.Ici θ_min` |
-| `masterTheorem_transferInvariance` | MasterTheorem | `le_antisymm` + linarith from two isomorphisms; integral over `Set.Ici θ_min` |
-| `taxationPrinciple` | Corollaries | Delegates to `masterTheorem_transferInvariance` |
+| `surplus` | Framework | `V(θ) = v(q θ, θ) − t θ`; the quasilinear coordinate |
+| `mechCategory`, `allocCategory` | Framework | Thin categories; laws by `Subsingleton.elim` |
+| `T_wellDefined` | MasterTheorem | FTC + SC + `integral_mono_on`; IC and IR for all `θ ≥ θ_min > 0` |
+| `typeDeriv_mono_of_alloc_le` | MasterTheorem | The SC step, lifted out; the only ingredient `T.map` needs |
+| `Tmech_surplus_mono` | MasterTheorem | **`T.map`** — from single crossing alone |
+| `T_full`, `T_faithful` | MasterTheorem | `T` fully faithful; Alloc coreflective in Mech |
+| `surplus_split` | MasterTheorem | Envelope theorem in surplus form; the fiber structure |
+| `adj_T_Q` | MasterTheorem | `Adjunction.mkOfUnitCounit`; counit via `surplus_split` + IR |
+| `T_initial` | MasterTheorem | `T(r)` initial in its fiber (replaces `T_terminal`) |
+| `envelope_transfer_shift` | MasterTheorem | `m.t θ = t*(θ) − V_m(θ_min)`; no boundary condition |
+| `transfer_eq_of_iso` | MasterTheorem | Iso in Mech ⟹ equal transfers (makes the category load-bearing) |
+| `masterTheorem_transferInvariance` | MasterTheorem | Via the iso; relaxed `hV₀` (equal rent) |
+| `Mech₀`, `equivAllocMech₀` | MasterTheorem | **Move 3**: `Alloc ≌ Mech₀`, the Taxation Principle |
+| `revenueEquivalence` | Corollaries | Instance of the Master Theorem at `myersonValue` |
+| `taxationPrinciple` | Corollaries | Instance of the Master Theorem at `mirrleesValue` |
 | `myerson_expectedRevenue` | MyersonSetting | IBP via `integral_hasStrictDerivAt` |
-| `myerson_revenueFormula` | Corollaries | Delegates to `myerson_expectedRevenue` |
-| `revenueEquivalence` | Corollaries | `MyersonAlloc = ℝ`; delegates to `masterTheorem_transferInvariance` |
 
-### Remaining sorry stubs (1)
+### Open modelling question
 
-| Lemma | File | Obstacle |
-|-------|------|----------|
-| `T.map hTransf` | MasterTheorem | False for general `v`; needs a v-monotonicity hypothesis. **Immaterial to this prVacuous**: never accessed by any proved theorem — functor laws use `mechHom_subsingleton` and `masterTheorem_transferInvariance` constructs `hTransf` independently via FTC + IR. See Unification.md §7.1–7.2 |
+`IsIR` asserts `V(θ_min) ≥ 0` while its docstring describes `V(θ_min) = 0`. The branch keeps the **inequality**, which is what makes Move 1 substantive (the fiber is a genuine one-parameter family) and Move 3 a real restriction rather than a definition. Tightening `IsIR` to an equality would collapse **Mech** onto **Mech₀** and make revenue equivalence true by construction of the objects — a cleaner headline, a weaker theorem.
 
 ## Key proof patterns
 
-- **`HasDerivAt.sub`**: always use explicit form, not dot notation (dot resolves to `HasFDerivAtFilter.sub`)
+- **`HasDerivAt.sub`**: use the explicit form, not dot notation (dot resolves to `HasFDerivAtFilter.sub`)
 - **`intervalIntegrable_const`**: root namespace, not `intervalIntegral.`
-- **`le_or_gt`**: case split in this Mathlib version (not `le_or_lt`)
 - **`integral_symm θ θ'`**: gives `∫ in θ'..θ = -∫ in θ..θ'`
-- **Non-physical case avoided**: `masterTheorem_transferInvariance` integrates over `Set.Ici θ_min`; FTC is only needed for `θ ≥ θ_min > 0`, so no sorry is required for non-physical types
-- **`hvθ` correction**: partial derivative `deriv (v (y θ)) θ`, not total `deriv (fun s => v (y s) s) θ`
+- **Physical domain**: integrals run over `Set.Ici θ_min`; FTC is only needed for `θ ≥ θ_min > 0`
+- **`hvθ`**: partial derivative `deriv (v (y θ)) θ`, not total `deriv (fun s => v (y s) s) θ`
+- **Thin categories**: naturality, triangle identities and functor laws all discharge by `@Subsingleton.elim _ mechHom_subsingleton` / `allocHom_subsingleton`
 
 ## Build
 
@@ -68,5 +111,3 @@ Build: `lake build` — completes successfully (1 `sorry` warning remaining; vac
 cd /path/to/MechDesigAdjointfunctor.lean
 lake build
 ```
-
-See `Unification.md` §7.1–7.2 for mathematical analysis of the `T.map hTransf` obstruction.
