@@ -9,6 +9,12 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped (say why)
 resolved. `lake build` is clean with **zero sorries, zero warnings**, and every result rests
 on `[propext, Classical.choice, Quot.sound]`.
 
+- [ ] **The talk lives outside the repository.** The category-theory talk (the Act III
+      argument, the scorecard, the LLM/harness section) is an HTML artifact in a session
+      scratchpad — not version-controlled, and free to drift out of sync with the Lean it
+      describes. Move it to `docs/` and treat it like `README.md`: update it when the proof
+      status changes. Its central claim (D15) has already been corrected once.
+
 Ideas, not commitments:
 - [ ] Prove the failure cases in §5.3 of `Corollaries.lean` rather than documenting them
       (they are currently prose, having been fake `True := trivial` theorems — see D14).

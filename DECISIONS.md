@@ -285,6 +285,41 @@ breaks `T`'s functoriality but *not* revenue equivalence).
 
 ---
 
+## D15 — The transfer order was a **default**, not a belief. State its provenance honestly.
+**Date:** 2026-07-14 · **Branch:** `surplus-order` · **Artifact:** the category-theory talk
+
+D1 records *that* the transfer order fails and *why* (Mirrlees is concave in `y`). This entry
+records where that order **came from**, because the exposition kept getting it wrong and the
+next session will get it wrong again.
+
+**The provenance is: a mechanism *is* the pair `⟨q, t⟩`, and a pair invites a componentwise
+order.** Nobody chose `hTransf`. Nobody defended it. It is the order you write when the object
+presents itself as two coordinates and nothing has ever asked which coordinate is the state
+variable.
+
+**Rejected: "economists believe that allocating more means charging more."** This was the
+framing in the first draft of the talk, and it is **false as stated** — it would not survive a
+question from the floor. Pointwise comparison of transfers *across two mechanisms* is not a
+standard order in mechanism design at all; economists compare mechanisms by expected revenue,
+or by Pareto dominance in utilities. The bundle-costs-more intuition is a fact about **one
+agent facing one price schedule**, and the draft silently transplanted it to a comparison
+**between mechanisms**. Do not reinstate this framing, however well it plays.
+
+**Why the honest version is stronger.** "Economists believe a false thing" invites an argument
+about what economists believe, and loses it — they do not believe it, they have never
+considered it. "Here is a definition that constrains a literature and has never once been made
+to justify itself" is unarguable, and it is what the development actually demonstrates. It also
+explains why the error survived: **a componentwise order on a pair states no theorem, so it is
+never checked.** It sits in a structure and silently constrains everything downstream. The only
+reason it was ever read aloud is that a functor demanded to know what it said.
+
+**How this was caught.** Not by Lean — by the user pressing on a sentence that *sounded* right.
+Which is the same failure mode the project is about: plausibility is exactly what the kernel
+refuses and prose accepts. Prose has no kernel. The docstring rule (D4) is the same lesson;
+this is its second instance, and it now applies to the **paper**, not just the code.
+
+---
+
 ## Pending
 
 *Nothing pending.* All phases of `PLAN.md` are complete; `TODO.md` lists only
