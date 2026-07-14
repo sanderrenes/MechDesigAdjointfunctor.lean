@@ -3,20 +3,8 @@
 Living list. Update it in the same commit as the work — see `CLAUDE.md`.
 Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped (say why)
 
-## Now — finish Phase 1: the Mirrlees Lipschitz discharge
-Phase 1 is done in the abstract layer and for Myerson. One instantiation task remains.
 
-- [ ] `mirrlees_lipschitz`: `LipschitzOnWith L (mirrleesValue h g y) (Set.Ici θ_min)`.
-      On paper: `∂v/∂θ = h y + g′(y/θ)·y/θ²`, bounded on `[θ_min, ∞)` for fixed income `y`,
-      and uniformly once the income range is bounded. Needs a derivative-bound route
-      (`Convex.lipschitzOnWith_of_nnnorm_deriv_le` or similar) plus bounds on `h`, `g′` over
-      the relevant compact, and a **bounded allocation range** hypothesis (economically
-      mild: bounded incomes).
-      Until this lands, `taxationPrinciple` takes `hvLip₂`/`hvLip₁` as hypotheses that are
-      *satisfiable but not yet discharged in Lean* — unlike Myerson, which is discharged by
-      `myerson_lipschitz`.
-
-## Then — Phase 2: right-derivative = `D θ` (Milgrom–Segal)
+## Now — Phase 2: right-derivative = `D θ` (Milgrom–Segal)
 - [ ] Decide: right-continuity of `q` as a `MonotoneAlloc` field, or a hypothesis? Record in `DECISIONS.md`
 - [ ] Joint continuity of `∂_θ v`; verify for both value functions first
 - [ ] `surplus_hasDerivWithinAt` (squeeze)
@@ -38,6 +26,12 @@ Phase 1 is done in the abstract layer and for Myerson. One instantiation task re
       placeholders in `Corollaries.lean`. Either state them or delete them.
 
 ## Done
+- [x] **Phase 1 (complete)** — `mirrlees_lipschitz` landed, so the Lipschitz hypothesis is
+      now discharged in **both** settings (`myerson_lipschitz`, `mirrlees_lipschitz`,
+      `PostedPrice.postedPrice_lipschitz`). Mirrlees reduces it to an explicit bound on
+      `∂v/∂θ = h y + (y/θ²)·g′(y/θ)` over `[θ_min, ∞)` via the mean value theorem
+      (`Convex.lipschitzOnWith_of_nnnorm_hasDerivWithin_le`), reusing the existing
+      `mirrleesValue_hasDerivAt`.
 - [x] **Phase 1 (abstract layer + Myerson)** — `hIC` is now **load-bearing** (D8).
       `surplus_ic_sandwich` (pure IC, no analysis) → `surplus_lipschitzOn` →
       `surplus_continuousOn`. `surplus_split` no longer *assumes* continuity, it *derives* it.

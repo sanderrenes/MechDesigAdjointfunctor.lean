@@ -74,6 +74,26 @@ theorem myerson_lipschitz {a : Myerson.MyersonAlloc} (ha : |a| ≤ 1) (S : Set �
     _ ≤ 1 * |x - y| := by gcongr
     _ = |x - y| := one_mul _
 
+/-- **The Mirrlees value function is Lipschitz in the type**, given a bound on its
+θ-derivative over the physical domain.
+
+`v(y, θ) = θ·h(y) − g(y/θ)`, so `∂v/∂θ = h(y) + (y/θ²)·g′(y/θ)`.  On `[θ_min, ∞)` with
+`θ_min > 0` this is bounded for each income `y`, and uniformly so once the income range is
+bounded — which is the economically mild assumption that incomes are bounded.  The bound is
+taken as an explicit hypothesis rather than derived, so that the caller can supply whatever
+bound their `h`, `g` and income range actually give.
+
+This is the Mirrlees counterpart of `myerson_lipschitz`, and it is what discharges the
+continuity requirement of `taxationPrinciple` from IC alone. -/
+theorem mirrlees_lipschitz (h g : ℝ → ℝ) (hh : Differentiable ℝ h) (hg : Differentiable ℝ g)
+    {θ_min : ℝ} (hθ_pos : 0 < θ_min) (y : ℝ) (C : NNReal)
+    (hbound : ∀ θ ∈ Set.Ici θ_min, ‖h y + (y / θ ^ 2) * deriv g (y / θ)‖₊ ≤ C) :
+    LipschitzOnWith C (Mirrlees.mirrleesValue h g y) (Set.Ici θ_min) := by
+  refine (convex_Ici θ_min).lipschitzOnWith_of_nnnorm_hasDerivWithin_le
+    (f' := fun θ => h y + (y / θ ^ 2) * deriv g (y / θ)) (fun θ hθ => ?_) hbound
+  have hθ0 : θ ≠ 0 := ne_of_gt (lt_of_lt_of_le hθ_pos (Set.mem_Ici.mp hθ))
+  exact (Mirrlees.mirrleesValue_hasDerivAt h g hh hg y θ hθ0).hasDerivWithinAt
+
 /-! ### 5.1 Revenue Equivalence (Corollary 5.1) -/
 
 /-- **Corollary 5.1 — Myerson Revenue Equivalence Theorem**.
