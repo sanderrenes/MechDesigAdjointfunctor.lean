@@ -4,6 +4,36 @@ Formal proof in Lean 4 / Mathlib that Myerson's (1981) Revenue Equivalence Theor
 
 See `MechDesigAdjointfunctor/Unification.md` for the mathematical write-up.
 
+## Incentive compatibility is load-bearing (the envelope bridge)
+
+The envelope condition is **derived from IC**, not assumed. This was the project's largest
+gap and it is now closed:
+
+1. **`surplus_ic_sandwich`** — pure `hIC`, no analysis at all. Each type declining to mimic
+   the other bounds the surplus change on both sides by increments of `v(a, ·)` along a
+   *fixed* allocation:
+   ```
+   v(q θ₁, θ₂) − v(q θ₁, θ₁)  ≤  V(θ₂) − V(θ₁)  ≤  v(q θ₂, θ₂) − v(q θ₂, θ₁)
+   ```
+2. **`surplus_lipschitzOn` → `surplus_continuousOn`** — the sandwich plus a Lipschitz-in-the-
+   type condition on `v` gives continuity of the surplus. Discharged in both settings
+   (`myerson_lipschitz`, `mirrlees_lipschitz`).
+3. **`surplus_hasDerivWithinAt`** — Milgrom–Segal. Divide the sandwich by `y − θ > 0`; the
+   lower bound is a slope of `v(q θ, ·)`; the upper bound the mean value theorem turns into
+   `∂_θ v(q y, ξ)` for `ξ ∈ (θ, y)`. Squeeze.
+
+**The envelope hypothesis is one-sided, and it has to be.** A two-sided `HasDerivAt` is not
+merely strong — it is **false** for the canonical optimal auction. A posted price with reserve
+`p` has surplus `max(θ − p, 0)`, a kink at `p`, no derivative
+(`PostedPrice.postedPrice_not_hasDerivAt`). The old formulation therefore *excluded every
+auction with a reserve price*. The right derivative survives the kink, and the posted price
+now satisfies every hypothesis the framework asks: `postedPrice_hasEnvelope`,
+`postedPrice_lipschitz`, `postedPrice_hW`.
+
+**What revenue equivalence does *not* need:** single crossing or IR. SC makes `T` a functor;
+IR orients the adjunction. Neither is used by `masterTheorem_transferInvariance`, and the
+corollaries no longer pretend otherwise.
+
 ## The paper's arc, in three moves
 
 The categorical content is organised as a reflection followed by its normalisation. Each move is fully proved; nothing below rests on a `sorry`.
@@ -91,6 +121,20 @@ Build: `lake build` — completes successfully. **Zero sorries.** All results de
 | `revenueEquivalence` | Corollaries | Instance of the Master Theorem at `myersonValue` |
 | `taxationPrinciple` | Corollaries | Instance of the Master Theorem at `mirrleesValue` |
 | `myerson_expectedRevenue` | MyersonSetting | IBP via `integral_hasStrictDerivAt` |
+
+### Honest notes for a referee
+
+* **`adj_T_Q` has no consumer.** The adjunction is proved structure *about* the framework;
+  the corollaries do not use it. What they *do* use is the isomorphism in **Mech**
+  (`transfer_eq_of_iso`: an iso forces equal transfers), which is real categorical content.
+  `transferInvariance_via_T` shows the route through `T` is available. We say this rather
+  than contriving a dependency.
+* **Move 3 is cheap.** `Alloc ≌ Mech₀` is an equivalence, and equivalences are always cheap.
+  The content is in Moves 1 and 2 — that `T` exists at all (`T_wellDefined`), and that the
+  counit is invertible *precisely* at zero rent.
+* **`myersonTransfer ≠ transferFormula`.** They differ by the rent conceded below `θ_min`
+  (`myerson_transferFormula_eq_myersonTransfer`); they coincide only at `θ_min = 0`, which
+  the master theorem forbids.
 
 ### Open modelling question
 

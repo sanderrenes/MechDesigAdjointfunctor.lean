@@ -65,9 +65,20 @@ breaks. It cannot lie. Use it before claiming anything is unused, load-bearing, 
   `lake env lean <file>` over the editor squiggles.
 - Prefer the `/lean4:*` workflow: `/lean4:prove` to work, `/lean4:checkpoint` to land.
 
-## Standing warning
+## Status (was: standing warning)
 
-The framework assumes `hEnv` (the envelope derivative) rather than deriving it from IC. As a
-result **`hIC` is currently used by no theorem**, and `hEnv` is *false* for posted-price
-mechanisms. Closing this is `PLAN.md`. Do not describe the theorems as being "about IC
-mechanisms" until it is closed — they are not, yet.
+**The IC ⟹ envelope bridge is closed.** `hEnv` is no longer assumed anywhere in the
+master-theorem chain: `surplus_hasDerivWithinAt` derives it from `hIC` via the Milgrom–Segal
+squeeze, and `surplus_lipschitzOn` derives continuity of the surplus from the IC sandwich. The
+theorems *are* now about IC mechanisms — you may describe them that way.
+
+What survives as a hypothesis is `hW`: continuity of `(s, u) ↦ ∂_θ v(q s, u)` at the diagonal
+from the upper right. It is stated on the composite because `A` carries no topology. In the
+Myerson setting it is exactly right-continuity of `q`, and the posted price satisfies it.
+
+Two things worth remembering, because they are counter-intuitive:
+
+- **Revenue equivalence needs neither single crossing nor IR.** SC makes `T` a functor; IR
+  orients the adjunction `T ⊣ Q`. Neither is used by `masterTheorem_transferInvariance`.
+- **`adj_T_Q` has no consumer, and that is correct.** An adjunction is *structure*, not a
+  lemma. Do not contrive a dependency on it to make the dependency graph look better.
