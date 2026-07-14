@@ -230,8 +230,62 @@ domain where the model has content. Recorded rather than silently deleted.
 
 ---
 
-## Pending — record before implementing
+## D12 — Drop the hypotheses the corollaries do not use; make the categorical route explicit
+**Date:** 2026-07-13 · **Branch:** `surplus-order`
 
-* **Phase 2:** right-continuity of `q` — a field of `MonotoneAlloc`, or a hypothesis?
-* **Phase 2:** whether to drop `hMono` as a field of `ICIRMechanism` once `hIC` is
-  load-bearing (it is derivable from `hIC` + SC via `IC_implies_monotone`).
+`taxationPrinciple` no longer takes `hg_pos`, `hh_mono`, `hSM` (the Spence–Mirrlees
+conditions) or `hintC`; `revenueEquivalence` no longer takes `hintC`.
+
+**Rejected: keep them to document the setting.** They were *unused*, and carrying an unused
+hypothesis overstates what a theorem needs — a reader (or referee) reasonably assumes every
+hypothesis is load-bearing. Transfer invariance needs **neither single crossing nor IR**: SC
+is what makes `T` a functor, IR is what orients the adjunction, and revenue equivalence needs
+neither. Dropping them *strengthens* the statements.
+
+Separately, `transferInvariance_via_T` derives Theorem 4.5(iii) for normalised mechanisms by
+going `m₁ ≅ T(r) ≅ m₂` and applying `transfer_eq_of_iso`, giving `masterTheorem_isomorphism`
+a consumer and demonstrating that the route through `T` is genuinely available.
+
+`adj_T_Q` still has no consumer. **That is correct and should not be "fixed":** an adjunction
+is *structure*, not a lemma. Contriving a dependency on it would be dishonest. The module
+docstring says so plainly.
+
+---
+
+## D13 — `myersonTransfer` and `transferFormula` differ by the rent below `θ_min`
+**Date:** 2026-07-13 · **Branch:** `surplus-order`
+
+`myerson_transferFormula_eq_myersonTransfer`:
+
+```
+transferFormula(θ_min)(θ)  =  myersonTransfer(θ)  +  ∫₀^{θ_min} q
+```
+
+**Rejected: prove them equal.** They are *not* equal. `myersonTransfer` hard-codes
+`θ_min = 0`, while the Master Theorem requires `θ_min > 0`, and the two differ by exactly the
+rent conceded below `θ_min`. Asserting an equality would have required either weakening the
+master theorem to `θ_min = 0` (destroying the FTC arguments, which need `θ_min > 0`) or
+silently changing `myersonTransfer`. The shift *is* the bridge, and it is consistent with D5:
+the abstract theory deliberately leaves the boundary rent free.
+
+---
+
+## D14 — Delete the `True := trivial` "failure" theorems
+**Date:** 2026-07-13 · **Branch:** `surplus-order`
+
+`failure_nonQuasilinear`, `failure_multiDimensional`, `failure_ironing` were each
+`theorem … : True := trivial`.
+
+**Rejected: keep them as placeholders.** A theorem whose statement is `True` proves nothing,
+but it *looks* like a result — it appears in the declaration list, it type-checks, and it
+makes the development seem to cover the failure cases when it does not. That is worse than
+absence. They are now prose in §5.3 of `Corollaries.lean`, which is what they always were,
+and the prose is sharper for being written against the current design (e.g. failure of SC
+breaks `T`'s functoriality but *not* revenue equivalence).
+
+---
+
+## Pending
+
+*Nothing pending.* All phases of `PLAN.md` are complete; `TODO.md` lists only
+non-committal ideas.

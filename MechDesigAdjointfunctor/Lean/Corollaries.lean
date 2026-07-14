@@ -19,24 +19,33 @@ economic settings to recover the classical results as special cases.
 ## The proof chain
 
 ```
-QI + SC  →  MON  (IC_implies_monotone)
+       IC  (ICIRMechanism.hIC)
                ↓
-       Alloc is complete  (alloc_hasLimits)
+    surplus_ic_sandwich          ← pure IC, no analysis
+        ↙            ↘
+surplus_lipschitzOn   surplus_hasDerivWithinAt   ← Milgrom–Segal (MVT + squeeze)
+        ↘            ↙
+        surplus_split            ← the envelope theorem, in surplus form
                ↓
-       Q preserves colimits  (Q_preservesColimits)
+   mechIso_of_sameAlloc_sameRent  +  transfer_eq_of_iso   ← iso in Mech ⟹ equal transfers
                ↓
-       T(q) is BIC-IR  (T_wellDefined)
-               ↓
-       Q ⊣ T  (adj_Q_T)
-               ↓
-       T(q) terminal in Mech_q  (T_terminal)
-               ↙               ↘
+  masterTheorem_transferInvariance
+        ↙               ↘
   Revenue Equivalence     Taxation Principle
   (Myerson 1981)          (Hammond 1979; Rochet 1985)
 ```
 
-Both corollaries follow from `masterTheorem_transferInvariance`.  Only the economic
-interpretation of objects and morphisms differs.
+Both corollaries follow from `masterTheorem_transferInvariance`.  Only the value function
+differs — `myersonValue` vs `mirrleesValue`.  That is the unification claim, and it is
+literally the same call with a different `v`.
+
+Note what is **not** on this chain: `adj_T_Q`.  The adjunction is proved structure *about*
+the framework, not a lemma the corollaries consume.  The categorical content they do use is
+the isomorphism in **Mech** (`transfer_eq_of_iso`).  `transferInvariance_via_T` shows the
+route through `T` is genuinely available for normalised mechanisms.
+
+Note also what is **absent from the hypotheses**: neither corollary needs single crossing or
+IR.  SC makes `T` a functor; IR orients the adjunction; revenue equivalence needs neither.
 
 ## References
 
@@ -68,6 +77,12 @@ theorem myerson_deriv (a : Myerson.MyersonAlloc) (u : ℝ) :
     simpa using (hasDerivAt_id u).mul_const a
   exact h.deriv
 
+/-- The Myerson envelope integrand along any allocation is the allocation itself:
+`D_r(s) = ∂/∂s [s · r.q s] = r.q s`. -/
+theorem myerson_typeDeriv (r : MonotoneAlloc Myerson.MyersonAlloc) (s : ℝ) :
+    typeDerivAlongAlloc Myerson.myersonValue r s = r.q s :=
+  myerson_deriv (r.q s) s
+
 /-- **The Myerson value function is `1`-Lipschitz in the type along any allocation in
 `[-1, 1]`** — in particular along any allocation *probability*.
 
@@ -77,7 +92,7 @@ Combined with `surplus_lipschitzOn`, this discharges the continuity requirement 
 theorem myerson_lipschitz {a : Myerson.MyersonAlloc} (ha : |a| ≤ 1) (S : Set ℝ) :
     LipschitzOnWith 1 (Myerson.myersonValue a) S := by
   refine LipschitzOnWith.of_dist_le_mul fun x _ y _ => ?_
-  simp only [Myerson.myersonValue, Real.dist_eq, NNReal.coe_one, one_mul]
+  simp only [Real.dist_eq, NNReal.coe_one, one_mul, Myerson.myersonValue]
   calc |x * a - y * a| = |a| * |x - y| := by rw [← abs_mul]; ring_nf
     _ ≤ 1 * |x - y| := by gcongr
     _ = |x - y| := one_mul _
@@ -101,6 +116,47 @@ theorem mirrlees_lipschitz (h g : ℝ → ℝ) (hh : Differentiable ℝ h) (hg :
     (f' := fun θ => h y + (y / θ ^ 2) * deriv g (y / θ)) (fun θ hθ => ?_) hbound
   have hθ0 : θ ≠ 0 := ne_of_gt (lt_of_lt_of_le hθ_pos (Set.mem_Ici.mp hθ))
   exact (Mirrlees.mirrleesValue_hasDerivAt h g hh hg y θ hθ0).hasDerivWithinAt
+
+/-! ### 5.0b Linking `myersonTransfer` to the abstract `transferFormula`
+
+`MyersonSetting` defines `myersonTransfer q θ = θ·q θ − ∫₀^θ q` independently of the
+abstract `transferFormula`, and `myerson_expectedRevenue` (the virtual-valuation result) is
+proved about *that*.  Nothing connected the two, so the revenue formula floated free of the
+categorical machinery.  These two lemmas connect them. -/
+
+/-- The abstract envelope transfer, instantiated at `v(a, θ) = θ·a`, is the familiar
+Myerson expression — with the integral starting at `θ_min` rather than at `0`. -/
+theorem myerson_transferFormula (r : MonotoneAlloc Myerson.MyersonAlloc) (θ_min θ : ℝ) :
+    transferFormula Myerson.myersonValue θ_min
+        (typeDerivAlongAlloc Myerson.myersonValue r) r.q θ
+      = θ * r.q θ - ∫ s in θ_min..θ, r.q s := by
+  simp only [transferFormula]
+  congr 1
+  exact intervalIntegral.integral_congr fun s _ => myerson_typeDeriv r s
+
+/-- **`transferFormula` and `myersonTransfer` differ by exactly the rent conceded below
+`θ_min`.**
+
+```
+transferFormula(θ_min)(θ)  =  myersonTransfer(θ)  +  ∫₀^{θ_min} q
+```
+
+They coincide precisely when `θ_min = 0` — which the Master Theorem forbids, since it needs
+`θ_min > 0`.  So the two are *not* interchangeable, and the constant that separates them is
+the boundary rent `∫₀^{θ_min} q` that the abstract theory leaves free (see D5: revenue
+equivalence needs *equal* rent, not zero rent).  This is the honest form of the bridge. -/
+theorem myerson_transferFormula_eq_myersonTransfer
+    (r : MonotoneAlloc Myerson.MyersonAlloc) (θ_min θ : ℝ)
+    (hq_int : ∀ a b, IntervalIntegrable r.q MeasureTheory.volume a b) :
+    transferFormula Myerson.myersonValue θ_min
+        (typeDerivAlongAlloc Myerson.myersonValue r) r.q θ
+      = Myerson.myersonTransfer r.q θ + ∫ s in (0:ℝ)..θ_min, r.q s := by
+  rw [myerson_transferFormula r θ_min θ]
+  simp only [Myerson.myersonTransfer]
+  have hsplit : (∫ s in (0:ℝ)..θ_min, r.q s) + (∫ s in θ_min..θ, r.q s)
+      = ∫ s in (0:ℝ)..θ, r.q s :=
+    intervalIntegral.integral_add_adjacent_intervals (hq_int 0 θ_min) (hq_int θ_min θ)
+  linarith [hsplit]
 
 /-! ### 5.1 Revenue Equivalence (Corollary 5.1) -/
 
@@ -128,11 +184,6 @@ theorem revenueEquivalence
     (hint : ∀ a b, IntervalIntegrable
       (typeDerivAlongAlloc Myerson.myersonValue q₀)
       MeasureTheory.volume a b)
-    (hintC : ∀ (a : Myerson.MyersonAlloc) b c,
-      IntervalIntegrable (deriv (Myerson.myersonValue a)) MeasureTheory.volume b c)
-    -- Envelope condition: continuity plus a RIGHT derivative.  One-sided on purpose — a
-    -- two-sided derivative would exclude posted-price auctions, whose surplus has a kink
-    -- at the reserve.  See `surplus_split` and `Myerson.postedPrice_hasEnvelope`.
     -- Continuity is NOT assumed: it is derived from IC, given that the value function is
     -- Lipschitz in the type along each allocation the mechanism uses.  Discharged for
     -- Myerson by `myerson_lipschitz` whenever the allocation is bounded.
@@ -187,16 +238,18 @@ Moreover, any two IC mechanisms with the **same income assignment** `y(θ)` and 
 `V(θ_min)` produce identical tax schedules and hence the same expected tax revenue.
 
 *Proof*: Instantiate `masterTheorem_transferInvariance` with the Mirrlees value function.
-SC holds by `mirrlees_singleCrossing` under SC-M.  The tax schedule is uniquely
-determined by the allocation rule and the boundary condition.
+
+**On the hypotheses.**  Notice what is *absent*: the Spence–Mirrlees conditions
+(`0 < g'`, `StrictMono h`, `StrictMono (l ↦ l · g' l)`) are **not** assumed, because transfer
+invariance does not need them.  Single crossing is what makes `T` a functor and what forces
+monotonicity of the allocation; it plays no role in revenue equivalence, which is a statement
+about IC alone.  Carrying SC here would have overstated what the theorem requires.  (`h` and
+`g` are still assumed differentiable — that is genuinely used, via `mirrlees_vDiff`.)
 
 *Reference*: Hammond (1979), Theorem 1; Rochet (1985), Proposition 1; Mirrlees (1971),
 Eq. (27). -/
 theorem taxationPrinciple
     (h g : ℝ → ℝ) (hh : Differentiable ℝ h) (hg : Differentiable ℝ g)
-    (hg_pos : ∀ l, 0 < deriv g l)
-    (hh_mono : StrictMono h)
-    (hSM : StrictMono (fun l => l * deriv g l))
     (θ_min : ℝ) (hθ_pos : 0 < θ_min)
     (q₀ : MonotoneAlloc ℝ)
     (m₁ m₂ : ICIRMechanism ℝ (Mirrlees.mirrleesValue h g) θ_min)
@@ -205,14 +258,9 @@ theorem taxationPrinciple
     (hint : ∀ a b, IntervalIntegrable
       (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀)
       MeasureTheory.volume a b)
-    (hintC : ∀ (a : ℝ) b c,
-      IntervalIntegrable (deriv (Mirrlees.mirrleesValue h g a)) MeasureTheory.volume b c)
-    -- Envelope condition: continuity plus a RIGHT derivative.  One-sided on purpose — a
-    -- two-sided derivative would exclude allocations with a bunching region.
     -- Continuity is NOT assumed: it is derived from IC, given Lipschitz-in-the-type.
-    -- For Mirrlees, `∂v/∂θ = h y + g'(y/θ)·y/θ²` is bounded on `[θ_min, ∞)` for each fixed
-    -- income `y`, and uniformly so once the income range is bounded.  See TODO.md — the
-    -- Lean discharge of this is the one Phase 1 task still open.
+    -- Discharged by `mirrlees_lipschitz`: `∂v/∂θ = h y + (y/θ²)·g'(y/θ)` is bounded on
+    -- `[θ_min, ∞)` for each income, uniformly so once incomes are bounded.
     (L₁ : NNReal)
     (hvLip₁ : ∀ θ' : ℝ,
       LipschitzOnWith L₁ (Mirrlees.mirrleesValue h g (m₁.mech.q θ')) (Set.Ici θ_min))
@@ -280,15 +328,6 @@ lemma surplus_eq (θ : ℝ) :
   · rw [max_eq_left (by linarith : (0:ℝ) ≤ θ - p)]; ring
   · rw [max_eq_right (by linarith [not_le.mp h] : θ - p ≤ (0:ℝ))]; ring
 
-/-- The Myerson envelope integrand along any allocation is the allocation itself:
-`D_r(θ) = ∂/∂θ (θ · r.q θ) = r.q θ`. -/
-lemma typeDeriv_eq (r : MonotoneAlloc Myerson.MyersonAlloc) (θ : ℝ) :
-    typeDerivAlongAlloc Myerson.myersonValue r θ = r.q θ := by
-  simp only [typeDerivAlongAlloc, Myerson.myersonValue]
-  have h : HasDerivAt (fun s : ℝ => s * r.q θ) (r.q θ) θ := by
-    simpa using (hasDerivAt_id θ).mul_const (r.q θ)
-  exact h.deriv
-
 /-- **The posted price satisfies the framework's envelope hypothesis.**
 Continuity plus a *right* derivative at every physical type — including at the reserve `p`,
 where the right derivative is `1 = q p`. -/
@@ -303,7 +342,7 @@ theorem postedPrice_hasEnvelope :
   · rw [hV]
     exact (Continuous.max (continuous_id.sub continuous_const) continuous_const).continuousOn
   · intro θ _
-    rw [hV, typeDeriv_eq ⟨alloc p, alloc_mono⟩ θ]
+    rw [hV, myerson_typeDeriv ⟨alloc p, alloc_mono⟩ θ]
     change HasDerivWithinAt (fun s => max (s - p) 0) (alloc p θ) (Set.Ioi θ) θ
     by_cases hpθ : p ≤ θ
     · -- Above the reserve: V agrees with `s - p` to the right of θ, slope 1 = q θ.
@@ -317,7 +356,7 @@ theorem postedPrice_hasEnvelope :
           (hEq (Set.mem_Ici.mpr (le_refl θ)))
       simpa [alloc, if_pos hpθ] using hres
     · -- Below the reserve: V is eventually 0 to the right of θ, slope 0 = q θ.
-      push_neg at hpθ
+      rw [not_le] at hpθ
       have hev : (fun s => max (s - p) 0) =ᶠ[nhdsWithin θ (Set.Ioi θ)] fun _ => (0:ℝ) := by
         have hmem : Set.Iio p ∈ nhdsWithin θ (Set.Ioi θ) :=
           nhdsWithin_le_nhds (Iio_mem_nhds hpθ)
@@ -348,7 +387,7 @@ theorem postedPrice_not_hasDerivAt (c : ℝ) :
   have hL0 : slope (fun s => max (s - p) 0) p =ᶠ[nhdsWithin p (Set.Iio p)] fun _ => (0:ℝ) := by
     filter_upwards [self_mem_nhdsWithin] with x hx
     have hxp : x - p ≤ 0 := by linarith [Set.mem_Iio.mp hx]
-    simp [slope_def_field, max_eq_right hxp, max_eq_right (le_of_eq (sub_self p))]
+    simp [slope_def_field, max_eq_right hxp]
   have hc0 : c = 0 :=
     tendsto_nhds_unique (hleft.congr' hL0) tendsto_const_nhds
   -- From the right the slope is identically 1.
@@ -359,8 +398,7 @@ theorem postedPrice_not_hasDerivAt (c : ℝ) :
     filter_upwards [self_mem_nhdsWithin] with x hx
     have hxp : (0:ℝ) ≤ x - p := by linarith [Set.mem_Ioi.mp hx]
     have hne : x - p ≠ 0 := sub_ne_zero.mpr (ne_of_gt (Set.mem_Ioi.mp hx))
-    simp [slope_def_field, max_eq_left hxp, max_eq_right (le_of_eq (sub_self p)),
-      div_self hne]
+    simp [slope_def_field, max_eq_left hxp, div_self hne]
   have hc1 : c = 1 :=
     tendsto_nhds_unique (hright.congr' hR1) tendsto_const_nhds
   exact absurd (hc0 ▸ hc1 : (0:ℝ) = 1) (by norm_num)
@@ -394,7 +432,7 @@ theorem postedPrice_hW (θ : ℝ) :
   have hfun : (fun x : ℝ × ℝ => deriv (Myerson.myersonValue (alloc p x.1)) x.2)
       = fun x : ℝ × ℝ => alloc p x.1 :=
     funext fun x => myerson_deriv _ _
-  show ContinuousWithinAt (fun x : ℝ × ℝ => deriv (Myerson.myersonValue (alloc p x.1)) x.2)
+  change ContinuousWithinAt (fun x : ℝ × ℝ => deriv (Myerson.myersonValue (alloc p x.1)) x.2)
     (Set.Ici θ ×ˢ Set.Ici θ) (θ, θ)
   rw [hfun]
   -- Right-continuity of the posted-price allocation at θ.
@@ -417,27 +455,29 @@ theorem postedPrice_hW (θ : ℝ) :
 
 end PostedPrice
 
-/-! ### 5.3 Conditions for Failure (Stage 6 placeholders)
+/-! ### 5.3 Conditions for failure — where each hypothesis is load-bearing
 
-The following stubs record where each of the three conditions breaks down,
-matching the discussion in Section 6 of `Unification.md`.  Proofs are deferred. -/
+These were previously three `theorem … : True := trivial` stubs.  A theorem that states
+`True` proves nothing, and having them in the file made the development look as though it
+covered the failure cases when it does not.  They are recorded here as prose, which is what
+they always were.
 
-/-- **Failure of QI**: Without quasilinearity, the allocation and transfer components
-of IC mechanisms are entangled.  Q no longer factors through Alloc as a forgetful
-functor; the adjunction Q ⊣ T breaks.
-*Reference*: Maskin–Riley (1984); Rochet–Choné (1998). -/
-theorem failure_nonQuasilinear : True := trivial  -- placeholder
+* **Failure of QI (quasilinearity).**  Without a linear numeraire the surplus
+  `V(θ) = v(q θ, θ) − t θ` is not the right coordinate, and the transfer is no longer
+  recoverable from `(q, V)`.  `MechHom`'s surplus order — the whole basis of `T`'s
+  functoriality (D1) — loses its meaning, and `Q` no longer factors as a forgetful functor.
+  *Reference*: Maskin–Riley (1984); Rochet–Choné (1998).
 
-/-- **Failure of SC**: With multi-dimensional types `θ ∈ ℝᵏ` for `k ≥ 2`, there is no
-natural total order giving single crossing.  Alloc loses its poset structure; the
-completeness argument fails; the Adjoint Functor Theorem does not directly apply.
-*Reference*: Rochet (1987); Armstrong (1996); Rochet–Choné (1998). -/
-theorem failure_multiDimensional : True := trivial  -- placeholder
+* **Failure of SC (single crossing).**  With multi-dimensional types `θ ∈ ℝᵏ`, `k ≥ 2`, there
+  is no total order on types, so `typeDeriv_mono_of_alloc_le` fails and with it
+  `Tmech_surplus_mono` — `T` is not a functor.  Note this does **not** touch revenue
+  equivalence, which needs neither SC nor IR (see `taxationPrinciple`); it destroys the
+  *categorical* half of the story only.
+  *Reference*: Rochet (1987); Armstrong (1996); Rochet–Choné (1998).
 
-/-- **Failure of MON** (ironing): Without regularity, the optimal allocation is
-non-monotone.  The categorical fix is ironing: replace `q*` with its concave
-majorant over bunching intervals.  Uniqueness of `T(q)` recovers only in expectation.
-*Reference*: Myerson (1981), Section 6; Mirrlees (1971), Section 6; Ebert (1992). -/
-theorem failure_ironing : True := trivial  -- placeholder
+* **Failure of MON (ironing).**  Without regularity the optimal allocation is non-monotone,
+  so it is not an object of **Alloc** at all.  The fix is ironing — replace `q*` by its
+  monotone envelope — after which the theory applies to the ironed rule.
+  *Reference*: Myerson (1981), §6; Mirrlees (1971), §6; Ebert (1992). -/
 
 end MechDesign.Corollaries

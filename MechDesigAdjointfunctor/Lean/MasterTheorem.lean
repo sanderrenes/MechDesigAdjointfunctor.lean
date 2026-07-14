@@ -974,6 +974,46 @@ theorem masterTheorem_transferInvariance {A : Type*} [LinearOrder A]
   exact MeasureTheory.setIntegral_congr_fun measurableSet_Ici
     fun θ hθ => transfer_eq_of_iso i θ hθ
 
+/-- **Transfer invariance, routed through `T`** — the categorical derivation.
+
+For *normalised* mechanisms (zero rent), this proves Theorem 4.5(iii) by going through the
+transfer functor: each mechanism is isomorphic to `T(r)` (`masterTheorem_isomorphism`), so
+they are isomorphic to each other, and an isomorphism in **Mech** forces equal transfers
+(`transfer_eq_of_iso`).
+
+`masterTheorem_transferInvariance` proves the *more general* equal-rent statement directly,
+without `T`.  This variant exists to demonstrate that the categorical route is genuinely
+available — `T` and the isomorphism are not decorative — and to give
+`masterTheorem_isomorphism` a consumer. -/
+theorem transferInvariance_via_T {A : Type*} [LinearOrder A] [AddCommGroup A]
+    [IsOrderedAddMonoid A] {v : A → ℝ → ℝ} {θ_min : ℝ}
+    (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D) (hD_Ioi : Set.Ioi 0 ⊆ D)
+    (r : MonotoneAlloc A)
+    (hdiff : ∀ (a : A), DifferentiableOn ℝ (v a) (Set.Ioi 0))
+    (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
+    (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c)
+    (m₁ m₂ : ICIRMechanism A v θ_min)
+    (hm₁ : m₁ ∈ MechWithAlloc r) (hm₂ : m₂ ∈ MechWithAlloc r)
+    (L₁ : NNReal)
+    (hvLip₁ : ∀ θ' : ℝ, LipschitzOnWith L₁ (v (m₁.mech.q θ')) (Set.Ici θ_min))
+    (L₂ : NNReal)
+    (hvLip₂ : ∀ θ' : ℝ, LipschitzOnWith L₂ (v (m₂.mech.q θ')) (Set.Ici θ_min))
+    (hW : ∀ θ, θ_min ≤ θ →
+      ContinuousWithinAt (fun p : ℝ × ℝ => deriv (v (r.q p.1)) p.2)
+        (Set.Ici θ ×ˢ Set.Ici θ) (θ, θ))
+    -- Both mechanisms are normalised: zero rent at the lowest type.
+    (hBC₁ : v (m₁.mech.q θ_min) θ_min = m₁.mech.t θ_min)
+    (hBC₂ : v (m₂.mech.q θ_min) θ_min = m₂.mech.t θ_min)
+    (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
+    ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ := by
+  obtain ⟨i₁⟩ := masterTheorem_isomorphism hθ_pos hSC hD_Ioi r hdiff hint hintC m₁ hm₁
+    L₁ hvLip₁ hW hBC₁
+  obtain ⟨i₂⟩ := masterTheorem_isomorphism hθ_pos hSC hD_Ioi r hdiff hint hintC m₂ hm₂
+    L₂ hvLip₂ hW hBC₂
+  -- m₁ ≅ T(r) ≅ m₂
+  exact MeasureTheory.setIntegral_congr_fun measurableSet_Ici
+    fun θ hθ => transfer_eq_of_iso (i₁ ≪≫ i₂.symm) θ hθ
+
 /-! ### 4.6 The normalized subcategory **Mech₀** and the equivalence `Alloc ≃ Mech₀`
 
 The three-move architecture of the Master Theorem:
@@ -1018,7 +1058,7 @@ lemma zeroRent_Tmech {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddM
     (hint : ∀ a b, IntervalIntegrable (typeDerivAlongAlloc v r) MeasureTheory.volume a b)
     (hintC : ∀ (a : A) b c, IntervalIntegrable (deriv (v a)) MeasureTheory.volume b c) :
     ZeroRent (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC) := by
-  show surplus (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC) θ_min = 0
+  change surplus (Tmech hθ_pos hSC hD_Ioi r hdiff hint hintC) θ_min = 0
   rw [surplus_Tmech]; simp
 
 /-- **Move 2**: the comonad `T ∘ Q` strips the rent — `T(Q(m))` always has zero rent,

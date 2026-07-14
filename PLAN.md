@@ -135,14 +135,13 @@ is exactly the failure mode that killed the convexity route (see `DECISIONS.md`,
 
 ---
 
-## Out of scope here, but open
+## Bridges 2 and 3 — CLOSED
 
-* **Bridge 2 — `myersonTransfer` is unlinked.** `myerson_expectedRevenue` is proved about
-  `myersonTransfer`, a definition written independently of `transferFormula`. They coincide
-  mathematically (at `v = θ·q` the envelope integrand is just `q`), but no lemma says so,
-  and `myersonTransfer` hard-codes `θ_min = 0` while the master theorem needs `θ_min > 0`.
-  So the virtual-valuation result floats free of the categorical machinery.
-* **Bridge 3 — the corollaries never use the adjunction.** `revenueEquivalence` and
-  `taxationPrinciple` reach `masterTheorem_transferInvariance` and stop; `adj_T_Q` is proved
-  structure nothing consumes (verified by deletion). Optional fix: route transfer invariance
-  through initiality of `T(r)`.
+* **Bridge 2 ✅** `myerson_transferFormula_eq_myersonTransfer`: `transferFormula` and
+  `myersonTransfer` differ by exactly the rent conceded below `θ_min` (`∫₀^{θ_min} q`).
+  They are not equal — `myersonTransfer` hard-codes `θ_min = 0`, which the master theorem
+  forbids. The shift is the honest bridge. See `DECISIONS.md` D13.
+* **Bridge 3 ✅** `transferInvariance_via_T`: Theorem 4.5(iii) derived for normalised
+  mechanisms via `m₁ ≅ T(r) ≅ m₂` and `transfer_eq_of_iso`, giving
+  `masterTheorem_isomorphism` a consumer. `adj_T_Q` still has no consumer, and that is
+  correct — an adjunction is structure, not a lemma. See `DECISIONS.md` D12.

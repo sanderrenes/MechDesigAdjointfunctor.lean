@@ -3,23 +3,46 @@
 Living list. Update it in the same commit as the work — see `CLAUDE.md`.
 Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped (say why)
 
+## Open
 
-## Now — the three remaining bridges (see "Open questions" below)
+*Nothing scheduled.* The IC ⟹ envelope bridge is closed and all three missing bridges are
+resolved. `lake build` is clean with **zero sorries, zero warnings**, and every result rests
+on `[propext, Classical.choice, Quot.sound]`.
 
-## Open questions (not scheduled)
-- [ ] `myersonTransfer` is never linked to `transferFormula`; it hard-codes `θ_min = 0`
-      while the master theorem needs `θ_min > 0`. The Myerson revenue formula therefore
-      floats free of the categorical machinery. (`PLAN.md` § Out of scope, Bridge 2)
-- [ ] The corollaries never touch `adj_T_Q` (verified by deletion). Optionally route
-      transfer invariance through initiality of `T(r)`. (Bridge 3)
-- [ ] `myerson_singleCrossing` / `mirrlees_singleCrossing` have no consumers since the
-      boundary condition was relaxed to equal-rent. Expected, but confirm it stays that way.
-- [ ] Decide whether `Corollaries.taxationPrinciple` should keep its now-unused setting
-      hypotheses (`hh`, `hg`, `hg_pos`, `hh_mono`, `hSM`) or drop them.
-- [ ] `failure_nonQuasilinear`, `failure_multiDimensional`, `failure_ironing` are `True`
-      placeholders in `Corollaries.lean`. Either state them or delete them.
+Ideas, not commitments:
+- [ ] Prove the failure cases in §5.3 of `Corollaries.lean` rather than documenting them
+      (they are currently prose, having been fake `True := trivial` theorems — see D14).
+- [ ] `mirrlees_lipschitz` takes the derivative bound as a hypothesis. It could be *derived*
+      from bounded incomes plus continuity of `h` and `g'` on the relevant compact.
+- [ ] `hW` could be specialised: in the Myerson setting it is literally right-continuity of
+      `q`, and a helper lemma `myerson_hW_of_rightContinuous` would make that visible to
+      callers rather than leaving them to unfold the composite.
 
 ## Done
+
+- [x] **Bridge 2 — `myersonTransfer` linked to `transferFormula`** (D13).
+      `myerson_transferFormula`: the abstract formula at `v = θ·a` is `θ·q θ − ∫_{θ_min}^θ q`.
+      `myerson_transferFormula_eq_myersonTransfer`: the two differ by **exactly** the rent
+      conceded below `θ_min`, `∫₀^{θ_min} q`. They coincide iff `θ_min = 0`, which the master
+      theorem forbids — so the honest bridge is the shift, not an equality.
+- [x] **Bridge 3 — the categorical route made explicit** (D12). `transferInvariance_via_T`
+      derives Theorem 4.5(iii) for normalised mechanisms by going `m₁ ≅ T(r) ≅ m₂` and
+      applying `transfer_eq_of_iso`. This gives `masterTheorem_isomorphism` a consumer and
+      shows `T` is not decorative. `adj_T_Q` still has no consumer, and that is correct: an
+      adjunction is *structure*, not a lemma. Documented in the module docstring.
+- [x] **Unused hypotheses dropped** (D12). `taxationPrinciple` no longer takes `hg_pos`,
+      `hh_mono`, `hSM` (the Spence–Mirrlees conditions) or `hintC`; `revenueEquivalence` no
+      longer takes `hintC`. Transfer invariance needs **neither SC nor IR** — SC makes `T` a
+      functor, IR orients the adjunction, and revenue equivalence needs neither. Carrying
+      them overstated the theorem's requirements.
+- [x] **Fake theorems deleted** (D14). `failure_nonQuasilinear`, `failure_multiDimensional`
+      and `failure_ironing` were `theorem … : True := trivial`. A theorem stating `True`
+      proves nothing and made the file look as though it covered the failure cases. They are
+      now prose in §5.3, which is what they always were.
+- [x] **`myerson_singleCrossing` / `mirrlees_singleCrossing` have no consumers** — confirmed
+      expected and correct. Once the boundary condition was relaxed to equal-rent (D5),
+      transfer invariance stopped needing SC. SC remains load-bearing for `T`'s functoriality
+      (`typeDeriv_mono_of_alloc_le` → `Tmech_surplus_mono`), just not for the corollaries.
 - [x] **Phase 2 — THE BRIDGE IS CLOSED** (D10, D11). `surplus_hasDerivWithinAt` proves the
       envelope condition from IC via the Milgrom–Segal squeeze (IC sandwich + mean value
       theorem). **`hEnv` no longer appears in `MasterTheorem.lean` or `Corollaries.lean`.**
@@ -27,30 +50,19 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped (say why)
       from the upper right — stated on the composite because `A` has no topology. In the
       Myerson setting it *is* right-continuity of `q`, and the posted price satisfies it
       (`PostedPrice.postedPrice_hW`). `hMono` stays a field (D11): IC gives only `MonotoneOn`
-      on `[θ_min, ∞)`, not `Monotone` on ℝ, so `IC_implies_monotone` cannot replace it and
-      remains a documented consistency check.
-- [x] **Phase 1 (complete)** — `mirrlees_lipschitz` landed, so the Lipschitz hypothesis is
-      now discharged in **both** settings (`myerson_lipschitz`, `mirrlees_lipschitz`,
-      `PostedPrice.postedPrice_lipschitz`). Mirrlees reduces it to an explicit bound on
-      `∂v/∂θ = h y + (y/θ²)·g′(y/θ)` over `[θ_min, ∞)` via the mean value theorem
-      (`Convex.lipschitzOnWith_of_nnnorm_hasDerivWithin_le`), reusing the existing
-      `mirrleesValue_hasDerivAt`.
-- [x] **Phase 1 (abstract layer + Myerson)** — `hIC` is now **load-bearing** (D8).
-      `surplus_ic_sandwich` (pure IC, no analysis) → `surplus_lipschitzOn` →
-      `surplus_continuousOn`. `surplus_split` no longer *assumes* continuity, it *derives* it.
-      Verified by deletion: commenting out `surplus_ic_sandwich` breaks the build, so the
-      chain `revenueEquivalence → … → surplus_split → … → m.hIC` is real.
-      Myerson discharge landed (`myerson_lipschitz`, `PostedPrice.postedPrice_lipschitz`).
-      Domain of the envelope family moved from `(0, ∞)` to `[θ_min, ∞)` — IC constrains
-      nothing below `θ_min`, so nothing below it is derivable (D9).
-- [x] **Phase 0** — `hEnv` weakened to `ContinuousOn` + `HasDerivWithinAt … (Set.Ioi θ) θ`
-      throughout (D7). `surplus_split` now uses
-      `intervalIntegral.integral_eq_sub_of_hasDeriv_right`. Acceptance test landed:
-      `PostedPrice.postedPrice_hasEnvelope` (the reserve-price auction *does* satisfy the new
-      hypothesis) and `PostedPrice.postedPrice_not_hasDerivAt` (it does **not** satisfy the
-      old one — no derivative at the reserve, for any candidate value).
+      on `[θ_min, ∞)`, not `Monotone` on ℝ.
+- [x] **Phase 1 (complete)** — `hIC` is **load-bearing** (D8, D9). `surplus_ic_sandwich`
+      (pure IC) → `surplus_lipschitzOn` → `surplus_continuousOn`; `surplus_split` derives
+      continuity instead of assuming it. Verified by deletion. Discharged in both settings
+      (`myerson_lipschitz`, `mirrlees_lipschitz`, `PostedPrice.postedPrice_lipschitz`).
+      Envelope family moved from `(0, ∞)` to `[θ_min, ∞)`.
+- [x] **Phase 0** — `hEnv` weakened to a **right** derivative (D7). The old two-sided
+      `HasDerivAt` was not merely strong but **false** for the posted price
+      (`PostedPrice.postedPrice_not_hasDerivAt`), so reserve-price auctions were excluded
+      outright. Now they satisfy every hypothesis (`postedPrice_hasEnvelope`,
+      `postedPrice_lipschitz`, `postedPrice_hW`).
 - [x] Order `MechHom` by surplus rather than transfer; `T` becomes a functor (D1, D2)
 - [x] `adj_T_Q` : `T ⊣ Q`; `T(r)` initial, not terminal (D3)
 - [x] Relax the boundary condition to equal rent, `hV₀` (D5)
 - [x] `Mech₀` + `equivAllocMech₀` : `Alloc ≌ Mech₀` — Move 3 (D6)
-- [x] Correct the `IsIR` docstring (it described the normalisation, not the inequality)
+- [x] Correct the `IsIR` docstring (it described the normalisation, not the inequality) (D4)
