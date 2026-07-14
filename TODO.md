@@ -4,13 +4,7 @@ Living list. Update it in the same commit as the work — see `CLAUDE.md`.
 Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped (say why)
 
 
-## Now — Phase 2: right-derivative = `D θ` (Milgrom–Segal)
-- [ ] Decide: right-continuity of `q` as a `MonotoneAlloc` field, or a hypothesis? Record in `DECISIONS.md`
-- [ ] Joint continuity of `∂_θ v`; verify for both value functions first
-- [ ] `surplus_hasDerivWithinAt` (squeeze)
-- [ ] Delete `hEnv` from every signature
-- [ ] Give `IC_implies_monotone` a consumer; consider dropping `hMono` as a field
-- [ ] Commit
+## Now — the three remaining bridges (see "Open questions" below)
 
 ## Open questions (not scheduled)
 - [ ] `myersonTransfer` is never linked to `transferFormula`; it hard-codes `θ_min = 0`
@@ -26,6 +20,15 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped (say why)
       placeholders in `Corollaries.lean`. Either state them or delete them.
 
 ## Done
+- [x] **Phase 2 — THE BRIDGE IS CLOSED** (D10, D11). `surplus_hasDerivWithinAt` proves the
+      envelope condition from IC via the Milgrom–Segal squeeze (IC sandwich + mean value
+      theorem). **`hEnv` no longer appears in `MasterTheorem.lean` or `Corollaries.lean`.**
+      The surviving hypothesis is `hW` — continuity of `(s,u) ↦ ∂_θ v(q s, u)` at the diagonal
+      from the upper right — stated on the composite because `A` has no topology. In the
+      Myerson setting it *is* right-continuity of `q`, and the posted price satisfies it
+      (`PostedPrice.postedPrice_hW`). `hMono` stays a field (D11): IC gives only `MonotoneOn`
+      on `[θ_min, ∞)`, not `Monotone` on ℝ, so `IC_implies_monotone` cannot replace it and
+      remains a documented consistency check.
 - [x] **Phase 1 (complete)** — `mirrlees_lipschitz` landed, so the Lipschitz hypothesis is
       now discharged in **both** settings (`myerson_lipschitz`, `mirrlees_lipschitz`,
       `PostedPrice.postedPrice_lipschitz`). Mirrlees reduces it to an explicit bound on

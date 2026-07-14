@@ -184,6 +184,52 @@ economic content below `θ_min` anyway, and every caller already worked on `[θ_
 
 ---
 
+## D10 — The envelope condition is **derived from IC** (Milgrom–Segal). `hEnv` is gone.
+**Date:** 2026-07-13 · **Branch:** `surplus-order` · **Phase 2**
+
+`surplus_hasDerivWithinAt` proves what `hEnv` used to assume: the surplus has a right
+derivative equal to the envelope integrand, at every physical type. Divide the IC sandwich
+by `y − θ > 0`; the lower bound is a slope of `v(q θ, ·)` and tends to `D θ`; the upper bound
+is a slope of `v(q y, ·)`, which the **mean value theorem** turns into `∂_θ v(q y, ξ)` for
+`ξ ∈ (θ, y)`; as `y ↓ θ` both collapse to `θ`. Squeeze.
+
+`hEnv` no longer appears anywhere in `MasterTheorem.lean` or `Corollaries.lean`.
+
+**The one surviving hypothesis, and why it is shaped oddly.** `A` carries **no topology** in
+this framework, so "`q` is right-continuous" is not even *statable*. Instead:
+
+```lean
+hW : ∀ θ, θ_min ≤ θ → ContinuousWithinAt (fun p : ℝ × ℝ => deriv (v (r.q p.1)) p.2)
+                        (Set.Ici θ ×ˢ Set.Ici θ) (θ, θ)
+```
+
+**Rejected: add `[TopologicalSpace A]` to the framework** and assume right-continuity of `q`
+plus joint continuity of `∂_θ v`. That would have touched every declaration in the project,
+and it is *stronger* than what the squeeze needs. `hW` asks only for what is actually used:
+the composite `(s, u) ↦ ∂_θ v(q s, u)` continuous at the diagonal from the upper-right.
+
+In the Myerson setting `∂_θ v(a, u) = a`, so `hW` **is** precisely right-continuity of `q` —
+and the posted price satisfies it (`PostedPrice.postedPrice_hW`): `q` jumps *up* at the
+reserve, and `q p = 1`. The reserve-price auction, which the original two-sided `HasDerivAt`
+excluded outright, now sails through the derivation.
+
+---
+
+## D11 — `hMono` stays a field of `ICIRMechanism`
+**Date:** 2026-07-13 · **Phase 2**
+
+**Rejected: drop `hMono` and derive it from `hIC` + SC via `IC_implies_monotone`.**
+`IC_implies_monotone` concludes `MonotoneOn m.mech.q (Set.Ici θ_min)` — monotone on the
+*physical domain only*. The field `hMono : Monotone mech.q` is monotonicity on **all of ℝ**,
+which IC cannot give, because `IsIC` says nothing about types below `θ_min`. The two are not
+interchangeable, so the field stays.
+
+`IC_implies_monotone` therefore remains without a consumer. It is retained as a documented
+consistency check: it shows the `hMono` field is not an *extra* economic assumption on the
+domain where the model has content. Recorded rather than silently deleted.
+
+---
+
 ## Pending — record before implementing
 
 * **Phase 2:** right-continuity of `q` — a field of `MonotoneAlloc`, or a hypothesis?

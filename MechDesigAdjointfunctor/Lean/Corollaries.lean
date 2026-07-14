@@ -60,6 +60,14 @@ constant uniform over the allocations the mechanism actually uses.
 Here is that hypothesis discharged in the Myerson setting.  It is exactly the standard
 assumption that allocation probabilities lie in `[0, 1]`. -/
 
+/-- `∂/∂θ [θ·a] = a`.  The Myerson envelope integrand is the allocation itself. -/
+theorem myerson_deriv (a : Myerson.MyersonAlloc) (u : ℝ) :
+    deriv (Myerson.myersonValue a) u = a := by
+  have h : HasDerivAt (Myerson.myersonValue a) a u := by
+    unfold Myerson.myersonValue
+    simpa using (hasDerivAt_id u).mul_const a
+  exact h.deriv
+
 /-- **The Myerson value function is `1`-Lipschitz in the type along any allocation in
 `[-1, 1]`** — in particular along any allocation *probability*.
 
@@ -131,22 +139,23 @@ theorem revenueEquivalence
     (L₁ : NNReal)
     (hvLip₁ : ∀ θ' : ℝ,
       LipschitzOnWith L₁ (Myerson.myersonValue (m₁.mech.q θ')) (Set.Ici θ_min))
-    (hEnv₁ : ∀ θ > 0, HasDerivWithinAt
-      (fun s => Myerson.myersonValue (q₀.q s) s - m₁.mech.t s)
-      (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) (Set.Ioi θ) θ)
     (L₂ : NNReal)
     (hvLip₂ : ∀ θ' : ℝ,
       LipschitzOnWith L₂ (Myerson.myersonValue (m₂.mech.q θ')) (Set.Ici θ_min))
-    (hEnv₂ : ∀ θ > 0, HasDerivWithinAt
-      (fun s => Myerson.myersonValue (q₀.q s) s - m₂.mech.t s)
-      (typeDerivAlongAlloc Myerson.myersonValue q₀ θ) (Set.Ioi θ) θ)
+    -- The envelope condition is NO LONGER ASSUMED — it is derived from IC (Milgrom–Segal).
+    -- What remains is `hW`, which in the Myerson setting (`∂v/∂θ = a`) is exactly
+    -- **right-continuity of the allocation rule**.  The posted price satisfies it:
+    -- see `PostedPrice.postedPrice_hW`.
+    (hW : ∀ θ, θ_min ≤ θ →
+      ContinuousWithinAt (fun p : ℝ × ℝ => deriv (Myerson.myersonValue (q₀.q p.1)) p.2)
+        (Set.Ici θ ×ˢ Set.Ici θ) (θ, θ))
     -- RELAXED boundary condition: the two mechanisms leave the lowest type the SAME rent.
     -- (Revenue equivalence needs equal rent, not zero rent.)
     (hV₀ : surplus m₁ θ_min = surplus m₂ θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ :=
-  masterTheorem_transferInvariance hθ_pos q₀ hint m₁ m₂ hm₁_alloc hm₂_alloc
-    L₁ hvLip₁ hEnv₁ L₂ hvLip₂ hEnv₂ hV₀ μ
+  masterTheorem_transferInvariance hθ_pos q₀ hint Myerson.myerson_vDiff
+    m₁ m₂ hm₁_alloc hm₂_alloc L₁ hvLip₁ L₂ hvLip₂ hW hV₀ μ
 
 /-- **Myerson expected revenue formula**: for any BIC-IR mechanism with allocation `q`
 and `V(0) = 0`, expected revenue equals expected virtual surplus.
@@ -207,22 +216,24 @@ theorem taxationPrinciple
     (L₁ : NNReal)
     (hvLip₁ : ∀ θ' : ℝ,
       LipschitzOnWith L₁ (Mirrlees.mirrleesValue h g (m₁.mech.q θ')) (Set.Ici θ_min))
-    (hEnv₁ : ∀ θ > 0, HasDerivWithinAt
-      (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₁.mech.t s)
-      (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) (Set.Ioi θ) θ)
     (L₂ : NNReal)
     (hvLip₂ : ∀ θ' : ℝ,
       LipschitzOnWith L₂ (Mirrlees.mirrleesValue h g (m₂.mech.q θ')) (Set.Ici θ_min))
-    (hEnv₂ : ∀ θ > 0, HasDerivWithinAt
-      (fun s => Mirrlees.mirrleesValue h g (q₀.q s) s - m₂.mech.t s)
-      (typeDerivAlongAlloc (Mirrlees.mirrleesValue h g) q₀ θ) (Set.Ioi θ) θ)
+    -- The envelope condition is NO LONGER ASSUMED — it is derived from IC (Milgrom–Segal).
+    -- `hW` asks the composite `(s,u) ↦ ∂v/∂θ (y(s), u)` to be continuous from the upper
+    -- right at the diagonal: the income schedule must be right-continuous, and `∂v/∂θ`
+    -- jointly continuous — both standard, and both hold at a bunching region.
+    (hW : ∀ θ, θ_min ≤ θ →
+      ContinuousWithinAt
+        (fun p : ℝ × ℝ => deriv (Mirrlees.mirrleesValue h g (q₀.q p.1)) p.2)
+        (Set.Ici θ ×ˢ Set.Ici θ) (θ, θ))
     -- RELAXED boundary condition: identical rent at the lowest type (a common `V₀`),
     -- matching what `mirrlees_unique_from_IC` already assumed.
     (hV₀ : surplus m₁ θ_min = surplus m₂ θ_min)
     (μ : MeasureTheory.Measure ℝ) [IsFiniteMeasure μ] :
     ∫ θ in Set.Ici θ_min, m₁.mech.t θ ∂μ = ∫ θ in Set.Ici θ_min, m₂.mech.t θ ∂μ :=
-  masterTheorem_transferInvariance hθ_pos q₀ hint m₁ m₂ hm₁_alloc hm₂_alloc
-    L₁ hvLip₁ hEnv₁ L₂ hvLip₂ hEnv₂ hV₀ μ
+  masterTheorem_transferInvariance hθ_pos q₀ hint (Mirrlees.mirrlees_vDiff h g hh hg)
+    m₁ m₂ hm₁_alloc hm₂_alloc L₁ hvLip₁ L₂ hvLip₂ hW hV₀ μ
 
 /-! ### 5.2b The posted price — why the envelope hypothesis must be one-sided
 
@@ -363,6 +374,46 @@ theorem postedPrice_lipschitz (θ' : ℝ) (S : Set ℝ) :
   refine myerson_lipschitz ?_ S
   simp only [alloc]
   split_ifs <;> simp
+
+/-- **The posted price satisfies `hW`** — so the envelope condition is now *derived* for it,
+not assumed.
+
+In the Myerson setting `∂v/∂θ (a, u) = a`, so the composite `(s, u) ↦ ∂v/∂θ (q s, u)` is just
+`q ∘ fst`, and `hW` reduces to **right-continuity of `q` at `θ`**.  The posted price is
+right-continuous: `q` jumps *up* at the reserve and `q p = 1`, so approaching `p` from above
+gives `q s = 1 = q p`.  Below the reserve `q` is locally `0`; above it, locally `1`.
+
+Which is the whole point: the reserve-price auction is exactly the mechanism a two-sided
+`HasDerivAt` hypothesis excluded, and it sails through the one-sided derivation. -/
+theorem postedPrice_hW (θ : ℝ) :
+    ContinuousWithinAt
+      (fun x : ℝ × ℝ => deriv (Myerson.myersonValue ((⟨alloc p, alloc_mono⟩ :
+        MonotoneAlloc Myerson.MyersonAlloc).q x.1)) x.2)
+      (Set.Ici θ ×ˢ Set.Ici θ) (θ, θ) := by
+  -- The composite collapses to `alloc p ∘ fst` (Myerson: `∂v/∂θ (a, u) = a`).
+  have hfun : (fun x : ℝ × ℝ => deriv (Myerson.myersonValue (alloc p x.1)) x.2)
+      = fun x : ℝ × ℝ => alloc p x.1 :=
+    funext fun x => myerson_deriv _ _
+  show ContinuousWithinAt (fun x : ℝ × ℝ => deriv (Myerson.myersonValue (alloc p x.1)) x.2)
+    (Set.Ici θ ×ˢ Set.Ici θ) (θ, θ)
+  rw [hfun]
+  -- Right-continuity of the posted-price allocation at θ.
+  rcases le_or_gt p θ with hp | hp
+  · -- at or above the reserve: `alloc p` is constantly 1 on `Ici θ ×ˢ Ici θ`
+    refine ContinuousWithinAt.congr (f := fun _ : ℝ × ℝ => (1 : ℝ))
+      continuousWithinAt_const ?_ ?_
+    · rintro ⟨s, u⟩ hsu
+      simp [alloc, if_pos (le_trans hp (Set.mem_Ici.mp hsu.1))]
+    · simp [alloc, if_pos hp]
+  · -- strictly below the reserve: `alloc p` is 0 on a whole neighbourhood of `(θ, θ)`
+    refine ContinuousWithinAt.congr_of_eventuallyEq (f := fun _ : ℝ × ℝ => (0 : ℝ))
+      continuousWithinAt_const ?_ ?_
+    · have hmem : (Set.Iio p ×ˢ (Set.univ : Set ℝ)) ∈
+          nhdsWithin ((θ, θ) : ℝ × ℝ) (Set.Ici θ ×ˢ Set.Ici θ) :=
+        nhdsWithin_le_nhds (prod_mem_nhds (Iio_mem_nhds hp) Filter.univ_mem)
+      filter_upwards [hmem] with x hx
+      simp [alloc, if_neg (not_le.mpr (Set.mem_Iio.mp hx.1))]
+    · simp [alloc, if_neg (not_le.mpr hp)]
 
 end PostedPrice
 

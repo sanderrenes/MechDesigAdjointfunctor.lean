@@ -1,6 +1,6 @@
 # Plan — closing the IC ⟹ envelope bridge
 
-Status: **Phases 0 and 1 done.** **Phase 2 open.** Branch: `surplus-order`.
+Status: **ALL THREE PHASES DONE — the IC ⟹ envelope bridge is closed.** `hEnv` no longer appears in the master-theorem chain. Branch: `surplus-order`.
 
 ## Why
 
@@ -97,7 +97,7 @@ uniform in `a` over the range of `q` yields `|ΔV| ≤ L·|Δθ|` — `Lipschitz
 
 ---
 
-## Phase 2 — the right-derivative equals `D θ` (Milgrom–Segal)
+## Phase 2 — the right-derivative equals `D θ` (Milgrom–Segal) ✅ **DONE**
 
 Divide the same sandwich by `h > 0`:
 
