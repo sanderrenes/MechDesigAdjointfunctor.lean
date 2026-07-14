@@ -1,0 +1,577 @@
+<title>MechDesigAdjointfunctor — Dependency Graph</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #171b21; --muted: #5c6672; --faint: #8a94a0;
+    --line: #ccd3db; --rule: #e3e8ed;
+    --prim: #147a70; --cons: #46407f; --res: #2c5c8f; --inst: #8a6a1f; --hot: #a8323a;
+    --story: #1f8a4c;
+    --prim-bg: #147a7014; --cons-bg: #46407f14; --res-bg: #2c5c8f14; --inst-bg: #8a6a1f14;
+    --hot-bg: #a8323a16;
+    --shadow: 0 1px 2px #171b210f, 0 8px 24px #171b210a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10141a; --panel: #171d25; --ink: #e6eaf0; --muted: #97a3b1; --faint: #6d7987;
+      --line: #33404e; --rule: #242d38;
+      --prim: #4fbfb1; --cons: #9b8fe0; --res: #7cb2e8; --inst: #d8ad55; --hot: #f0757e;
+    --story: #5fd28c;
+      --prim-bg: #4fbfb11f; --cons-bg: #9b8fe01f; --res-bg: #7cb2e81f; --inst-bg: #d8ad551f;
+      --hot-bg: #f0757e22;
+      --shadow: 0 1px 2px #0006, 0 10px 30px #0004;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10141a; --panel: #171d25; --ink: #e6eaf0; --muted: #97a3b1; --faint: #6d7987;
+    --line: #33404e; --rule: #242d38;
+    --prim: #4fbfb1; --cons: #9b8fe0; --res: #7cb2e8; --inst: #d8ad55; --hot: #f0757e;
+    --story: #5fd28c;
+    --prim-bg: #4fbfb11f; --cons-bg: #9b8fe01f; --res-bg: #7cb2e81f; --inst-bg: #d8ad551f;
+    --hot-bg: #f0757e22;
+    --shadow: 0 1px 2px #0006, 0 10px 30px #0004;
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #171b21; --muted: #5c6672; --faint: #8a94a0;
+    --line: #ccd3db; --rule: #e3e8ed;
+    --prim: #147a70; --cons: #46407f; --res: #2c5c8f; --inst: #8a6a1f; --hot: #a8323a;
+    --story: #1f8a4c;
+    --prim-bg: #147a7014; --cons-bg: #46407f14; --res-bg: #2c5c8f14; --inst-bg: #8a6a1f14;
+    --hot-bg: #a8323a16;
+    --shadow: 0 1px 2px #171b210f, 0 8px 24px #171b210a;
+  }
+
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.55; margin: 0; padding: 0 24px 96px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  code, .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    font-size: 0.92em;
+  }
+  header { padding: 64px 0 32px; border-bottom: 1px solid var(--rule); }
+  h1 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: clamp(2rem, 4vw, 2.9rem); font-weight: 600; letter-spacing: -0.015em;
+    margin: 0 0 12px; text-wrap: balance;
+  }
+  .lede { color: var(--muted); font-size: 1.08rem; max-width: 64ch; margin: 0; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 22px;
+    font-size: 0.83rem; color: var(--faint);
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+  h2 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; margin: 56px 0 6px;
+  }
+  .sub { color: var(--muted); margin: 0 0 22px; max-width: 68ch; font-size: 0.96rem; }
+
+  .toolbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+    margin-bottom: 14px; font-size: 0.85rem; color: var(--muted);
+  }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; }
+  .key { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .toggle { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; color: var(--ink); }
+  .toggle input { accent-color: var(--res); }
+  .hint { margin-left: auto; font-style: italic; }
+
+  .graphbox {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 10px;
+    box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; padding: 8px 0;
+  }
+  svg { display: block; }
+  .layerlabel {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.09em;
+    text-transform: uppercase; fill: var(--faint);
+  }
+  .layerband { fill: var(--rule); opacity: 0.3; }
+  .edge { fill: none; stroke: var(--line); stroke-width: 1.3px; }
+  .edge.def { stroke-dasharray: 3 3; opacity: 0.5; }
+  .edge.bridge { stroke: var(--hot); stroke-width: 1.7px; opacity: 0.45; }
+  .edge.cat { stroke: var(--cons); stroke-width: 1.6px; stroke-dasharray: 7 3; opacity: 0.75; }
+  /* the storyline corridor: a broad green underlay behind everything the two corollaries need */
+  .edge.story { stroke: var(--story); stroke-width: 7px; opacity: 0.16; stroke-linecap: round; }
+  .storyonly .edge.story { opacity: 0.34; }
+  .node rect { stroke-width: 1.4px; rx: 6; transition: opacity .13s ease; }
+  .node text { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; }
+  .node { cursor: pointer; }
+  .node:focus { outline: none; }
+  .node:focus rect.base { stroke-width: 2.6px; }
+  .dim { opacity: 0.12; }
+  .lit { stroke-width: 2.4px; }
+  /* focus emphasis — every edge class behaves the same way, only the hue differs */
+  .edge.on { stroke: var(--res); stroke-width: 2.2px; opacity: 1; }
+  .edge.bridge.on { stroke: var(--hot); stroke-width: 2.8px; opacity: 0.95; }
+  .edge.cat.on { stroke: var(--cons); stroke-width: 2.6px; opacity: 1; }
+  .edge.story.dim { opacity: 0.04; }
+  .swatch.green { border-color: var(--story); background: var(--story); opacity: 0.3; }
+  .swatch {
+    width: 22px; height: 11px; border-radius: 2px; display: inline-block;
+    border: 1px solid var(--cons);
+    background-image: repeating-linear-gradient(45deg,
+      var(--cons) 0 1.5px, transparent 1.5px 5px);
+    opacity: 0.85;
+  }
+  .dash {
+    width: 22px; height: 0; display: inline-block; vertical-align: middle;
+    border-top: 2px dashed var(--cons);
+  }
+  .solidred { width: 22px; height: 0; display: inline-block; vertical-align: middle;
+    border-top: 2.5px solid var(--hot); }
+
+  .readout {
+    margin-top: 14px; min-height: 96px; background: var(--panel);
+    border: 1px solid var(--rule); border-left: 3px solid var(--res);
+    border-radius: 8px; padding: 16px 18px;
+  }
+  .readout h3 { margin: 0 0 4px; font-size: 1rem; }
+  .kindtag {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+    font-weight: 700; margin-left: 8px;
+  }
+  .readout p { margin: 6px 0 0; color: var(--muted); font-size: 0.93rem; }
+  .readout .econ { color: var(--ink); }
+  .readout .econ b {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--inst); margin-right: 6px;
+  }
+  .deps { margin-top: 8px; font-size: 0.85rem; color: var(--faint); }
+  .deps code { color: var(--muted); }
+
+  .tablebox { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; min-width: 760px; }
+  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--faint); font-weight: 700; background: var(--bg); position: sticky; top: 0;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.name { white-space: nowrap; }
+  td.name code { color: var(--ink); font-weight: 600; }
+  td.econ { color: var(--muted); }
+  .pill {
+    display: inline-block; font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+  }
+  .note {
+    margin-top: 20px; padding: 16px 18px; border-radius: 8px; background: var(--hot-bg);
+    border: 1px solid var(--rule); border-left: 3px solid var(--hot); font-size: 0.92rem;
+  }
+  .note.calm { background: var(--inst-bg); border-left-color: var(--inst); }
+  .note b.hd { display: block; margin-bottom: 6px; font-size: 1rem; }
+  footer {
+    margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--rule);
+    font-size: 0.83rem; color: var(--faint);
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+<header>
+  <h1>The Master Theorem, as a dependency graph</h1>
+  <p class="lede">Every declaration on the <code>surplus-order</code> branch, and what it actually rests on. Arrows run <em>prerequisite → result</em>. The red path is the IC ⟹ envelope bridge — the chain that makes incentive compatibility load-bearing. The green corridor is the storyline of a paper aimed squarely at unifying revenue equivalence and the taxation principle: it runs backwards from those two theorems, and it does not pass through the adjunction. Hover any node to isolate its cone; click to pin.</p>
+  <div class="meta">
+    <span><b>105</b> declarations</span>
+    <span><b>0</b> sorries</span>
+    <span><b>0</b> warnings</span>
+    <span>axioms: <b>propext, Classical.choice, Quot.sound</b></span>
+  </div>
+</header>
+
+<h2>The graph</h2>
+<p class="sub">Layered left to right by depth — the column headings name what <em>mostly</em> sits at that depth, nothing more. Solid edges are <em>proof</em> dependencies. <span style="color:var(--hot);font-weight:600">Red</span> marks the IC ⟹ envelope bridge. The <span style="color:var(--story);font-weight:600">broad green corridor</span> is the storyline: everything the two classical corollaries actually rest on, traced backwards from them. <span style="color:var(--cons);font-weight:600">Hatched nodes and dashed indigo edges</span> are the category theory — categories, functors, the adjunction, initiality, isomorphisms, the equivalence. Everything else is analysis and economics. Faint dotted edges (off by default) are <em>definitional</em>: the statement mentions the type but the proof doesn't use it.</p>
+
+<div class="toolbar">
+  <div class="legend">
+    <span class="key"><i class="dot" style="background:var(--prim)"></i>primitive</span>
+    <span class="key"><i class="dot" style="background:var(--cons)"></i>construction</span>
+    <span class="key"><i class="dot" style="background:var(--res)"></i>result</span>
+    <span class="key"><i class="dot" style="background:var(--inst)"></i>instantiation</span>
+    <span class="key"><i class="swatch"></i>category theory</span>
+    <span class="key"><i class="dash"></i>categorical edge</span>
+    <span class="key"><i class="solidred"></i>IC bridge</span>
+    <span class="key"><i class="swatch green"></i>the storyline</span>
+  </div>
+  <label class="toggle"><input type="checkbox" id="defs"> definitional edges</label>
+  <label class="toggle"><input type="checkbox" id="storyonly"> storyline only</label>
+  <span class="hint">click empty space to unpin</span>
+</div>
+
+<div class="graphbox"><svg id="g" role="img" aria-label="Dependency graph"></svg></div>
+<div class="readout" id="readout">
+  <h3>Hover a node</h3>
+  <p>Its prerequisites and everything downstream will light up.</p>
+</div>
+
+<div class="note">
+  <b class="hd">The red path: incentive compatibility is load-bearing.</b>
+  <code>hIC</code> → <code>surplus_ic_sandwich</code> → <code>surplus_lipschitzOn</code> / <code>surplus_hasDerivWithinAt</code> → <code>surplus_split</code> → <code>mechIso_of_sameAlloc_sameRent</code> → <code>masterTheorem_transferInvariance</code> → both corollaries.
+  <p style="margin:8px 0 0">Until this chain existed, <code>ICIRMechanism.hIC</code> was consumed by exactly one lemma (<code>IC_implies_monotone</code>) which nothing consumed — the defining condition of mechanism design reached no theorem. The envelope condition was <em>assumed</em>. Now the sandwich (pure IC, no analysis) gives continuity, the mean value theorem plus a squeeze gives the right derivative, and <code>hEnv</code> has disappeared from every signature. Verified by deletion: removing <code>surplus_ic_sandwich</code> breaks the build.</p>
+</div>
+
+<div class="note calm" style="border-left-color:var(--story);background:color-mix(in srgb, var(--story) 9%, transparent)">
+  <b class="hd">The green corridor: what a paper about <em>only</em> these two theorems would contain.</b>
+  <p style="margin:0">The green underlay is the transitive closure of the proof prerequisites of <code>revenueEquivalence</code> and <code>taxationPrinciple</code>, traced backwards. It is <b>computed, not curated</b> — <b><span id="storycount">·</span></b> declarations out of the whole development. Tick <em>storyline only</em> to see it alone. Everything not green is, for this particular paper, optional.</p>
+  <p style="margin:8px 0 0"><b style="display:inline">What it contains:</b> the two value functions and their Lipschitz lemmas, <code>IsIC</code>, <code>surplus</code>, the whole IC ⟹ envelope bridge, <code>surplus_split</code>, and then <code>MechHom</code> → <code>transfer_eq_of_iso</code> / <code>mechIso_of_sameAlloc_sameRent</code> → <code>masterTheorem_transferInvariance</code> → both corollaries. That is the unification, end to end.</p>
+  <p style="margin:8px 0 0"><b style="display:inline">What it does not contain — and this is the point:</b> <code>T</code>, <code>Q</code>, <code>adj_T_Q</code>, <code>T_initial</code>, <code>Mech₀</code>, <code>equivAllocMech₀</code>, <code>SingleCrossing</code>. The green cone reaches the <b>category</b> (objects, morphisms, isomorphisms in <b>Mech</b>) but never the <b>adjunction</b>. A paper that wanted nothing but the unification could stop at Move 2's isomorphism and never define a functor. <code>IsIR</code> appears in the cone only because <code>ICIRMechanism</code> is defined with it as a field — no proof step on the storyline uses it.</p>
+  <p style="margin:8px 0 0">So there are two honest papers here, and the graph tells you which is which. The <b>narrow</b> one: <em>one theorem, two corollaries, and an isomorphism that explains why</em>. The <b>wide</b> one, which is what the repository actually proves: the narrow one plus the adjoint structure that says <em>where</em> the master theorem comes from — <code>T ⊣ Q</code>, the rent-stripping comonad, and <code>Alloc ≌ Mech₀</code>. The wide claim is true and non-trivial; it is simply not <em>load-bearing</em> for the two corollaries, and the green corridor is the proof of that.</p>
+</div>
+
+<div class="note calm" style="border-left-color:var(--cons);background:var(--cons-bg)">
+  <b class="hd">What the hatching shows: where the category theory actually bites.</b>
+  <p style="margin:0">Trace the hatched nodes and you can see the categorical layer's real shape. It is <b>not</b> a spine running through the development — it is a <b>region</b> that the analysis feeds into, with exactly one place where it feeds back out.</p>
+  <p style="margin:8px 0 0"><b style="display:inline">It bites here:</b> <code>transfer_eq_of_iso</code> — an isomorphism in <b>Mech</b> forces equal transfers, because antisymmetry applies to <em>both</em> the allocation order and the surplus order. That single lemma is on the red bridge, and it is why the category is load-bearing rather than decorative. Under the old transfer-ordered <code>MechHom</code> this implication was unavailable; under an allocation-only order it was false.</p>
+  <p style="margin:8px 0 0"><b style="display:inline">It does not bite here:</b> <code>adj_T_Q</code>, <code>T_full</code>, <code>T_faithful</code>, <code>T_initial</code>, <code>T_preservesColimits</code>, <code>Q_preservesLimits</code>, <code>equivAllocMech₀</code> — the entire Move 1 / Move 3 apparatus. Nothing downstream consumes any of it. These are proved <em>structure about</em> the framework: true, non-trivial, and consumed by no theorem. That is what an adjunction <em>is</em>, and contriving a dependency on it to make this picture look better would be dishonest.</p>
+  <p style="margin:8px 0 0">The honest summary for a paper: <b>the two classical theorems are unified by one master theorem, and the category records why</b> — but they are not <em>derived from</em> the adjoint functor theorem.</p>
+</div>
+
+<h2>Definitions, in economic terms</h2>
+<p class="sub">What each primitive and construction means once you strip the Lean off it.</p>
+<div class="tablebox">
+<table>
+  <thead><tr><th>Declaration</th><th>Kind</th><th>Reads, economically, as</th></tr></thead>
+  <tbody id="tbody"></tbody>
+</table>
+</div>
+
+<div class="note calm">
+  <b class="hd">Three things the graph shows that prose would hide.</b>
+  <p style="margin:0"><b style="display:inline">1.</b> <code>adj_T_Q</code> has <b>no consumer</b>. Only <code>T_preservesColimits</code> and <code>Q_preservesLimits</code> sit downstream of it; neither corollary reaches it. This is correct and was left alone deliberately — an adjunction is <em>structure</em>, not a lemma, and contriving a dependency to flatter the graph would be dishonest. <code>transferInvariance_via_T</code> shows the route through <code>T</code> <em>is</em> available.</p>
+  <p style="margin:8px 0 0"><b style="display:inline">2.</b> <code>myerson_singleCrossing</code> and <code>mirrlees_singleCrossing</code> are <b>leaves</b> — no outgoing proof edges. Once the boundary condition was relaxed to equal-rent, transfer invariance stopped needing single crossing. SC is still load-bearing for <code>T</code>'s functoriality (<code>typeDeriv_mono_of_alloc_le</code> → <code>Tmech_surplus_mono</code>), just not for revenue equivalence — which needs neither SC nor IR.</p>
+  <p style="margin:8px 0 0"><b style="display:inline">3.</b> <code>myersonTransfer</code> reaches <code>myerson_expectedRevenue</code> but is <b>not</b> the same object as <code>transferFormula</code>. They differ by the rent conceded below <code>θ_min</code> (<code>myerson_transferFormula_eq_myersonTransfer</code>), and coincide only at <code>θ_min = 0</code>, which the master theorem forbids.</p>
+</div>
+
+<footer>
+  Generated from <code>MechDesigAdjointfunctor/Lean/*.lean</code> on branch <code>surplus-order</code>. Edges extracted by scanning each declaration body (comments stripped, case-sensitive), then corrected by hand.
+  <br><br>
+  <b>Known limit of the extraction.</b> A token scan cannot see uses that never name the declaration: field projections (<code>m.hIC</code>, <code>f.h</code>), anonymous constructors (<code>{ h := f.hAlloc }</code>), or instance resolution (<code>allocHom_subsingleton</code>). The single most important edge on this page — <code>surplus_ic_sandwich → IsIC</code> — is invisible to it, because the proof says <code>m.hIC</code>. Those edges are drawn in by hand. If a node here looks unused, suspect this failure mode before believing it; the reliable test is deletion-and-rebuild.
+</footer>
+</div>
+
+<script>
+const KIND = { prim:'primitive', cons:'construction', res:'result', inst:'instantiation' };
+const COLOR = { prim:'var(--prim)', cons:'var(--cons)', res:'var(--res)', inst:'var(--inst)' };
+const BG = { prim:'var(--prim-bg)', cons:'var(--cons-bg)', res:'var(--res-bg)', inst:'var(--inst-bg)' };
+const LAYERS = ['Primitives','Categories','IC ⟹ envelope','T · envelope core','Move 1 · T ⊣ Q',
+  'Envelope corollaries','Moves 2 & 3','Instantiations','Posted price'];
+
+// [id, layer, row, kind, statement, economics]
+const N = [
+  ['Mechanism',0,0,'prim','⟨q, t⟩ — an allocation rule and a transfer rule.','Who gets what, and who pays what. An auction: win-probability and payment. A tax code: income and tax bill.'],
+  ['IsIC',0,1,'prim','Truth-telling beats every misreport, for types ≥ θ_min.','No bidder wants to shade her bid; no worker wants to mimic another productivity to get a better tax deal. **The condition that was used by nothing until Phase 1.**'],
+  ['IsIR',0,2,'prim','V(θ_min) ≥ 0.','Participation: the lowest type is not made worse off by showing up. The inequality, NOT the normalisation — the fiber over an allocation is a one-parameter family indexed by this rent.'],
+  ['SingleCrossing',0,3,'prim','∀ a > a′, θ ↦ v(a,θ) − v(a′,θ) is strictly increasing.','Spence–Mirrlees. A higher type gains more from a bigger allocation. The high-value bidder benefits more from winning; the productive worker suffers less from extra income.'],
+  ['ICIRMechanism',0,4,'prim','A Mechanism with hMono, hIC, hIR.','An auction, or a tax code, that is both truthful and voluntary.'],
+  ['MonotoneAlloc',0,5,'prim','q : ℝ → A, monotone.','Higher types get weakly more. Higher bids win more often; more productive workers earn more.'],
+  ['surplus',0,6,'prim','V(θ) = v(q θ, θ) − t θ.','The agent\'s information rent — the bidder\'s expected profit, the worker\'s after-tax utility. Well defined because the numeraire enters linearly. This is the coordinate the whole refactor turned on.'],
+  ['transferFormula',0,7,'prim','t*(θ) = v(q θ, θ) − ∫ D.','The envelope price. What you must charge so truth-telling survives.'],
+  ['typeDerivAlongAlloc',0,8,'prim','D_r(s) = ∂v/∂s at (r.q s, s).','Marginal information rent: how fast rent accrues as type rises, holding the allocation rule fixed.'],
+
+  ['MechHom',1,0,'cons','hAlloc: q ≤ q′; hSurp: V ≤ V′ on [θ_min,∞).','A morphism of mechanisms: allocates weakly more, concedes weakly more rent. Ordered by SURPLUS, not transfer — a transfer order makes T not a functor, because mirrleesValue is concave in the allocation.'],
+  ['AllocHom',1,1,'cons','h : ∀ θ, r.q θ ≤ r′.q θ. One field.','Pointwise dominance of allocation rules. That lone inequality is the sole premise of T.map — single crossing converts it into the surplus inequality MechHom needs.'],
+  ['mechHom_subsingleton',1,2,'res','Any two MechHoms are equal.','Mech is thin. This is what makes every functor law, naturality square and triangle identity free.'],
+  ['allocHom_subsingleton',1,3,'res','Any two AllocHoms are equal.','Alloc is thin, likewise.'],
+  ['mechCategory',1,4,'cons','Category (ICIRMechanism A v θ_min).','Mech.'],
+  ['allocCategory',1,5,'cons','Category (MonotoneAlloc A).','Alloc — a preorder, nothing more.'],
+  ['MechWithAlloc',1,6,'cons','{m | ∀ θ, m.q θ = r.q θ}.','All the tax codes implementing one and the same income schedule. The fiber of Q.'],
+  ['Q',1,7,'cons','Mech ⥤ Alloc — forget the transfer.','Throw away the prices; keep who gets what.'],
+
+  ['IC_implies_monotone',2,0,'res','IC + SC ⟹ q monotone on [θ_min,∞).','You cannot truthfully implement a non-monotone allocation. NOT category theory — it is the other thing IC buys you, by the same mimicry argument as the sandwich. (An earlier version of this graph placed it in the Categories column purely because its depth is 1; that was a layout artefact.) Has NO consumer: it gives MonotoneOn on the physical domain, while the hMono field asserts Monotone on all of ℝ. Kept as a documented consistency check.'],
+  ['surplus_ic_sandwich',2,2,'res','v(qθ₁,θ₂)−v(qθ₁,θ₁) ≤ V(θ₂)−V(θ₁) ≤ v(qθ₂,θ₂)−v(qθ₂,θ₁).','THE BRIDGE STARTS HERE. Each type declining to mimic the other bounds the rent change on both sides. Pure IC — no analysis, no single crossing, no IR. Both bounds move the type while holding the allocation fixed, which is what makes them usable.'],
+  ['surplus_lipschitzOn',2,3,'res','V is L-Lipschitz on [θ_min, ∞).','The sandwich plus Lipschitz-in-the-type gives Lipschitz rent. Rents cannot jump.'],
+  ['surplus_continuousOn',2,4,'res','V is continuous on [θ_min, ∞).','Derived from IC — not assumed. This is what surplus_split needs.'],
+  ['surplus_hasDerivWithinAt',2,5,'res','V has a RIGHT derivative equal to D θ.','Milgrom–Segal. Divide the sandwich by y−θ; the mean value theorem turns the upper bound into ∂v/∂θ at an interior point; both collapse onto θ. Squeeze. This is hEnv — no longer assumed but PROVED.'],
+  ['surplus_split',2,6,'res','V(θ) = V(θ_min) + ∫ D.','The envelope theorem, in surplus form. Total rent = rent at the bottom + accumulated information rent. Everything downstream is a reading of this identity.'],
+
+  ['T_wellDefined',3,1,'res','T(r) is IC and IR.','The envelope price really does deliver a truthful, voluntary mechanism. The existence theorem — and the real work.'],
+  ['Tmech',3,2,'cons','⟨r.q, t*⟩ as an ICIRMechanism.','The mechanism you get by pricing an allocation at the envelope formula.'],
+  ['typeDeriv_mono_of_alloc_le',3,3,'res','q ≤ q′ ⟹ D_r ≤ D_r′ pointwise.','Give the agent more and her rent accrues faster. Pure single crossing.'],
+  ['surplus_Tmech',3,4,'res','V_{T(r)}(θ) = ∫ D_r.','T(r) hands the agent exactly the accumulated information rent and not a penny more.'],
+  ['Tmech_surplus_mono',3,5,'res','q ≤ q′ ⟹ V_{T(r)} ≤ V_{T(r′)}.','T.map. From single crossing ALONE — this is what fails under a transfer order, and why Mech is surplus-ordered.'],
+  ['T',3,6,'cons','Alloc ⥤ Mech.','Price an allocation. The functor.'],
+
+  ['T_full',4,0,'res','T is full.','T imposes no constraint Alloc did not already record — the surplus condition was free, by single crossing.'],
+  ['T_faithful',4,1,'res','T is faithful.','Thin categories; immediate.'],
+  ['adj_T_Q',4,2,'res','T ⊣ Q. T is the LEFT adjoint.','T is the cheapest way to implement an allocation. IR orients it — used essentially in the counit. NOT Q ⊣ T.'],
+  ['T_preservesColimits',4,3,'res','Left adjoints preserve colimits.',''],
+  ['Q_preservesLimits',4,4,'res','Right adjoints preserve limits.',''],
+  ['Tmech_surplus_le',4,5,'res','V_{T(r)} ≤ V_m for all m in the fiber.','T(r) is the rent-extracting mechanism: no truthful, voluntary implementation of r concedes less.'],
+  ['T_initial',4,6,'res','T(r) is INITIAL in Mech_r.','Every mechanism over r sits above T(r). Arrows run OUT of it — not terminal, as originally claimed.'],
+
+  ['envelope_transfer_le',5,2,'res','m.t θ ≤ t*(θ).','Any truthful mechanism charges weakly less than the envelope price; the slack is exactly the rent conceded.'],
+  ['envelope_transfer_shift',5,3,'res','m.t θ = t*(θ) − V_m(θ_min).','Revenue equivalence with a constant. Two mechanisms over the same allocation differ by a lump sum, and that sum is the boundary rent.'],
+  ['envelope_transfer_unique',5,4,'res','V(θ_min)=0 ⟹ m.t = t*.','With no rent at the bottom the payment rule is forced. Myerson\'s uniqueness.'],
+  ['masterTheorem_existence',5,5,'res','∃! mechanism with allocation r and transfer t*.','Theorem 4.5(i).'],
+
+  ['transfer_eq_of_iso',6,0,'res','m₁ ≅ m₂ ⟹ equal transfers.','Isomorphic mechanisms charge the same. This is what makes the CATEGORY load-bearing rather than decorative — antisymmetry on allocations AND on surpluses.'],
+  ['mechIso_of_sameAlloc_sameRent',6,1,'cons','Same allocation + same rent ⟹ iso.','Fix the income schedule and the rent at the bottom, and the tax code is pinned.'],
+  ['masterTheorem_isomorphism',6,2,'res','m ≅ T(r) when V(θ_min)=0.','Theorem 4.5(ii).'],
+  ['masterTheorem_transferInvariance',6,3,'res','EQUAL rent ⟹ equal expected transfer.','Theorem 4.5(iii). Note the hypothesis: equal rent, never zero rent. And it needs neither SC nor IR.'],
+  ['transferInvariance_via_T',6,4,'res','4.5(iii) via m₁ ≅ T(r) ≅ m₂.','The categorical route, made explicit: T is not decorative. Gives masterTheorem_isomorphism a consumer.'],
+  ['ZeroRent',6,5,'prim','V(θ_min) = 0.','The normalisation everyone assumes. The lowest bidder pays her value.'],
+  ['zeroRent_Tmech',6,6,'res','V_{T(r)}(θ_min) = 0.','The envelope integral is empty at the bottom: T concedes nothing to the lowest type.'],
+  ['zeroRent_TQ',6,7,'res','T(Q(m)) always has zero rent.','The comonad. T ∘ Q strips the rent — the counit is literally "take back the lowest type\'s surplus".'],
+  ['Mech₀',6,8,'cons','Full subcategory on ZeroRent.','Normalised mechanisms — the ones textbooks write down.'],
+  ['T₀',6,9,'cons','Alloc ⥤ Mech₀.',''],
+  ['Q₀',6,10,'cons','Mech₀ ⥤ Alloc.',''],
+  ['equivAllocMech₀',6,11,'res','Alloc ≌ Mech₀.','THE TAXATION PRINCIPLE. Normalised mechanisms ARE allocations — so T₀ ⊣ Q₀ and Q₀ ⊣ T₀ both hold. Cheap, as equivalences always are: the content is upstream.'],
+
+  ['myersonValue',7,0,'inst','v(q,θ) = θ·q.','A bidder\'s value: win-probability times willingness to pay.'],
+  ['mirrleesValue',7,1,'inst','v(y,θ) = θ·h(y) − g(y/θ).','A worker\'s utility: consumption from income y minus the disutility of the labour y/θ needed to earn it. NOT convex in y — which is why the transfer order had to go.'],
+  ['myerson_deriv',7,2,'res','∂/∂θ [θ·a] = a.','The Myerson envelope integrand is the allocation itself.'],
+  ['myerson_typeDeriv',7,3,'res','D_r(s) = r.q s.','Same, along an allocation rule.'],
+  ['myerson_singleCrossing',7,4,'res','SC holds for θ·q.','A LEAF — no consumers, since transfer invariance no longer needs SC.'],
+  ['mirrlees_singleCrossing',7,5,'res','SC holds under Spence–Mirrlees.','Also a leaf, for the same reason.'],
+  ['myerson_lipschitz',7,6,'res','v(a,·) is 1-Lipschitz for |a| ≤ 1.','Discharges the Lipschitz hypothesis: allocation PROBABILITIES lie in [0,1].'],
+  ['mirrlees_lipschitz',7,7,'res','v(y,·) Lipschitz given a bound on ∂v/∂θ.','Discharges it for Mirrlees, via the mean value theorem: ∂v/∂θ = h y + (y/θ²)·g′(y/θ) is bounded on [θ_min,∞) once incomes are bounded.'],
+  ['myersonTransfer',7,8,'prim','t(θ) = θ·q θ − ∫₀^θ q.','Myerson\'s payment rule, defined SEPARATELY from transferFormula and hard-coding θ_min = 0.'],
+  ['myerson_transferFormula',7,9,'res','transferFormula at v=θ·a is θ·q θ − ∫_{θ_min}^θ q.','Instantiates the abstract formula.'],
+  ['myerson_transferFormula_eq_myersonTransfer',7,10,'res','They differ by ∫₀^{θ_min} q.','THE BRIDGE, honestly stated: the two are NOT equal. They coincide only at θ_min = 0, which the master theorem forbids. The gap is exactly the rent conceded below θ_min.'],
+  ['myerson_expectedRevenue',7,11,'res','𝔼[t] = 𝔼[ψ(θ)·q(θ)].','Expected revenue is expected virtual surplus, ψ(θ) = θ − (1−F)/f. Proved about myersonTransfer.'],
+  ['myerson_revenueFormula',7,12,'res','Re-export.','A one-line delegation.'],
+  ['revenueEquivalence',7,13,'inst','Corollary 5.1.','Myerson (1981) Thm 2. Two auctions with the same winner-selection rule and the same rent raise the same revenue.'],
+  ['taxationPrinciple',7,14,'inst','Corollary 5.2.','Hammond (1979); Rochet (1985). Two tax systems inducing the same incomes and the same bottom rent collect the same tax. No longer takes the Spence–Mirrlees conditions — it never needed them.'],
+
+  ['alloc',8,0,'prim','q θ = 1 if p ≤ θ, else 0.','A POSTED PRICE with reserve p — the canonical optimal auction.'],
+  ['transfer',8,1,'prim','t θ = p if p ≤ θ, else 0.','Charge the reserve on a sale.'],
+  ['alloc_mono',8,2,'res','The posted-price allocation is monotone.',''],
+  ['surplus_eq',8,3,'res','V θ = max (θ − p) 0.','The kinked surplus. A kink at the reserve — no two-sided derivative there.'],
+  ['postedPrice_not_hasDerivAt',8,4,'res','NO derivative at p, for any candidate value.','THE THEOREM THAT FORCED PHASE 0. Slope 0 from the left, 1 from the right. The original two-sided hEnv was therefore UNSATISFIABLE for every auction with a reserve price — revenueEquivalence could not be applied to them at all.'],
+  ['postedPrice_hasEnvelope',8,5,'res','It DOES satisfy the one-sided hypothesis.','The right derivative survives the kink: at p it is 1 = q p.'],
+  ['postedPrice_lipschitz',8,6,'res','It satisfies the Lipschitz hypothesis.','Its allocation is 0 or 1.'],
+  ['postedPrice_hW',8,7,'res','It satisfies hW.','In the Myerson setting hW IS right-continuity of q — and the posted price jumps UP at the reserve. So the reserve-price auction now satisfies EVERY hypothesis the framework asks.']
+];
+
+// proof edges [dependent, prerequisite]; `true` marks the IC bridge
+const E = [
+  ['ICIRMechanism','IsIC',0],['ICIRMechanism','IsIR',0],['IsIC','Mechanism',0],['IsIR','Mechanism',0],
+  ['IC_implies_monotone','SingleCrossing',0],['IC_implies_monotone','IsIC',0],
+  ['MechHom','surplus',0],['ZeroRent','surplus',0],['surplus','ICIRMechanism',0],
+  ['mechHom_subsingleton','MechHom',0],['allocHom_subsingleton','AllocHom',0],
+  ['mechCategory','MechHom',0],['mechCategory','mechHom_subsingleton',0],
+  ['allocCategory','AllocHom',0],['allocCategory','allocHom_subsingleton',0],
+  ['Q','MechHom',0],['Q','AllocHom',0],['Q','allocHom_subsingleton',0],
+
+  // ---- THE IC BRIDGE ----
+  ['surplus_ic_sandwich','IsIC',1],['surplus_ic_sandwich','surplus',1],
+  ['surplus_lipschitzOn','surplus_ic_sandwich',1],
+  ['surplus_continuousOn','surplus_lipschitzOn',1],
+  ['surplus_hasDerivWithinAt','surplus_ic_sandwich',1],
+  ['surplus_split','surplus_continuousOn',1],['surplus_split','surplus_hasDerivWithinAt',1],
+  ['mechIso_of_sameAlloc_sameRent','surplus_split',1],
+  ['masterTheorem_transferInvariance','mechIso_of_sameAlloc_sameRent',1],
+  ['masterTheorem_transferInvariance','transfer_eq_of_iso',1],
+  ['revenueEquivalence','masterTheorem_transferInvariance',1],
+  ['taxationPrinciple','masterTheorem_transferInvariance',1],
+  // -----------------------
+
+  ['T_wellDefined','SingleCrossing',0],['T_wellDefined','transferFormula',0],
+  ['T_wellDefined','IsIC',0],['T_wellDefined','IsIR',0],
+  ['Tmech','T_wellDefined',0],['Tmech','transferFormula',0],
+  ['typeDeriv_mono_of_alloc_le','SingleCrossing',0],['typeDeriv_mono_of_alloc_le','typeDerivAlongAlloc',0],
+  ['surplus_Tmech','Tmech',0],['surplus_Tmech','transferFormula',0],['surplus_Tmech','surplus',0],
+  ['Tmech_surplus_mono','typeDeriv_mono_of_alloc_le',0],['Tmech_surplus_mono','surplus_Tmech',0],
+  ['T','Tmech',0],['T','Tmech_surplus_mono',0],['T','AllocHom',0],['T','MechHom',0],
+  ['T','mechHom_subsingleton',0],
+  ['T_full','T',0],['T_full','AllocHom',0],['T_faithful','T',0],
+  ['adj_T_Q','T',0],['adj_T_Q','Q',0],['adj_T_Q','surplus_split',0],['adj_T_Q','surplus_Tmech',0],
+  ['adj_T_Q','IsIR',0],
+  ['T_preservesColimits','adj_T_Q',0],['Q_preservesLimits','adj_T_Q',0],
+  ['Tmech_surplus_le','surplus_split',0],['Tmech_surplus_le','surplus_Tmech',0],['Tmech_surplus_le','IsIR',0],
+  ['T_initial','Tmech_surplus_le',0],['T_initial','mechHom_subsingleton',0],
+  ['envelope_transfer_le','Tmech_surplus_le',0],
+  ['envelope_transfer_shift','surplus_split',0],['envelope_transfer_shift','surplus_Tmech',0],
+  ['envelope_transfer_unique','envelope_transfer_shift',0],
+  ['masterTheorem_existence','Tmech',0],['masterTheorem_existence','transferFormula',0],
+  ['transfer_eq_of_iso','MechHom',0],['transfer_eq_of_iso','surplus',0],
+  ['mechIso_of_sameAlloc_sameRent','mechHom_subsingleton',0],
+  ['masterTheorem_isomorphism','envelope_transfer_unique',0],['masterTheorem_isomorphism','Tmech',0],
+  ['transferInvariance_via_T','masterTheorem_isomorphism',0],['transferInvariance_via_T','transfer_eq_of_iso',0],
+  ['zeroRent_Tmech','surplus_Tmech',0],['zeroRent_Tmech','ZeroRent',0],
+  ['zeroRent_TQ','zeroRent_Tmech',0],['zeroRent_TQ','T',0],['zeroRent_TQ','Q',0],
+  ['Mech₀','ZeroRent',0],
+  ['T₀','T',0],['T₀','zeroRent_Tmech',0],['T₀','Mech₀',0],
+  ['Q₀','Q',0],['Q₀','Mech₀',0],
+  ['equivAllocMech₀','T₀',0],['equivAllocMech₀','Q₀',0],
+  ['equivAllocMech₀','mechIso_of_sameAlloc_sameRent',0],['equivAllocMech₀','zeroRent_Tmech',0],
+
+  ['myerson_singleCrossing','myersonValue',0],['myerson_singleCrossing','SingleCrossing',0],
+  ['mirrlees_singleCrossing','mirrleesValue',0],['mirrlees_singleCrossing','SingleCrossing',0],
+  ['myerson_deriv','myersonValue',0],['myerson_typeDeriv','myerson_deriv',0],
+  ['myerson_typeDeriv','typeDerivAlongAlloc',0],
+  ['myerson_lipschitz','myersonValue',0],['mirrlees_lipschitz','mirrleesValue',0],
+  ['myersonTransfer','myersonValue',0],
+  ['myerson_transferFormula','myerson_typeDeriv',0],['myerson_transferFormula','transferFormula',0],
+  ['myerson_transferFormula_eq_myersonTransfer','myerson_transferFormula',0],
+  ['myerson_transferFormula_eq_myersonTransfer','myersonTransfer',0],
+  ['myerson_expectedRevenue','myersonTransfer',0],
+  ['myerson_revenueFormula','myerson_expectedRevenue',0],
+  ['revenueEquivalence','myersonValue',0],['revenueEquivalence','myerson_lipschitz',0],
+  ['taxationPrinciple','mirrleesValue',0],['taxationPrinciple','mirrlees_lipschitz',0],
+
+  ['alloc_mono','alloc',0],['surplus_eq','alloc',0],['surplus_eq','transfer',0],
+  ['postedPrice_not_hasDerivAt','surplus_eq',0],
+  ['postedPrice_hasEnvelope','surplus_eq',0],['postedPrice_hasEnvelope','alloc_mono',0],
+  ['postedPrice_hasEnvelope','myerson_typeDeriv',0],
+  ['postedPrice_lipschitz','myerson_lipschitz',0],['postedPrice_lipschitz','alloc',0],
+  ['postedPrice_hW','myerson_deriv',0],['postedPrice_hW','alloc_mono',0]
+];
+
+const EDEF = [
+  ['MechWithAlloc','ICIRMechanism'],['MechWithAlloc','MonotoneAlloc'],
+  ['Q','ICIRMechanism'],['Q','MonotoneAlloc'],['AllocHom','MonotoneAlloc'],
+  ['MechHom','ICIRMechanism'],['typeDerivAlongAlloc','MonotoneAlloc'],
+  ['Tmech','ICIRMechanism'],['T','MonotoneAlloc'],['surplus_split','MechWithAlloc'],
+  ['mechIso_of_sameAlloc_sameRent','MechWithAlloc'],['masterTheorem_transferInvariance','MechWithAlloc'],
+  ['surplus_hasDerivWithinAt','MechWithAlloc'],['Tmech_surplus_le','MechWithAlloc'],
+  ['ZeroRent','ICIRMechanism'],['revenueEquivalence','MechWithAlloc'],
+  ['myersonValue','MonotoneAlloc']
+];
+
+const byId = {}; N.forEach(n => byId[n[0]] = {id:n[0],layer:n[1],row:n[2],kind:n[3],stmt:n[4],econ:n[5]});
+const COLW = 214, NW = 182, NH = 32, ROWH = 44, PADX = 22, TOP = 44;
+const rows = Math.max(...N.map(n=>n[2])) + 1;
+const W = LAYERS.length*COLW + PADX*2, H = TOP + rows*ROWH + 24;
+const svg = document.getElementById('g');
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', W); svg.setAttribute('height', H);
+const NS='http://www.w3.org/2000/svg';
+const mk=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+const pos = id => { const n=byId[id]; return {x:PADX+n.layer*COLW, y:TOP+n.row*ROWH, cy:TOP+n.row*ROWH+NH/2}; };
+
+// Declarations that ARE category theory: categories, hom-sets, functors, the adjunction,
+// initiality, isomorphisms in Mech, the full subcategory, the equivalence.
+const CAT = new Set([
+  'MechHom','AllocHom','mechHom_subsingleton','allocHom_subsingleton','mechCategory','allocCategory',
+  'Q','T','T_full','T_faithful','adj_T_Q','T_preservesColimits','Q_preservesLimits','T_initial',
+  'transfer_eq_of_iso','mechIso_of_sameAlloc_sameRent','masterTheorem_isomorphism',
+  'transferInvariance_via_T','zeroRent_TQ','ZeroRent','Mech₀','T₀','Q₀','equivAllocMech₀'
+]);
+const isCatEdge = (d,p) => CAT.has(d) && CAT.has(p);
+
+// Diagonal hatch, one pattern per kind so the stripes carry the node's own hue.
+const defs = mk('defs',{});
+Object.keys(COLOR).forEach(k=>{
+  const pat = mk('pattern',{id:`hatch-${k}`, width:6, height:6,
+    patternUnits:'userSpaceOnUse', patternTransform:'rotate(45)'});
+  pat.appendChild(mk('line',{x1:0,y1:0,x2:0,y2:6, stroke:COLOR[k],
+    'stroke-width':1.6, opacity:0.30}));
+  defs.appendChild(pat);
+});
+svg.appendChild(defs);
+
+LAYERS.forEach((L,i)=>{
+  if(i%2===1) svg.appendChild(mk('rect',{class:'layerband',x:PADX+i*COLW-10,y:24,width:NW+20,height:H-40,rx:6}));
+  const t=mk('text',{class:'layerlabel',x:PADX+i*COLW,y:16}); t.textContent=L; svg.appendChild(t);
+});
+
+const edgeEls=[];
+const drawEdge=(dep,pre,cls)=>{
+  if(!byId[dep]||!byId[pre]) return;
+  const a=pos(pre), b=pos(dep);
+  const x1=a.x+NW, y1=a.cy, x2=b.x, y2=b.cy, dx=Math.max(28,(x2-x1)*0.5);
+  const p=mk('path',{class:`edge ${cls}`, d:`M ${x1} ${y1} C ${x1+dx} ${y1}, ${x2-dx} ${y2}, ${x2} ${y2}`});
+  svg.appendChild(p); edgeEls.push({el:p,dep,pre,cls});
+};
+// ---- THE STORYLINE ----------------------------------------------------------
+// Everything the two classical corollaries actually rest on, traced backwards.
+// Computed, not curated: the transitive closure of proof prerequisites of
+// revenueEquivalence and taxationPrinciple. Whatever is NOT green is not needed
+// by a paper whose only goal is to unify these two theorems.
+const upRaw = {}; N.forEach(n=>upRaw[n[0]] = new Set());
+E.forEach(([d,p])=>{ if(upRaw[d]) upRaw[d].add(p); });
+const GOALS = ['revenueEquivalence','taxationPrinciple'];
+const STORY = new Set(GOALS);
+(function(){ const st=[...GOALS]; while(st.length){ const c=st.pop();
+  for(const p of upRaw[c]||[]) if(!STORY.has(p)){ STORY.add(p); st.push(p); } } })();
+const isStoryEdge = (d,p) => STORY.has(d) && STORY.has(p);
+
+// green underlay first, so it reads as a corridor behind the proof edges
+E.forEach(([d,p])=>{ if(isStoryEdge(d,p)) drawEdge(d,p,'story'); });
+// bridge > categorical > plain proof
+E.forEach(([d,p,b])=>drawEdge(d,p, b ? 'bridge' : (isCatEdge(d,p) ? 'cat' : 'proof')));
+EDEF.forEach(([d,p])=>drawEdge(d,p,'def'));
+
+const nodeEls={};
+N.forEach(n=>{
+  const id=n[0],k=n[3],p=pos(id);
+  const g=mk('g',{class:'node',tabindex:'0',role:'button','aria-label':id});
+  g.appendChild(mk('rect',{class:'base',x:p.x,y:p.y,width:NW,height:NH,fill:BG[k],stroke:COLOR[k]}));
+  // category-theory declarations are hatched
+  if(CAT.has(id)) g.appendChild(mk('rect',{x:p.x,y:p.y,width:NW,height:NH,rx:6,
+    fill:`url(#hatch-${k})`, stroke:'none', 'pointer-events':'none'}));
+  const t=mk('text',{x:p.x+9,y:p.y+21,fill:'var(--ink)'});
+  t.textContent = id.length>25 ? id.slice(0,24)+'…' : id;
+  g.appendChild(t); svg.appendChild(g);
+  g.addEventListener('mouseenter',()=>focus(id));
+  g.addEventListener('focus',()=>focus(id));
+  g.addEventListener('mouseleave',()=>{ if(!pinned) clear(); });
+  g.addEventListener('click',e=>{ e.stopPropagation(); pinned = pinned===id?null:id; focus(id); });
+  nodeEls[id]=g;
+});
+
+const up={},down={};
+N.forEach(n=>{up[n[0]]=new Set();down[n[0]]=new Set();});
+E.forEach(([d,p])=>{ if(up[d]&&down[p]){ up[d].add(p); down[p].add(d);} });
+const closure=(id,map)=>{const seen=new Set(),st=[id];while(st.length){const c=st.pop();for(const nx of map[c]||[])if(!seen.has(nx)){seen.add(nx);st.push(nx);}}return seen;};
+
+let pinned=null;
+const readout=document.getElementById('readout'), showDefs=document.getElementById('defs');
+function clear(){
+  Object.values(nodeEls).forEach(g=>{g.classList.remove('dim');g.querySelector('rect').classList.remove('lit');});
+  edgeEls.forEach(e=>e.el.classList.remove('dim','on'));
+  readout.style.borderLeftColor='var(--res)';
+  readout.innerHTML='<h3>Hover a node</h3><p>Its prerequisites and everything downstream will light up.</p>';
+}
+function focus(id){
+  const live=new Set([...closure(id,up),...closure(id,down),id]);
+  Object.entries(nodeEls).forEach(([k,g])=>{
+    g.classList.toggle('dim',!live.has(k));
+    g.querySelector('rect').classList.toggle('lit',k===id);
+  });
+  edgeEls.forEach(e=>{
+    const on = live.has(e.dep)&&live.has(e.pre);
+    e.el.classList.toggle('dim',!on);
+    e.el.classList.toggle('on', on && e.cls!=='def' && e.cls!=='story' && (e.dep===id||e.pre===id));
+  });
+  const n=byId[id], pres=[...up[id]], dsc=[...down[id]];
+  readout.style.borderLeftColor=COLOR[n.kind];
+  const ct = CAT.has(id)
+    ? `<span class="kindtag" style="color:var(--cons)">· category theory</span>` : '';
+  const st = STORY.has(id)
+    ? `<span class="kindtag" style="color:var(--story)">· on the storyline</span>` : '';
+  readout.innerHTML =
+    `<h3><code>${n.id}</code><span class="kindtag" style="color:${COLOR[n.kind]}">${KIND[n.kind]}</span>${ct}${st}</h3>`+
+    `<p>${n.stmt}</p>`+
+    (n.econ?`<p class="econ"><b>economically</b>${n.econ}</p>`:'')+
+    `<p class="deps"><b>rests on</b> ${pres.length?pres.map(x=>`<code>${x}</code>`).join(', '):'— nothing in this project'}`+
+    ` &nbsp;·&nbsp; <b>used by</b> ${dsc.length?dsc.map(x=>`<code>${x}</code>`).join(', '):'— nothing (leaf)'}</p>`;
+}
+document.addEventListener('click',()=>{pinned=null;clear();});
+showDefs.addEventListener('change',()=>{
+  edgeEls.filter(e=>e.cls==='def').forEach(e=>{ e.el.style.display = showDefs.checked?'':'none'; });
+});
+edgeEls.filter(e=>e.cls==='def').forEach(e=>{ e.el.style.display='none'; });
+
+// "storyline only": hide everything the two corollaries do not reach
+const onlyStory=document.getElementById('storyonly');
+onlyStory.addEventListener('change',()=>{
+  const k=onlyStory.checked;
+  svg.classList.toggle('storyonly',k);
+  Object.entries(nodeEls).forEach(([id,g])=>{ g.style.opacity = (k && !STORY.has(id)) ? 0.1 : ''; });
+  edgeEls.forEach(e=>{ if(e.cls==='story') return;
+    e.el.style.opacity = (k && !(STORY.has(e.dep)&&STORY.has(e.pre))) ? 0.05 : ''; });
+});
+document.getElementById('storycount').textContent = STORY.size;
+
+const tbody=document.getElementById('tbody');
+N.filter(n=>n[5]).forEach(n=>{
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td class="name"><code>${n[0]}</code></td>`+
+    `<td><span class="pill" style="background:${BG[n[3]]};color:${COLOR[n[3]]}">${KIND[n[3]]}</span></td>`+
+    `<td class="econ">${n[5]}</td>`;
+  tbody.appendChild(tr);
+});
+</script>

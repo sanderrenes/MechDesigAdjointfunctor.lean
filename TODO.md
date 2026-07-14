@@ -9,11 +9,13 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped (say why)
 resolved. `lake build` is clean with **zero sorries, zero warnings**, and every result rests
 on `[propext, Classical.choice, Quot.sound]`.
 
-- [ ] **The talk lives outside the repository.** The category-theory talk (the Act III
-      argument, the scorecard, the LLM/harness section) is an HTML artifact in a session
-      scratchpad — not version-controlled, and free to drift out of sync with the Lean it
-      describes. Move it to `docs/` and treat it like `README.md`: update it when the proof
-      status changes. Its central claim (D15) has already been corrected once.
+- [ ] **Carry D15 into the paper.** The presentation (`docs/functoriality-talk.html`) already
+      states the transfer order's provenance honestly: it was a **componentwise default on the
+      pair `⟨q,t⟩`**, not a belief economists hold. The *paper* has yet to be written, and the
+      seductive-but-false framing ("economists think allocating more means charging more") will
+      present itself again the moment it is. It does not survive a referee. Use D15's version:
+      a componentwise order on a pair **states no theorem, so it is never checked** — which is
+      why the error survived, and why a functor was needed to make it speak.
 
 Ideas, not commitments:
 - [ ] Prove the failure cases in §5.3 of `Corollaries.lean` rather than documenting them

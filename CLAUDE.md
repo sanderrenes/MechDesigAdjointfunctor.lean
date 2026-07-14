@@ -12,6 +12,13 @@ Mirrlees Taxation Principle are one theorem. Read `README.md` for the three-move
 | `PLAN.md` | The phased plan and acceptance criteria | When a phase starts, changes shape, or completes |
 | `DECISIONS.md` | Append-only decision log | Whenever a design choice is made *or reversed* |
 | `README.md` | The arc, the design rationale, proof status | When the architecture or proof status changes |
+| `docs/*.html` | The talk and the dependency graph | **Only when explicitly asked.** See below. |
+
+`docs/` is the exception to everything above. The two HTML pages there — the category-theory
+talk and the dependency graph — are **finished arguments, not living documents**. Do not
+regenerate, refresh or "bring them up to date" on your own initiative; a well-meant edit that
+drifts from the version being presented is worse than a stale one. If the Lean changes in a way
+that falsifies something they claim, put it in `TODO.md` and leave the pages alone.
 
 ## Obligations
 
