@@ -4,10 +4,9 @@ Formal proof in Lean 4 / Mathlib that Myerson's (1981) Revenue Equivalence Theor
 
 See `MechDesigAdjointfunctor/Unification.md` for the mathematical write-up.
 
-## Incentive compatibility is load-bearing (the envelope bridge)
+## Incentive compatibility is load-bearing (the envelope bridge), it shaoes the category of mechanisms (MECH) and allocations (ALLOC) 
 
-The envelope condition is **derived from IC**, not assumed. This was the project's largest
-gap and it is now closed:
+The envelope condition is **derived from IC**, not assumed:
 
 1. **`surplus_ic_sandwich`** — pure `hIC`, no analysis at all. Each type declining to mimic
    the other bounds the surplus change on both sides by increments of `v(a, ·)` along a
@@ -23,18 +22,18 @@ gap and it is now closed:
    `∂_θ v(q y, ξ)` for `ξ ∈ (θ, y)`. Squeeze.
 
 **The envelope hypothesis is one-sided, and it has to be.** A two-sided `HasDerivAt` is not
-merely strong — it is **false** for the canonical optimal auction. A posted price with reserve
+merely strong — it is **false** for posted price auctions. A posted price with reserve
 `p` has surplus `max(θ − p, 0)`, a kink at `p`, no derivative
-(`PostedPrice.postedPrice_not_hasDerivAt`). The old formulation therefore *excluded every
+(`PostedPrice.postedPrice_not_hasDerivAt`). A continuous envelope formulation therefore *excludes every
 auction with a reserve price*. The right derivative survives the kink, and the posted price
-now satisfies every hypothesis the framework asks: `postedPrice_hasEnvelope`,
+satisfies every hypothesis the framework asks: `postedPrice_hasEnvelope`,
 `postedPrice_lipschitz`, `postedPrice_hW`.
 
 **What revenue equivalence does *not* need:** single crossing or IR. SC makes `T` a functor;
 IR orients the adjunction. Neither is used by `masterTheorem_transferInvariance`, and the
 corollaries no longer pretend otherwise.
 
-## The paper's arc, in three moves
+## The paper's storyline, in three moves
 
 The categorical content is organised as a reflection followed by its normalisation. Each move is fully proved; nothing below rests on a `sorry`.
 
@@ -69,7 +68,7 @@ equivAllocMech₀ :  MonotoneAlloc A  ≌  Mech₀ A v θ_min
 
 `T₀ ⊣ Q₀` **and** `Q₀ ⊣ T₀` — adjoint in both directions. This is the **Taxation Principle**: normalized mechanisms *are* allocations, up to natural isomorphism.
 
-**Where the content actually is.** Move 3 is cheap, as equivalences always are. The work is in Move 1 (that `T` exists at all — `T_wellDefined`) and Move 2 (that the counit is iso *precisely* at zero rent). A reader should be pointed at those, not at the equivalence.
+**Where the content actually is.** Move 3 is cheap, as equivalences always are. The work is in Move 1 (that `T` exists at all — `T_wellDefined`) and Move 2 (that the counit is iso *precisely* at zero rent). 
 
 ## Why morphisms are ordered by surplus, not by transfer
 
@@ -78,7 +77,7 @@ equivAllocMech₀ :  MonotoneAlloc A  ≌  Mech₀ A v θ_min
 - Ordering by `t` makes `T` **not a functor**. `t*(r) ≤ t*(r')` does not follow from `r.q ≤ r'.q` for general `v`; it needs *convexity of `v` in the allocation*, which `mirrleesValue y θ = θ·h(y) − g(y/θ)` fails in the standard regime (`h` concave, `g` convex). A transfer field therefore breaks the Mirrlees instantiation and destroys the unification.
 - Ordering by `V` makes `T.map` follow from **single crossing alone** (`Tmech_surplus_mono`) — an assumption both settings already make. Quasilinearity (the numeraire enters utility linearly) means `t` is recoverable as `t θ = v(q θ) θ − V θ`, so **no information about transfers is lost**; the allocation simply stops contaminating the comparison.
 
-`h_spread` (spread monotonicity) existed only to prop up the transfer-ordered `T.map`. It is no longer needed and has been dropped from both `AllocHom` and `MechHom`, leaving **Alloc** as the plain pointwise order that Definition 1.5 intends.
+`h_spread` (spread monotonicity) existed only on the main branch to prop up the transfer-ordered `T.map`. It is no longer needed and has been dropped from both `AllocHom` and `MechHom`, leaving **Alloc** as the plain pointwise order that Definition 1.5 intends.
 
 ## Boundary condition: equal rent, not zero rent
 
