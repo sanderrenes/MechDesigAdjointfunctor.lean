@@ -17,6 +17,13 @@ on `[propext, Classical.choice, Quot.sound]`.
       a componentwise order on a pair **states no theorem, so it is never checked** — which is
       why the error survived, and why a functor was needed to make it speak.
 
+- [ ] **Make `MyersonAlloc` actually be `Set.Icc 0 1`?** Newly *possible* after D16 — `A` needs
+      only a `Preorder`, and the `AddCommGroup` requirement that forced `ℝ` turned out to be
+      vacuous. **Untested, and not obviously worth it:** `myersonValue` becomes `θ * a.val`,
+      every call site shifts, and `myerson_lipschitz`'s `|a| ≤ 1` hypothesis would become free.
+      The win is honesty — "probability of winning" would be true of the type rather than of a
+      hypothesis carried beside it. Decide by trying it, not by reasoning about it.
+
 Ideas, not commitments:
 - [ ] Prove the failure cases in §5.3 of `Corollaries.lean` rather than documenting them
       (they are currently prose, having been fake `True := trivial` theorems — see D14).
@@ -28,6 +35,13 @@ Ideas, not commitments:
 
 ## Done
 
+- [x] **`A` needs only an order** (D16). `[AddCommGroup A]` and `[IsOrderedAddMonoid A]` were
+      carried by all 27 declarations touching `A` and used by **none**. They were the residue of
+      the *spread monotonicity* field (deleted in D1/D2), which was the only thing that ever
+      subtracted in `A`. Removed; `lake build` clean, zero sorries, axioms unchanged —
+      **verified by deletion**, not by grep. The cost was real while it lasted: the binder is
+      why `MyersonAlloc := ℝ` rather than `Set.Icc 0 1`, i.e. **an unused typeclass had dictated
+      a modelling choice**. Found by the user asking how a probability could be an abelian group.
 - [x] **Bridge 2 — `myersonTransfer` linked to `transferFormula`** (D13).
       `myerson_transferFormula`: the abstract formula at `v = θ·a` is `θ·q θ − ∫_{θ_min}^θ q`.
       `myerson_transferFormula_eq_myersonTransfer`: the two differ by **exactly** the rent

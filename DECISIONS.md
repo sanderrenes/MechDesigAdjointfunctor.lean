@@ -320,6 +320,49 @@ this is its second instance, and it now applies to the **paper**, not just the c
 
 ---
 
+## D16 — `A` needs only an order. Drop `AddCommGroup` and `IsOrderedAddMonoid`.
+**Date:** 2026-07-17 · **Branch:** `surplus-order` · **Verified by:** deletion + `lake build`
+
+Every declaration touching `A` carried `[AddCommGroup A]` and `[IsOrderedAddMonoid A]`. **Not
+one proof used them.** Removed from all 27 binders across `Framework.lean` and
+`MasterTheorem.lean`; `lake build` completes (2683 jobs), zero sorries, zero warnings, and
+`revenueEquivalence`, `taxationPrinciple`, `allocCategory`, `mechCategory`, `T` and `adj_T_Q`
+still rest on exactly `[propext, Classical.choice, Quot.sound]`.
+
+**Where the binders came from.** The *spread monotonicity* field on `AllocHom`,
+`Monotone (fun θ => r'.q θ - r.q θ)`, was the only consumer — it subtracts in `A`, so it needed
+the group. That field was dropped when **Mech** moved to the surplus order (D1, D2), because
+`T.map` then follows from single crossing alone. **The subtraction went away and the binder
+stayed.** `AllocHom`'s sole field is now `∀ θ, r.q θ ≤ r'.q θ`, and `MechHom`'s two fields are
+an inequality in `A` and an inequality in `ℝ`. A `Preorder` suffices. The surplus subtraction
+`v (q θ) θ - t θ` is in `ℝ`, which is where the group instance was silently coming from all
+along — never from `A`.
+
+**Rejected: keep them as future-proofing / "they cost nothing".** They cost something specific
+and they had already charged it. `MyersonSetting.lean` read: *"Using `ℝ` rather than
+`Set.Icc 0 1` gives the `AddCommGroup` instance required by `AllocHom`."* So an **unused
+typeclass dictated the modelling choice** — the Myerson allocation space is the reals because a
+binder asked, and `[0,1]` is therefore enforced by hypothesis at call sites (`|a| ≤ 1` in
+`myerson_lipschitz`) rather than by the type. A probability is not an abelian group; `[0,1]`
+is not closed under addition. The requirement that forced ℝ was vacuous. Docstring corrected.
+
+**Also rejected: infer it from the absence of `+` or `-` on `A` in the source.** That is the
+token scan the project has already been burned by (`CLAUDE.md`), and it cannot see instance
+resolution. The claim here rests on deletion and rebuild, and on nothing else.
+
+**How this was caught.** Not by Lean — Lean was perfectly happy to carry a vacuous binder
+forever. By the user asking, of a sentence in the talk, *"how is the probability of winning an
+abelian group?"* The formalisation had been quietly answering *"it isn't — so I'll use ℝ"* for
+months, and no build ever complained. **This is D15's lesson again, from the other side:** D15
+was prose flattering a definition, this is a definition flattered by an unexamined constraint.
+Both survived because nothing was ever obliged to state them out loud.
+
+**Left open.** Whether `MyersonAlloc` should now *become* `Set.Icc 0 1` — only `Preorder` is
+demanded, so it is newly possible, but `myersonValue` would need `θ * a.val` and every call
+site shifts. **Untested. Do not assume it works.** See `TODO.md`.
+
+---
+
 ## Pending
 
 *Nothing pending.* All phases of `PLAN.md` are complete; `TODO.md` lists only

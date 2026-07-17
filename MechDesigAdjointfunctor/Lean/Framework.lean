@@ -118,20 +118,20 @@ envelope formula `V_{T(r)}(θ) = ∫_{θ_min}^θ (∂v/∂s)(r.q s, s) ds`, so
 is exactly **single crossing** — an assumption the framework already makes, and one that
 holds in both the Myerson and the Mirrlees setting.  See `Tmech_surplus_mono`. -/
 @[ext]
-structure MechHom {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
+structure MechHom {A : Type*} [Preorder A]
     {v : A → ℝ → ℝ} {θ_min : ℝ}
     (m m' : ICIRMechanism A v θ_min) : Type where
   hAlloc : ∀ θ, m.mech.q θ ≤ m'.mech.q θ
   hSurp  : ∀ θ : ℝ, θ_min ≤ θ → surplus m θ ≤ surplus m' θ
 
-instance mechHom_subsingleton {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
+instance mechHom_subsingleton {A : Type*} [Preorder A]
     {v : A → ℝ → ℝ} {θ_min : ℝ}
     {m m' : ICIRMechanism A v θ_min} : Subsingleton (MechHom m m') := by
   constructor; intro f g
   obtain ⟨fa, fv⟩ := f; obtain ⟨ga, gv⟩ := g
   congr 1
 
-instance mechCategory {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
+instance mechCategory {A : Type*} [Preorder A]
     {v : A → ℝ → ℝ} {θ_min : ℝ} :
     Category (ICIRMechanism A v θ_min) where
   Hom m m'  := MechHom m m'
@@ -164,19 +164,24 @@ This makes `MonotoneAlloc A` a thin (preorder) category.
 `Monotone (fun θ => r'.q θ - r.q θ)`.  It existed solely to prove the transfer-ordered
 `T.map`, and it is not needed once **Mech** is ordered by surplus: `T.map` then follows
 from single crossing alone (`Tmech_surplus_mono`).  Dropping it makes **Alloc** the
-plain pointwise order on monotone allocation rules, as Definition 1.5 intends. -/
+plain pointwise order on monotone allocation rules, as Definition 1.5 intends.
+
+**Design note (D16).**  That field was also the only consumer of `[AddCommGroup A]` and
+`[IsOrderedAddMonoid A]` — it is what subtracted in `A`.  The field went; the binders stayed,
+unused, until a deletion test removed all 27 of them with no effect on the build.  `A` needs
+only to be **ordered**.  The subtraction in `surplus` is in `ℝ`, not `A`. -/
 @[ext]
-structure AllocHom {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
+structure AllocHom {A : Type*} [Preorder A]
     (r r' : MonotoneAlloc A) : Type where
   h : ∀ θ, r.q θ ≤ r'.q θ
 
-instance allocHom_subsingleton {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A]
+instance allocHom_subsingleton {A : Type*} [Preorder A]
     {r r' : MonotoneAlloc A} : Subsingleton (AllocHom r r') := by
   constructor; intro f g
   obtain ⟨ha⟩ := f; obtain ⟨ga⟩ := g
   congr 1
 
-instance allocCategory {A : Type*} [AddCommGroup A] [Preorder A] [IsOrderedAddMonoid A] :
+instance allocCategory {A : Type*} [Preorder A] :
     Category (MonotoneAlloc A) where
   Hom r r'  := AllocHom r r'
   id _      := { h := fun _ => le_rfl }
@@ -209,7 +214,7 @@ lemma IC_implies_monotone {A : Type*} [LinearOrder A] {v : A → ℝ → ℝ} {�
 /-- **Q : Mech → Alloc** — the forgetful functor that drops the transfer rule and
 retains only the allocation rule.  Well-defined by `IC_implies_monotone`.
 *Reference*: Definition 1.6 and the remark on forgetful functors in Section 1.5. -/
-noncomputable def Q {A : Type*} [LinearOrder A] [AddCommGroup A] [IsOrderedAddMonoid A]
+noncomputable def Q {A : Type*} [LinearOrder A]
     {v : A → ℝ → ℝ}
     {θ_min : ℝ} {D : Set ℝ} (_hSC : SingleCrossing v D) (_hD : ∀ θ, θ ∈ D) :
     ICIRMechanism A v θ_min ⥤ MonotoneAlloc A where

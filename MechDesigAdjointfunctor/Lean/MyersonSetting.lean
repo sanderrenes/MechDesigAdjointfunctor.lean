@@ -32,9 +32,18 @@ namespace MechDesign.Myerson
 
 /-! ### 2.1 The Myerson Environment -/
 
-/-- The Myerson allocation space: real-valued allocation levels (range [0,1] enforced
-by hypothesis at call sites). Using `ℝ` rather than `Set.Icc 0 1` gives the
-`AddCommGroup` instance required by `AllocHom`. -/
+/-- The Myerson allocation space: real-valued allocation levels, read as the probability of
+winning.  The range `[0,1]` is **not** in the type — it is enforced by hypothesis at the call
+sites that need it (`|a| ≤ 1` in `myerson_lipschitz`).
+
+**Design note (D16).**  This used to say that `ℝ` was chosen over `Set.Icc 0 1` because
+`AllocHom` required an `AddCommGroup` instance.  That requirement was vacuous: `AllocHom` only
+ever compares allocations with `≤`, and the group binder was a leftover from the deleted
+*spread monotonicity* field, which subtracted in `A`.  The binders are gone (verified by
+deletion), so `A` now needs only a `Preorder` and this choice is no longer forced.
+
+Making `MyersonAlloc` genuinely `Set.Icc 0 1` is therefore newly *possible* but **untested** —
+`myersonValue` would become `θ * a.val` and every call site shifts.  See `TODO.md`. -/
 abbrev MyersonAlloc := ℝ
 
 /-- The Myerson value function: `v(q, θ) = θ * q`.  Linear in both arguments. -/
