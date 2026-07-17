@@ -363,6 +363,53 @@ site shifts. **Untested. Do not assume it works.** See `TODO.md`.
 
 ---
 
+## D17 — Two linters for statements that say nothing. Both advisory, neither a gate.
+**Date:** 2026-07-17 · **Branch:** `surplus-order` · **File:** `Lean/Linters.lean`
+
+D14 deleted three `theorem … : True := trivial` declarations that had made `Corollaries.lean`
+look as though it covered the failure cases. **Nothing in the toolchain would have caught them.**
+Tested: all 16 default `#lint` linters pass a `True` theorem in silence; `synTaut` fires only on
+literal `e = e`. So the project's own worst empty statement was invisible to every check it had.
+
+Two linters, deliberately of different kinds:
+
+* **`linter.trueStatement`** — a real **compiler warning**, at elaboration, on any declaration
+  whose conclusion is `True` (all leading `∀` stripped). Decidable and exact. Live on the whole
+  library: `lake build` is clean, 2684 jobs, **zero false positives across 132 declarations**.
+  Opt out with `set_option linter.trueStatement false in`.
+* **`witnessless`** — an `@[env_linter]`, so it surfaces only under `lake exe runLinter`. Reports
+  any theorem tagged `@[needs_witness]` with no `@[witness_for]` aimed at it.
+
+**Rejected: make either one a hard gate (an error, or a `lake build` failure).** The `True` check
+could be — it is exact. But a `True` statement is occasionally the honest placeholder, and a rule
+that cannot be obeyed gets disabled wholesale, taking the useful signal with it. A warning is
+read; an error in the way is silenced. The gate that already exists (zero sorries) is enforceable
+because it is never *right* to leave a `sorry`. It is sometimes right to write `True`.
+
+**Rejected: a linter that detects vacuity.** This is what one actually wants and it **cannot be
+built**: satisfiability of a hypothesis set is undecidable. Anything claiming to do it is lying.
+`witnessless` therefore checks a **weaker, honest thing** — that you *said* the hypotheses
+deserved an instance and have not produced one. It is a checklist, not a proof.
+
+**Rejected: fire `witnessless` on every theorem with hypotheses, no tagging needed.** That is the
+version with no opt-in, and it would report essentially every lemma in the library. A linter that
+fires on everything conveys nothing, and would be turned off within a day. Opt-in keeps the
+signal where it was deliberately asked for — the headline theorems.
+
+**The limit, stated so nobody mistakes these for safety.** Neither linter can tell you a statement
+is *wrong*, only that it is shaped like nothing. D1 (a definition that was false), D7 (a
+hypothesis false for every reserve-price auction) and D16 (a vacuous binder) would all pass both
+in silence. The only test that found those was a human reading the statement, or deletion. **The
+real defence against vacuity is instantiation** — `postedPrice_hasEnvelope`,
+`postedPrice_lipschitz`, `postedPrice_hW` are what D7 was caught by, and `witnessless` only nags
+you to write more of them.
+
+**Cost.** `Framework.lean` now imports `Lean/Linters.lean`, so the whole chain depends on it — a
+linter only runs in files that import it. That is a real coupling: the linter file must stay
+cheap and must never fail to compile, or the entire library stops building.
+
+---
+
 ## Pending
 
 *Nothing pending.* All phases of `PLAN.md` are complete; `TODO.md` lists only

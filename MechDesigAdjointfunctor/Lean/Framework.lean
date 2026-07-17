@@ -1,3 +1,4 @@
+import MechDesigAdjointfunctor.Lean.Linters
 import Mathlib.CategoryTheory.Adjunction.Basic
 import Mathlib.CategoryTheory.Limits.HasLimits
 import Mathlib.CategoryTheory.Limits.Preserves.Basic

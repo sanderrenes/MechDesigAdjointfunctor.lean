@@ -5,9 +5,10 @@ Legend: `[ ]` open · `[~]` in progress · `[x]` done · `[-]` dropped (say why)
 
 ## Open
 
-*Nothing scheduled.* The IC ⟹ envelope bridge is closed and all three missing bridges are
+*No proof work scheduled.* The IC ⟹ envelope bridge is closed and all three missing bridges are
 resolved. `lake build` is clean with **zero sorries, zero warnings**, and every result rests
-on `[propext, Classical.choice, Quot.sound]`.
+on `[propext, Classical.choice, Quot.sound]`. What is open below is exposition, tooling and
+one untested refactor — not mathematics.
 
 - [ ] **Carry D15 into the paper.** The presentation (`docs/functoriality-talk.html`) already
       states the transfer order's provenance honestly: it was a **componentwise default on the
@@ -24,6 +25,35 @@ on `[propext, Classical.choice, Quot.sound]`.
       The win is honesty — "probability of winning" would be true of the type rather than of a
       hypothesis carried beside it. Decide by trying it, not by reasoning about it.
 
+- [ ] **Add `lake exe runLinter` to the quality gate.** `lake exe runLinter MechDesigAdjointfunctor.Lean`
+      runs 16 environment linters over the library. It ships with Batteries via Mathlib, it works
+      on this project today, and **it has never been run**. Add it to `CLAUDE.md`'s per-commit gate
+      beside `lake build` and `#print axioms`.
+      **Triage the 9 current findings first** — a gate that starts red is a gate nobody obeys:
+      - `unusedArguments` on `T_preservesColimits` / `Q_preservesLimits`: both carry a long list of
+        unused hypotheses (`hD`, `hdiff`, `hintC`, `hint`, `hvLip`, `hW`). This is D12's finding
+        again — hypotheses that overstate what a result needs. **Most likely to be real.**
+      - `structureInType` on `MechHom` / `AllocHom`: "all fields are propositional but the structure
+        isn't." *Probably* a forced false positive, since `CategoryTheory.Category` demands
+        `Type`-valued homs — **unverified, check before dismissing.**
+      - `unusedArguments` on `Q` (`_hSC`, `_hD`): already underscored, i.e. deliberate. Silence it
+        or justify it in the docstring.
+      - `docBlame`: `Mechanism.q`, `Mechanism.t`, `ICIRMechanism.mech`, `MonotoneAlloc.q` carry `--`
+        line comments where docstrings were meant. D4's lesson: a comment Lean does not attach is a
+        comment nobody reads.
+      **What the linter cannot do, so the gate must keep saying so (D16):** it catches vacuous
+      instance binders on `def`s only — never on `structure`s, `instance`s or `theorem`s, which is
+      where definitions live. It caught 1 of our 27 binders. And a *chain* of vacuous binders hides
+      itself: `AddCommGroup` was never flagged because `IsOrderedAddMonoid` needed it, and only the
+      last link in the chain is visible. **Deletion remains the only test that cannot lie.**
+
+- [ ] **Post `HARNESS.md` to GitHub and send it to Benedikt.** The document is written (D17 commit)
+      and is self-contained — it assumes no knowledge of this project and can be copied into the
+      next one. What remains is publishing it somewhere readable and asking Benedikt what they'd
+      break. The honest question to put to them: *the harness is justified entirely by four
+      findings in one project — is that evidence, or a story?*
+      Ship `Lean/Linters.lean` alongside it; the document tells you to copy both.
+
 Ideas, not commitments:
 - [ ] Prove the failure cases in §5.3 of `Corollaries.lean` rather than documenting them
       (they are currently prose, having been fake `True := trivial` theorems — see D14).
@@ -35,6 +65,12 @@ Ideas, not commitments:
 
 ## Done
 
+- [x] **Two linters for statements that say nothing** (D17). `Lean/Linters.lean`.
+      `linter.trueStatement` warns on any conclusion that is `True` — D14's exact failure, which
+      **all 16 default linters pass in silence** (tested). Live on the library: clean build, zero
+      false positives over 132 declarations. `witnessless` reports `@[needs_witness]` theorems with
+      no `@[witness_for]`. Both advisory, neither a gate — see D17 for why an error would be worse.
+      **Neither detects vacuity; that is undecidable.** The defence remains instantiation (D7).
 - [x] **`A` needs only an order** (D16). `[AddCommGroup A]` and `[IsOrderedAddMonoid A]` were
       carried by all 27 declarations touching `A` and used by **none**. They were the residue of
       the *spread monotonicity* field (deleted in D1/D2), which was the only thing that ever
