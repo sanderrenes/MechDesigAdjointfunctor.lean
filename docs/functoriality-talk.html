@@ -224,7 +224,7 @@
   <p class="intro">Talks usually present the argument in the order that makes it look inevitable. This one came about the other way round, and the detours are the part worth reporting — because <b>every one of them was a wrong guess that got corrected</b>, and that is the case being made.</p>
 
   <div class="body">
-    <p><b>I was looking for a common language.</b> Category theory already describes <em>design</em> in parts of systems engineering — compositional specification, interfaces, refinement. My interest is the <b>socio-institutional</b> side of design: mechanisms, taxes, institutions. If the same language reaches both, that is worth something well beyond a single theorem, and it seemed at least possible that it did.</p>
+    <p><b>I was looking for a common language.</b> Category theory already describes technical elements of <em>design</em> in parts of systems engineering — compositional specification, interfaces, refinement. My interest is the <b>socio-institutional</b> side of design: mechanisms, taxes, institutions. If the same language reaches both, that is worth something well beyond a single theorem, and it seemed at least possible that it did.</p>
     <p>So I read around, settled on <em>Categories for the Working Mathematician</em> as the spine, handed it to Claude together with the revenue-equivalence literature, and asked for a curriculum that would let me <b>state Myerson's theorem in categorical language</b>. Nothing more ambitious than that: a translation exercise, to find out whether the vocabulary could even hold the statement.</p>
     <p>It could. And in doing so it produced the observation that started the real work: the <b>if-and-only-if</b> — the two-way street of an adjunction — looked a great deal like the <b>Taxation Principle</b>. Both theorems relate <em>who gets what</em> to <em>who pays what</em>. But they relate them differently, and the difference is precisely the shape of an adjunction:</p>
   </div>
@@ -232,18 +232,69 @@
   <div class="par">
     <div class="col e">
       <span class="tag">Revenue equivalence says</span>
-      <p><strong>Unique.</strong> Given the allocation and the rent at the bottom, the payments are <em>forced</em>. There is nothing left to choose.</p>
+      <p><strong>Unique.</strong> Given the allocation rule, who gets the object, all auctions yield the same revenue.
+        Technically, the allocation and the rent at the bottom <em>force</em> the payment rule. There is nothing left to choose.</p>
     </div>
     <div class="col e">
       <span class="tag">The taxation principle says</span>
-      <p><strong>Exists.</strong> Given the allocation, a payment schedule implementing it <em>can be found</em> — you never need to observe the type, only the outcome.</p>
+      <p><strong>Exists.</strong> Given the allocation, who works how much and the consumption levels, a payment schedule implementing it <em>can be found</em> — you never need to observe the type, only the outcome.</p>
+    </div>
+  </div>
+  <h3 style="font-size:1.15rem;margin:38px 0 6px">The vocabulary, once, so nothing later is a guess</h3>
+  <p class="intro" style="margin-bottom:18px">Five symbols carry the whole talk. They are the Lean definitions, not paraphrases of them.</p>
+
+  <div class="tablebox">
+  <table>
+    <thead><tr><th style="width:14%">Symbol</th><th style="width:30%">What it is</th><th>In the two settings</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="n"><code>θ</code></td>
+        <td>The agent's <b>type</b> — the thing she knows and you do not.</td>
+        <td>Myerson: how much the bidder values the object. Mirrlees: how productive the worker is.</td>
+      </tr>
+      <tr>
+        <td class="n"><code>A</code></td>
+        <td>The <b>outcome space</b> — what there is to hand out. All that is ever used of it is that it is <b>ordered</b>.</td>
+        <td> Mirrlees: income earned, output produced. Myerson: an allocation <em>level</em>, read as the probability of winning. Both are <code>ℝ</code> in the formalisation; <code>[0,1]</code> is a hypothesis carried at the call sites that need it, not a property of the type.</td>
+      </tr>
+      <tr>
+        <td class="n"><code>q : ℝ → A</code></td>
+        <td>The <b>allocation rule</b>: what a type gets.</td>
+        <td>Who wins the auction. How much a worker of productivity <code>θ</code> earns.</td>
+      </tr>
+      <tr>
+        <td class="n"><code>t : ℝ → ℝ</code></td>
+        <td>The <b>transfer rule</b>: what a type pays. Positive means money flows <em>from</em> the agent.</td>
+        <td>The bid you are charged. The tax you owe.</td>
+      </tr>
+      <tr>
+        <td class="n"><code>v : A → ℝ → ℝ</code></td>
+        <td>The <b>value function</b>: <code>v(a, θ)</code> is what outcome <code>a</code> is worth to type <code>θ</code>, before paying.</td>
+        <td>Myerson: <code>θ·a</code>. Mirrlees: <code>θ·h(y) − g(y/θ)</code> — earn income <code>y</code>, monetary value of the effort, y/θ, it took to earn this income.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="par">
+    <div class="col e">
+      <span class="tag">A mechanism</span>
+      <p>Any <strong>set of rules</strong> you commit to in advance that turns what people do into an outcome and a payment. A sealed-bid auction is a mechanism; so is an English auction; so is the tax code together with the forms you file. The agent plays a game, and the game deterimines allocations and payments.</p>
+      <p>Stated that way the space of mechanisms is hopeless — it is the space of all possible games and payments.</p>
+    </div>
+    <div class="col e">
+      <span class="tag">A direct mechanism</span>
+      <p>The mechanism whose only allowed move is to <strong>report a type</strong>. You say <code>θ</code>; you receive <code>q θ</code> and pay <code>t θ</code>. So a direct mechanism <em>is</em> the pair <code>⟨q, t⟩</code>, and nothing else.</p>
+      <p>The <strong>revelation principle</strong> says this costs nothing: whatever any mechanism achieves in equilibrium, a direct mechanism exits that achieves the same thing by making actors tell the truth (report their types). So the pair (<code>q, t</code>) is fully general — and <strong>incentive compatibility</strong> is what buys that generality back: it is the requirement that no type prefers to report to be a different type, which is what makes "being told the truth" an equilibrium rather than a hope.</p>
     </div>
   </div>
 
+  <p class="leancap" style="margin-top:-6px">In Lean: <code>Mechanism A</code> is the pair; <code>ICIRMechanism A v θ_min</code> is the pair carrying proofs of monotonicity, <code>IsIC</code>, and <code>IsIR</code>. Every object in this talk is one of those two.</p>
+
   <div class="body">
-    <p>Existence on one side, uniqueness on the other, over the same pair of structures. That is a universal property if anything is. So I set out to see whether both could be <b>one categorical statement</b>.</p>
-    <p><b>And my first guess was wrong.</b> I expected a right adjoint — pricing as the structure-preserving right-hand map, mechanisms sitting <em>terminally</em> over their allocations. The formalisation would not have it. Pricing is the <b>left</b> adjoint: <code>T ⊣ Q</code>, and <code>T(q)</code> is <b>initial</b> in its fibre, not terminal. The reason is individual rationality — rents are bounded <em>below</em> by zero, so the rent-extracting mechanism sits at the <em>bottom</em> of the family and arrows run <em>out</em> of it. Once you see it, it is obvious. I did not see it, and I would have published the other thing.</p>
-    <p>That is two corrections before the talk even starts: the <b>direction</b> of the adjunction, in this act, and then the <b>definition of the morphisms</b>, in Act III. Both were guesses that felt right. Both were caught by an obligation I could not argue with. Everything that follows is really just an account of what it is like to work in a language that <b>answers back</b>.</p>
+    <p>Uniqueness on one side, existence on the other, over the same pair of structures. That is a universal property if anything is. So I set out to see whether both could be <b>one categorical statement</b>.</p>
+    <p><b>And my first guess was wrong.</b> I expected a right adjoint — pricing as the structure-preserving right-hand map, mechanisms sitting <em>terminally</em> over their allocations. The formalisation would not have it. Pricing is the <b>left</b> adjoint: <code>T ⊣ Q</code>, and <code>T(q)</code> is <b>initial</b> in its fibre, not terminal. The reason is individual rationality — rents are bounded <em>below</em> by zero, so the rent-extracting mechanism sits at the <em>bottom</em> of the family and arrows run <em>out</em> of it. Once you see it, it is obvious. I did not see it, and I would have tried to publish the other thing.</p>
+    <p>That is the first of two corrections: the <b>direction</b> of the adjunction, and then later the <b>definition of the morphisms</b>. Both were guesses that felt right. Both were caught by an obligation I could not argue with. Everything that follows is really just an account of what it is like to work in a language that can <b>answer back</b>, in particular when provided with an LLM translator.</p>
   </div>
 </section>
 
@@ -251,14 +302,22 @@
 <section class="act">
   <p class="actnum">Act I</p>
   <h2>Two thin categories, and one free parameter</h2>
-  <p class="intro">The whole argument turns on noticing which of three structures the economics <b>pins down</b> and which it leaves <b>free</b>. Two are forced. One is a modelling choice — and modelling choices are where the errors live.</p>
+  <p class="intro">The whole argument turns on noticing which of three structures the economics <b>pins down</b> and which it leaves <b>free</b>. Two are forced. One is a modelling choice — and modelling choices are where errors can live.</p>
+  <div class="verdict">
+    <span class="hd">The one theorem everything else leans on</span>
+    <p><b>The envelope theorem (Milgrom–Segal).</b> Let <code>⟨q, t⟩</code> be incentive compatible, and write <code>V(θ) = v(q θ, θ) − t θ</code> for what the agent walks away with. Then <code>V</code> has a right derivative everywhere, equal to</p>
+    <div class="math">V′(θ) = ∂<sub>θ</sub>v(q θ, θ),&nbsp;&nbsp;&nbsp; hence &nbsp;&nbsp;&nbsp;V(θ) = V(θ<sub>min</sub>) + ∫<sub>θ<sub>min</sub></sub><sup>θ</sup> ∂<sub>θ</sub>v(q s, s) ds</div>
+    <p><b>What it says.</b> Only the <em>direct</em> effect of the type on value survives. The effect running <em>through the allocation</em> — the fact that a higher type is also handed a different <code>q θ</code> — contributes nothing, because the agent had already optimised over what to report. Nothing is assumed about <code>q</code> beyond monotonicity: no smoothness, no continuity. <b>IC does all the work.</b></p>
+    <p><b>Why the derivative is one-sided, and why that is not a technicality.</b> A two-sided derivative would be <em>false</em> for a mechanisms the field cares about a lot. A posted price with reserve <code>p</code> gives <code>V(θ) = max(θ − p, 0)</code> — a kink at <code>p</code>, no derivative there. The right derivative survives the kink, so the identity holds where <code>HasDerivAt</code> would not. <b>Act VII is about what happened when this was checked.</b></p>
+  </div>
 
   <div class="par">
     <div class="col e">
       <span class="tag">The economist says</span>
       <p>An <strong>allocation rule</strong> <code>q : ℝ → A</code> says what a type gets: the probability a bidder wins, or the income a worker earns. It must be monotone — higher types get weakly more. Whether one rule dominates another is not up for debate: <strong>pointwise</strong>, <code>q θ ≤ q′ θ</code> for every θ.</p>
       <p>A <strong>mechanism</strong> <code>⟨q, t⟩</code> adds a price. An auction: who wins, and who pays what. A tax code: what you earn, and what you owe. It must be incentive compatible (no one wants to lie) and individually rational (the lowest type is willing to show up).</p>
-      <p>Which mechanism <em>dominates</em> which? The economics is <strong>silent</strong>. Nothing in Myerson or Mirrlees answers this. It is ours to choose.</p>
+      <p>Which mechanism <em>dominates</em> which? The economics seems split on this. For an auction the natural answer is maximum revenue for the seller, for the tax system maximum welfare is the goal, so minimal tax payments for the given allocation are better. 
+      The only other answer we could give, would be based on the goal of the planner, but these differ per setting.</p>
     </div>
     <div class="col c">
       <span class="tag">The category theorist says</span>
@@ -292,8 +351,9 @@
       <p>is not a demand on <code>T</code> at all. It is a <strong>constraint on the one thing we were free to choose</strong> — the arrows of <strong>Mech</strong>. Functoriality has become a test on a definition.</p>
     </div>
   </div>
+ 
 
-  <figure>
+<figure>
     <div class="figbox">
       <svg viewBox="0 0 640 200" width="640" height="200" role="img" aria-label="Alloc and Mech with the functors T and Q between them">
         <defs>
@@ -325,15 +385,34 @@
 <section class="act">
   <p class="actnum">Act III</p>
   <h2>The test runs. One definition dies.</h2>
-  <p class="intro">Two candidate orders on <strong>Mech</strong>. One is what you write without thinking; the other is what the economics actually implies. <b>The first is wrong</b> — and the only thing in the building that says so is the functor law.</p>
+ <h3 style="font-size:1.15rem;margin:38px 0 6px">Two things to have straight before the test runs</h3>
+
+  <div class="par">
+    <div class="col c">
+      <span class="tag">An arrow here is not a map</span>
+      <p>Both categories are <strong>thin</strong>: between any two objects there is <em>at most one</em> arrow. So an arrow carries no data — it is not a function, not a homomorphism, nothing you can apply to anything. It is a <strong>claim</strong>, and the claim is <em>this one dominates that one</em>. Composition is transitivity; the identity is reflexivity. A thin category is exactly a <strong>preorder</strong>.</p>
+      <p>Which makes a functor between them a <strong>monotone map</strong>, and functoriality the single implication <code>q ≤ q′ ⟹ T(q) ⪯ T(q′)</code>. That is the whole of the obligation, and it is why an economist can be handed the test without learning any category theory: it says <em>pricing preserves the ranking</em>.</p>
+      <p><strong>Faithful</strong> — injective on each hom-set — is free here, and worth nothing: hom-sets have at most one element, so <em>every</em> functor between thin categories is faithful. <strong>Full</strong> — surjective on each hom-set — is not free. It says that whenever <code>T(q) ⪯ T(q′)</code> holds in <strong>Mech</strong>, it was <em>already</em> recorded by <code>q ≤ q′</code> in <strong>Alloc</strong>. Between preorders, <strong>fully faithful</strong> means precisely <strong>order-embedding</strong>: <code>q ≤ q′ ⟺ T(q) ⪯ T(q′)</code>, ranking for ranking, nothing added and nothing lost. Act V collects the fact that <code>T</code> is one.</p>
+    </div>
+    <div class="col e">
+      <span class="tag">Surplus — the quantity everything is measured in</span>
+      <p>The <strong>surplus</strong> (or <em>information rent</em>, or indirect utility) is what the agent walks away with once she has paid:</p>
+      <div class="math">V(θ) = v(q θ, θ) − t(θ)</div>
+      <p>It is not a derived convenience — it is <strong>the agent's objective</strong>, and therefore the field's. <strong>IC</strong> is a statement about it (no type raises her <code>V</code> by lying). <strong>IR</strong> is a statement about it (<code>V(θ<sub>min</sub>) ≥ 0</code>, or she stays home). <strong>Welfare</strong> is it, summed. <strong>Revenue</strong> is total value <em>minus</em> it — every pound of rent conceded is a pound the seller did not collect. Design in this field <em>is</em> the business generating and dividing this surplus.</p>
+      <p>And it costs nothing to work in, because of <strong>quasilinearity</strong>: money enters utility linearly, so <code>t = v − V</code>. Record <code>(q, V)</code> and the price comes back exactly. Nothing has been forgotten.</p>
+      <p><b>Hold on to that.</b> Everything a mechanism designer wants is written in <code>V</code>. We are now about to define dominance <em>without it</em> — and watch what the functor does.</p>
+    </div>
+  </div>
+
+
+  <p class="intro">Two candidate orders on <strong>Mech</strong>. One a simple vector ranking, what you write down instinctively; the other is what the economics actually implies. <b>The first is wrong</b> — and the functor law is why.</p>
 
   <h3 style="font-size:1.15rem;margin:34px 0 6px">Candidate A — order mechanisms by <em>transfer</em></h3>
   <div class="par">
     <div class="col e">
       <span class="tag">Where this definition came from</span>
-      <p>Not from a paper. Not from anyone's considered view. <strong>A mechanism <em>is</em> a pair <code>⟨q, t⟩</code></strong> — that is the definition, in Myerson and in every textbook since. And when your object is a pair, the order you reach for without thinking is the <strong>componentwise</strong> one: allocates more, charges more.</p>
-      <p>That is the honest provenance. <b>Nobody chose it and nobody defended it.</b> It is what you write when the object presents itself as two coordinates and nothing in the field has ever asked which coordinate is the state variable.</p>
-      <p>It is also <em>flattered</em> by a real intuition that does not apply: a bigger bundle costs more. True — of <strong>one agent facing one price schedule</strong>. This is a comparison <strong>between two mechanisms</strong>. The intuition was transplanted, and transplanted intuitions are not checked.</p>
+      <p>Not from a paper. Not from anyone's considered view. <strong>A mechanism <em>is</em> a pair <code>⟨q, t⟩</code></strong> — that is the definition, in Myerson and in every textbook since. And when your object is a pair, the order you reach for is the <strong>componentwise</strong> one: allocates more, charges more.</p>
+      <p>It is also <em>flattered</em> by a real intuition: a bigger bundle costs more. True — of <strong>one agent facing one price schedule</strong>. This is a comparison <strong>between two mechanisms</strong>. The intuition was transplanted, and transplanted intuitions are not checked.</p>
     </div>
     <div class="col c">
       <span class="tag">The category theorist says</span>
@@ -343,6 +422,7 @@
     </div>
   </div>
 
+  <p> The first candidate order was included in the lean defintions, and then had to be mapped. The resulting, LLM-generated code is shown below.</p>
   <div class="lean bad"><span class="kw">structure</span> MechHom (m m' : ICIRMechanism A v θ_min) : Type <span class="kw">where</span>
   hAlloc  : ∀ θ, m.mech.q θ ≤ m'.mech.q θ
   hTransf : ∀ θ, m.mech.t θ ≤ m'.mech.t θ        <span class="cm">-- the natural definition</span>
@@ -352,12 +432,12 @@
   map f   := { hAlloc := f.h
                hTransf := <span class="no">sorry</span> }                <span class="cm">-- ← not provable. For any v.</span>
 </div>
-  <p class="leancap">The <code>sorry</code> that started this project. It was read, for a long time, as a proof gap.</p>
+  <p class="leancap">The <code>sorry</code> that proofs the value of LEAN in this context. It was read, for a long time, as a proof gap witout consequences as no results explicitely called this field.</p>
 
   <div class="verdict fail">
     <span class="hd">Verdict</span>
-    <p>The <code>sorry</code> was <b>not a proof gap. It was the category refusing an incorrect definition.</b> No amount of tactic engineering was ever going to close it, because the statement is false — and it is false exactly in the setting the paper needs, which is why a single-model formalisation would never have caught it.</p>
-    <p>Note what happened to the counterexample. Under the transfer order Myerson is <em>fine</em>: <code>v = θ·q</code> is linear, hence convex. It is <b>Mirrlees that kills it</b>. The universal quantifier over settings — the very thing the unification demands — is what supplied the refutation.</p>
+    <p>The <code>sorry</code> was <b>not a proof gap. It was the category refusing an incorrect definition.</b> No amount of tactic engineering was ever going to close it, because the statement is false — and it is false exactly in one of the settings used in the paper. Had we used a single model, auctions, the formalization would never have caught it.</p>
+    <p>Under the transfer order Myerson is <em>fine</em>: <code>v = θ·q</code> is linear, hence convex. It is <b>Mirrlees that kills it</b>. The universal quantifier over settings — the very thing the unification demands — is what supplied the refutation.</p>
     <p><b>And note how quietly it could have died.</b> A componentwise order on a pair is invisible: it looks like bookkeeping, not a claim. It never appears in a theorem statement, so it is never checked; it merely sits in a structure and silently constrains everything downstream. The only reason it was ever <em>read aloud</em> is that a functor demanded to know what it said.</p>
   </div>
 
@@ -389,22 +469,29 @@
 
   <div class="verdict pass">
     <span class="hd">Verdict</span>
-    <p>Functoriality did not merely permit the surplus order — it <b>explained</b> it. The reason the right state variable is the rent and not the price is that <em>the rent is what pricing is monotone in</em>. An economist can reach this by taste. The functor law reaches it by obligation.</p>
+    <p>Functoriality <b>explaines</b> the surplus order. 
+      The reason the right state variable is the rent and not the price is that <em>the rent is what pricing is monotone in</em>. 
+      An economist can reach this by taste, I did, eventually. 
+      Surplus, or indirect utility, is universially good, increasing it (ceteris paribus) always increases the value of the maximization 
+      problem. A category theorist will object immediately, and the objection is correct. From category theory, the direction is more direct: the functor law reaches it by obligation.</p>
   </div>
 </section>
 
 <!-- ============================================================ -->
 <section class="act">
   <p class="actnum">Act IV</p>
-  <h2>The honest limit — falsification, not derivation</h2>
-  <p class="intro">A category theorist will object immediately, and the objection is correct. Meet it head on; it makes the claim stronger, not weaker.</p>
-
-  <div class="pull"><b>Functoriality cannot hand you the right definition. It can only kill the wrong ones.</b> The discrete order on <strong>Mech</strong> — no non-identity arrows at all — makes <code>T</code> a functor trivially. Functoriality is a <em>necessary</em> condition, never a sufficient one.</div>
+  <h2>The limit — falsification, not derivation</h2>
 
   <div class="body">
     <p>So what pins the surplus order? Functoriality plus <b>one further requirement, which is economic, not categorical</b>: the order must lose no information. Quasilinearity supplies exactly that. Since <code>t θ = v(q θ, θ) − V(θ)</code>, an order recording <code>(q, V)</code> determines the transfer completely, whereas the discrete order records nothing.</p>
-    <p>The surplus order is therefore <b>the coarsest order on Mech that (a) survives the functor law and (b) forgets nothing</b>. Two conditions, one from each discipline, and together they leave a single candidate. Neither would have sufficed alone — which is, in miniature, the argument for doing this at all.</p>
+    <p>The surplus order is therefore <b>the coarsest order on Mech that (a) survives the functor law and (b) forgets nothing</b>. Two conditions, one from each discipline, and together they leave a single candidate. Neither would have sufficed alone.</p>
+
+
+  <div class="pull"><b>Functoriality cannot hand you the right definition. It can only kill the wrong ones.</b> The discrete order on <strong>Mech</strong> — no non-identity arrows at all — makes <code>T</code> a functor trivially. Functoriality can be a <em>necessary</em> condition, it cannot be a sufficient one.</div>
+
   </div>
+
+
 </section>
 
 <!-- ============================================================ -->
@@ -477,7 +564,7 @@
   <div class="par">
     <div class="col e">
       <span class="tag">Myerson 1981 · Revenue Equivalence</span>
-      <p>Two auctions with the <strong>same winner-selection rule</strong> and the <strong>same rent at the bottom</strong> raise the <strong>same revenue</strong> — whatever their surface mechanics. First-price, second-price, all-pay: the same money.</p>
+      <p>Two auctions with the <strong>same winner-selection rule</strong> and the <strong>same rent at the bottom</strong> raise the <strong>same revenue</strong> — whatever their surface mechanics. First-price, second-price, all-pay, posted price: the same money.</p>
       <p>In the picture: same base, same height, therefore the same point. There is nowhere else to be.</p>
     </div>
     <div class="col c">
@@ -491,7 +578,7 @@
     <div class="col e">
       <span class="tag">Mirrlees · Hammond · Rochet · Taxation Principle</span>
       <p>Any incentive-compatible tax system can be replaced by a <strong>tax schedule on income alone</strong> — the government never needs to see your type, only your earnings. The mechanism <em>is</em> its allocation.</p>
-      <p>Normalise the bottom rent to zero (as every textbook silently does) and nothing else remains to specify.</p>
+      <p>Normalise the information rent of the bottom type to zero (as every textbook silently does when using lump-sum transfers) and nothing else remains to specify.</p>
     </div>
     <div class="col c">
       <span class="tag">…is an equivalence of categories</span>
@@ -507,7 +594,7 @@
 <section class="act">
   <p class="actnum">Act VII</p>
   <h2>What the proof assistant added — and what it took away</h2>
-  <p class="intro">Lean is not a rubber stamp on an argument you already trusted. In this project it changed the argument <b>three times</b>, and one of those changes was the whole point.</p>
+  <p class="intro">Lean is not a rubber stamp on an argument you already trusted. In this project it changed the argument <b>three times</b>, and one of those changes determined the outcome of the project.</p>
 
   <div class="tablebox">
   <table>
@@ -520,12 +607,12 @@
       </tr>
       <tr>
         <td class="n"><b>Falsified a hypothesis</b></td>
-        <td>The two-sided envelope condition is not merely strong — it is <b>false</b> for the canonical optimal auction. A posted price with reserve <code>p</code> has surplus <code>max(θ−p, 0)</code>: a kink, no derivative. So the theorem as originally stated <b>excluded every auction with a reserve price</b>.</td>
-        <td>This is <em>in the literature</em>, stated as a smooth envelope condition, and the exclusion has been overlooked because nobody is forced to check that the canonical example satisfies the hypotheses. We were forced to: <code>postedPrice_not_hasDerivAt</code> is a theorem in the repository.</td>
+        <td>The two-sided envelope condition is not merely strong — it is <b>false</b> for a canonical auction. A posted price with reserve <code>p</code> has surplus <code>max(θ−p, 0)</code>: a kink, no derivative. So the theorem as originally stated <b>excluded every auction with a reserve price</b>.</td>
+        <td>This is <em>in the literature</em>, stated as a smooth envelope condition, and the exclusion has not received much attention. Extentions exit, but nobody is forced to check that all canonical examples satisfy the hypotheses. Here, we forced the issue by checking some mechanisms, we had to conclude: <code>postedPrice_not_hasDerivAt</code> is a theorem in the repository.</td>
       </tr>
       <tr>
         <td class="n"><b>Deflated a claim</b></td>
-        <td>Incentive compatibility was, at one point, used by <b>no theorem</b> in the development — the envelope condition was assumed rather than derived, so the defining condition of the field reached nothing.</td>
+        <td>Incentive compatibility was, at one point, used by <b>no theorem</b> in the development — the envelope condition was assumed rather than derived, so the defining condition of the field of micro-economics reached nothing.</td>
         <td>Only a dependency graph over a machine-checked corpus can tell you that. It is now derived, via a Milgrom–Segal squeeze from an IC sandwich, and <code>hIC</code> is load-bearing — <b>verified by deleting it and watching the build break</b>.</td>
       </tr>
     </tbody>
@@ -534,8 +621,8 @@
 
   <div class="verdict">
     <span class="hd">And what it took away</span>
-    <p>The formalisation also <b>refuted the headline we wanted</b>. Trace the dependency graph backwards from the two corollaries and the cone reaches <code>MechHom</code>, the isomorphism, the envelope bridge — but it <b>never reaches <code>T</code>, <code>Q</code>, <code>adj_T_Q</code>, or <code>Alloc ≌ Mech₀</code></b>. The corollaries do not consume the adjunction. They cannot be said to be <em>derived from</em> the adjoint functor theorem, and we will not say it.</p>
-    <p>An adjunction is <b>structure, not a lemma</b>. Contriving a downstream dependency to make the graph flatter would have been the easiest edit in the project and the most dishonest. The claim we can defend is the one this talk makes — and it is a better claim, because it does not depend on the corollaries being hard.</p>
+    <p>The formalisation also <b>refuted the headline we wanted</b> a right-adjunction that proofs both the Principle of taxation and the revenue equivalence theorem. Trace the dependency graph backwards from the two corollaries and the cone reaches <code>MechHom</code>, the isomorphism, the envelope bridge — but it <b>never reaches <code>T</code>, <code>Q</code>, <code>adj_T_Q</code>, or <code>Alloc ≌ Mech₀</code></b>. The corollaries do not consume the adjunction. They cannot be said to be <em>derived from</em> the adjoint functor theorem, so we should not say so.</p>
+    <p>An adjunction is <b>structure, not a lemma</b>. Contriving a downstream dependency to make the graph flatter would have been easy, but not entirely fair. The claim we can defend is abouth the structure of the relevant thin categories, but this might be better since structural claims like this do not depend on the corollaries being hard.</p>
   </div>
 </section>
 
@@ -549,34 +636,56 @@
     <p>Consider what the argument in this talk ordinarily <em>costs</em>. To have category theory refuse your definition, you must be able to write the definition down in Lean, formulate the functor, and attempt <code>T.map</code> until you are convinced the failure is real and not your own incompetence. That is a serious apprenticeship in <b>two</b> fields — and I have it in <b>neither</b>. I am an economist. Six months ago I could not have stated revenue equivalence categorically, let alone formalised it, and the entry price would have kept me out of exactly the conversation I wanted to have.</p>
     <p>The LLM collapses that price. It knows the Mathlib lemma names, the tactic idiom, the difference between <code>HasDerivAt</code> and <code>HasDerivWithinAt</code>. It writes the code. <b>What it does not do is decide whether the code is right</b> — and that is the whole architecture. The LLM is a <b>translator</b>. The <b>kernel is the adjudicator.</b> You can tolerate an unreliable translator precisely to the degree that you have an incorruptible referee, and Lean is one.</p>
   </div>
+  <div class="body">
+    <p>There is a familiar version of this arrangement, and it is worth saying exactly how far it gets you. The standard answer to <em>how can you trust code a machine wrote</em> is <b>type safety</b>: let the model write, let the compiler refuse the nonsense. That is the same architecture — unreliable author, incorruptible referee — but we take it a bit furhter. </p>
+  </div>
+
+  <div class="par">
+    <div class="col e">
+      <span class="tag">What a type checker refuses</span>
+      <p>Only the code, against the types <em>you happened to write</em>. And ordinary types say almost nothing: this returns a real number, that argument is a function. <strong>"It compiles" is a very long way from "it is right"</strong>, which is why the discipline needs tests bolted on beside it — and tests check the cases you thought of.</p>
+      <p>Crucially, a type checker would have had <strong>nothing whatever to say about Act III</strong>. A componentwise order on a pair is perfectly well-typed. It is <em>data</em>. It typechecks whatever it means, including when what it means is false.</p>
+    </div>
+    <div class="col c">
+      <span class="tag">What a kernel refuses</span>
+      <p>Lean is that same discipline <strong>run to the end</strong>. Under <strong>Curry–Howard</strong>, propositions <em>are</em> types and proofs <em>are</em> terms — so the type of <code>T.map</code> is literally the theorem <em>"<code>q ≤ q′</code> implies <code>T(q) ⟶ T(q′)</code>"</em>, and typechecking it <em>is</em> proving it. <strong>"It compiles" becomes "it is proved"</strong>, with no gap left for a case nobody thought of.</p>
+      <p>That is why the wrong definition could finally speak. Nothing rejected it while it merely sat in a structure. The functor law <strong>turned it into a proposition</strong> — and a proposition is a type that somebody has to inhabit.</p>
+    </div>
+  </div>
+
+  <div class="body">
+    <p>The kernel checks that <b>the proof proves the statement</b>, but it has nothing to say about whether <b>the statement is the one you meant</b> — and that gap is not narrow. A <code>sorry</code> typechecks. A theorem quietly weakened until it goes through typechecks <em>perfectly</em>, and looks greener than the honest one. The referee is incorruptible about the question it is asked, and it is the author who chooses the question. <b>That is the seam an LLM will find and abuse</b>, and it is why the answer here is not a compiler but a harness.</p>
+  </div>
 
   <div class="verdict fail">
     <span class="hd">Why the harness exists</span>
-    <p>Because an unsupervised LLM will make the failure <b>go away</b> rather than let it speak. Asked about the unprovable <code>T.map</code>, the first instinct on offer was to <em>comment out the vacuous block</em>. Later instincts included weakening a theorem until it compiled, and — twice — confidently reporting a dependency analysis that was <b>silently returning nothing at all</b> (proof terms don't expose their bodies to the obvious API; a token scan cannot see <code>m.hIC</code>).</p>
+    <p>Because an unsupervised LLM will make the failure <b>go away</b> rather than let it speak. Asked about the unprovable <code>T.map</code>, the first offer was to <em>comment out the vacuous block</em>. Later suggestions included weakening a theorem until it compiled, and — twice — confidently reporting a dependency analysis that was <b>silently returning nothing at all</b> (proof terms don't expose their bodies to the obvious API; a token scan cannot see <code>m.hIC</code>).</p>
     <p>Every one of those would have <b>destroyed the finding</b>. The <code>sorry</code> was the most valuable object in the repository, and the path of least resistance was to delete it.</p>
   </div>
 
   <div class="body">
-    <p>So the harness is a set of standing rules that make the cheap escape unavailable — and they are the actual contribution of the method, more than any individual proof:</p>
+    <p>So the harness is a set of standing rules that make the cheap escape unavailable — and they contribute to the method:</p>
   </div>
+
 
   <div class="tablebox">
   <table>
     <thead><tr><th style="width:32%">The rule</th><th>What it forecloses</th></tr></thead>
     <tbody>
-      <tr><td class="n"><b>Zero sorries. Ever.</b></td><td>The escape of a proof that <em>looks</em> finished. If a proof needs a <code>sorry</code>, the <b>statement</b> is wrong — fix the statement, or stop and say so. That single rule is what turned a proof gap into a refuted definition.</td></tr>
+      <tr><td class="n"><b>Zero unreported sorries. Ever.</b></td><td>The escape of a proof that <em>looks</em> finished. If a proof needs a <code>sorry</code>, the <b>statement</b> is wrong — fix the statement, or stop and say so. That single rule is what turned a proof gap into a refuted definition.</td></tr>
       <tr><td class="n"><b>Axioms are checked.</b></td><td>Exactly <code>propext</code>, <code>Classical.choice</code>, <code>Quot.sound</code>. A custom axiom is a <code>sorry</code> wearing a hat.</td></tr>
       <tr><td class="n"><b>Never weaken a theorem silently.</b></td><td>The most insidious failure. A weakened theorem still compiles, still looks green, and no longer says what you think. Every weakening is logged with the alternative rejected and why.</td></tr>
       <tr><td class="n"><b>Deletion is the only dependency test.</b></td><td>Comment the declaration out; run the build; see what breaks. It cannot lie — and both cleverer methods we tried <em>did</em>. This is how we know <code>hIC</code> is load-bearing and how we know the adjunction is not.</td></tr>
-      <tr><td class="n"><b>Log the discarded alternative.</b></td><td>A decision without its rejected alternative is a description, and the next session — human or model — simply re-litigates it.</td></tr>
+      <tr><td class="n"><b>Log any design decision and any discarded alternative.</b></td><td>Design decisions compound, later ones should be consistend with earlier ones, or they will create problems. Inconcistencies can take a long time to surface. A decision without its rejected alternative is a description, and the next session — human or model — simply re-litigates it.</td></tr>
     </tbody>
   </table>
   </div>
 
-  <div class="pull"><b>The LLM lowered the cost of entry; the harness kept the cost of self-deception high.</b> Neither alone is worth much. Together they are what let an economist who knows little Lean and less category theory be <em>told he was wrong, twice, by a machine</em> — and understand why.</div>
+  <div class="pull"><b>The LLM lowered the cost of entry; the harness kept the cost of self-deception high.</b> Together they are what let an economist who knows little Lean and less category theory be <em>told he was wrong, twice, by a machine</em> — and understand why.</div>
 
   <div class="body">
     <p>I want to be exact about the division of labour, because it is easy to overclaim in both directions. The LLM did <b>not</b> discover that the transfer order fails. It <b>could not close <code>T.map</code></b>, and the harness forbade it from pretending otherwise or quietly deleting the obligation — and <em>then</em> the two of us worked out why, and the "why" (order by the rent, because quasilinearity makes the rent the state variable) was an <b>economic</b> insight, brought by the economist. The machine supplied the obstruction. The human supplied the diagnosis. <b>Neither party could have done both.</b></p>
+    <p> The kernel checks the proof against the statement; the linters check the statement's shape; nothing checks the statement's meaning. That gap still belongs to human.</p>
   </div>
 
   <h3 style="font-size:1.15rem;margin:40px 0 6px">And it runs the other way — which is the part that concerns this room</h3>
@@ -588,7 +697,7 @@
   <div class="par">
     <div class="col e">
       <span class="tag">The traditional cost of crossing</span>
-      <p>To bring category theory to economics, you had to <strong>become an economist</strong>: a decade of mechanism design, the literature, the referees, the conventions. To bring formal methods to economics, likewise. The crossing cost a career, so almost nobody paid it, and the two fields have been in the same building for fifty years without speaking.</p>
+      <p>To bring category theory to economics, you had to <strong>become an economist</strong>: a decade of mechanism design, the literature, the referees, the conventions. To bring formal methods to economics, likewise. The crossing cost a career, so almost nobody paid it.</p>
     </div>
     <div class="col c">
       <span class="tag">What it costs now</span>
@@ -599,7 +708,8 @@
 
   <div class="body">
     <p>And here history rhymes, in a way worth pausing on. The architecture underneath these models was built to <b>translate</b> — it came out of machine translation, and that was the whole of its original ambition. It grew into something that writes essays and code, and the translation story receded. What has happened here is that it came <b>back</b>: the model's job in this project was to translate, faithfully and unreliably, between a language I speak and a language you speak — and the kernel was there to catch it when it lied. <b>The old promise, with a referee attached.</b> That turns out to be the version that works.</p>
-    <p>So the claim is not that economics has been opened to formal methods. It is that <b>the wall between two fields has become cheap to cross in both directions at once</b> — and the traffic that matters is not translations of results anyone already believes, but exactly the kind of collision in Act III, where one field's non-negotiable obligation lands on the other field's unexamined convention. Formal methods have been available to economics for decades and economics has ignored them, for the entirely rational reason that the entry cost exceeded the return. Category theory has had things to say to economics for just as long, and said them to a mostly empty room, for the same reason. <b>That calculation has just changed on both sides.</b> The barrier was never that economists lack rigour, or that category theorists lack interest. It was that either crossing demanded a second career. Neither does now.</p>
+    <p>So the claim is not that economics has been opened to formal methods. It is that <b>the wall between two fields has become cheap to cross in both directions</b> — and the traffic that matters is not translations of results anyone already believes, but exactly the kind of collision in Act III, where one field's non-negotiable obligation lands on the other field's unexamined convention. Formal verification methods have been available to economics for decades and economics has ignored them, for the entirely rational reason that the entry cost exceeded the return. Category theory has had things to say about economics for just as long, but learning to read and write the language was expensive.
+    <b>That calculation has just changed.</b> The barrier was never that economists lack rigour, or that category theorists lack interest. It was that either crossing demanded a second career. Neither does now.</p>
   </div>
 </section>
 
@@ -631,12 +741,37 @@
   <div class="pull"><b>Category theory did not prove the economics. It constrained the definitions of the economics — and here the constraint was binding.</b> A discipline whose central objects are chosen by taste has just been handed a taste-free test of one of those choices. That is the offer, and it is worth more than another proof of a theorem from 1981.</div>
 
   <div class="body">
-    <p>The methodological moral generalises past this paper, and it is the one to leave a room of category theorists with. Mechanism design is <b>full</b> of definitions fixed by convention: dominance orders, refinements, notions of equivalence between mechanisms. Each is a choice, each is defended by intuition, and intuition — as Act III shows — is <b>wrong in exactly the cases where the model is unfamiliar</b>. Wherever there is a canonical construction going one way and a forgetful map coming back, functoriality is a free test of the convention. It costs nothing to run and it is not negotiable.</p>
-    <p>And it only bites when you quantify over settings. Under the transfer order, Myerson alone is perfectly consistent. It took <b>the unification itself</b> to produce the counterexample — which is, if you like, an argument that <em>abstraction pays its own way</em>.</p>
-    <p>Which returns me to the question I started with. I wanted a common language for design — the engineering kind, which category theory already speaks, and the <b>socio-institutional</b> kind, which it does not yet. The honest report is that I did not find a dictionary. I found something more useful and less comfortable: <b>a language that refuses to translate a sentence until the sentence is right.</b> Twice it refused mine. If category theory is going to earn its place in this field, I suspect that is how — not by re-proving what economists know, but by declining to state what they have not, in fact, got right.</p>
-    <p>And the reason I could hear it refuse — an economist, with no Lean and no category theory to speak of — is the second half of the method. <b>The model wrote the proofs; the kernel judged them; the harness stopped the model from making the judgement go away.</b> Take any one of those three out and this project produces nothing: without the model I never write the code, without the kernel nothing is at stake, without the harness the <code>sorry</code> gets commented out on day one and the finding dies with it.</p>
-    <p>Which is why I would rather not end on what I found. <b>I am the wrong person to have found it.</b> The step that mattered in Act III was refusing to accept a map that isn't a functor — and that is your reflex, not mine; I had to be taught to have it, and I only recognised what it had killed after the fact. Mechanism design is full of the same shape: a canonical construction one way, a forgetful map back, and an order or an equivalence in between that was fixed by convention and has <b>never once been asked to commute with anything</b>. Those conventions are now cheap to interrogate, and you no longer need a decade of economics to do it — you need the obligation, the model to speak the local dialect, and a kernel to settle it.</p>
-    <p><b>So the invitation is the real conclusion.</b> Not <em>look what category theory did for economics</em>, but: the door is open in both directions now, it costs a weekend rather than a career, and the field on the other side is <b>full of definitions nobody has ever been forced to justify</b>.</p>
+    <p>The methodological moral generalises past this paper, and it is the one to leave a room of category theorists with.
+      Economics is <b>full</b> of definitions fixed by convention: dominance orders, refinements, 
+      notions of equivalence between mechanisms. 
+      Each is a choice, each is defended by intuition, and intuition — as Act III shows — can be 
+      <b>wrong in exactly the cases where the model is unfamiliar</b>. 
+      Wherever there is a canonical construction going one way and a forgetful map coming back, 
+      functoriality is a free test of the convention. It costs nothing to run and it is not negotiable.</p>
+    <p>And it only bites when you quantify over settings. 
+      Under the transfer order, Myerson alone is perfectly consistent. It took <b>the unification itself</b> 
+      to produce the counterexample — which is, if you like, an argument that <em>abstraction pays its own way</em>.</p>
+    <p>Which returns me to the question I started with. I wanted a common language for design — the engineering kind, 
+      which category theory already speaks, and the <b>socio-institutional</b> kind, which it does not yet. 
+      The honest report is that I did not find a dictionary.
+      I found something both useful and uncomfortable: 
+      <b>a language that refuses to translate a sentence until the sentence is right.</b> 
+      Twice it refused mine. If category theory is going to earn its place in this field, I suspect that is how — 
+      not by re-proving what economists know, but by declining to state what they have not, in fact, got right.</p>
+    <p>And the reason I — an economist, with no Lean and no category theory to speak of — could hear it refuse, 
+      is the second half of the method. 
+      <b>The model wrote the proofs; the kernel judged them; the harness stopped the model from making the judgement go away.</b> 
+      Take any one of those three out and this project produces nothing: without the model I never write the code,
+      without the kernel nothing is at stake, without the harness the <code>sorry</code> gets commented out on day one and the 
+      finding dies with it.</p>
+    <p>Which is why I would rather not end on what I found. <b> I should not have found it.</b> 
+      The step that mattered in Act III was refusing to accept a map that isn't a functor — and that is your reflex, not mine;
+      I had to be taught to have it, and I only recognised what it had killed after the fact. 
+      Economics is full of conventions. Those conventions are now cheaper to interrogate, and you no longer need 
+      a decade of economics to do it — you need the obligation, the model to speak the local dialect, and a kernel to settle it.</p>
+    <p><b>So the invitation is the real conclusion.</b> Not <em>look what category theory did for economics</em>, 
+      but: the door is open. It costs a weekend to get started. I will gladly give you a harness to adjust to your liking, as I adjusted mine from another. 
+      This was project 1, we found some value, if we extrapolate from there, economics ought to have some more definitions nobody has ever been forced to justify formally.</p>
   </div>
 </section>
 

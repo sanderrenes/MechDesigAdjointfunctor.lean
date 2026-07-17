@@ -47,11 +47,9 @@ one untested refactor — not mathematics.
       itself: `AddCommGroup` was never flagged because `IsOrderedAddMonoid` needed it, and only the
       last link in the chain is visible. **Deletion remains the only test that cannot lie.**
 
-- [ ] **Post `HARNESS.md` to GitHub and send it to Benedikt.** The document is written (D17 commit)
+- [ ] **complete `HARNESS.md` with code on desktop, post completed version to GitHub and send it to Benedikt.** The document is written (D17 commit)
       and is self-contained — it assumes no knowledge of this project and can be copied into the
-      next one. What remains is publishing it somewhere readable and asking Benedikt what they'd
-      break. The honest question to put to them: *the harness is justified entirely by four
-      findings in one project — is that evidence, or a story?*
+      next one. What remains is publishing it somewhere readable and asking if he sees rules that break anything.  
       Ship `Lean/Linters.lean` alongside it; the document tells you to copy both.
 
 Ideas, not commitments:
