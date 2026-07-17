@@ -10,6 +10,13 @@ resolved. `lake build` is clean with **zero sorries, zero warnings**, and every 
 on `[propext, Classical.choice, Quot.sound]`. What is open below is exposition, tooling and
 one untested refactor — not mathematics.
 
+- [ ] **Confirm `lean_action_ci.yml` goes green with the new Jekyll homepage (D18).** `docs/`
+      gained `Gemfile` / `_config.yml` / `index.md` so `docgen-action`'s `bundle exec jekyll
+      build` step has a real site to build, fixing a "Could not locate Gemfile" CI failure.
+      `bundle install && jekyll build` now builds clean **locally** (2026-07-17) and
+      `docs/Gemfile.lock` is committed from that run — what's still unconfirmed is the GitHub
+      Actions runner itself and the `deploy-pages` step. Push and watch the Action.
+
 - [ ] **Carry D15 into the paper.** The presentation (`docs/functoriality-talk.html`) already
       states the transfer order's provenance honestly: it was a **componentwise default on the
       pair `⟨q,t⟩`**, not a belief economists hold. The *paper* has yet to be written, and the

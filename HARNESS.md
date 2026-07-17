@@ -127,6 +127,25 @@ and watching.**
 The kernel checks the proof against the statement. The linters check the statement's *shape*.
 **Nothing checks the statement's meaning.** That gap is the work.
 
+### CI: the one gate that runs without being asked
+
+`lake new`/`lake init` scaffolds three GitHub Actions workflows under `.github/workflows/`.
+Keep them; they are the only check in this list that fires on a machine you do not control.
+
+- **`lean_action_ci.yml`** — `leanprover/lean-action` on every `push` and `pull_request`. This is
+  `lake build` (Rule 1) enforced server-side: a red run means the gate was violated, full stop,
+  no "it built locally." It also runs `docgen-action`, which needs nothing from you but a clean
+  build.
+- **`update.yml`** — `workflow_dispatch`-only Mathlib-update bot. It opens a PR when a new
+  Mathlib tag builds clean, an issue when it does not. Leave the `schedule:` trigger commented
+  out unless you want unattended dependency bumps; this project runs it by hand.
+- **`create-release.yml`** — tags a release whenever `lean-toolchain` changes on `main`/`master`.
+  Harmless, no action needed.
+
+None of these substitute for local verification — a green CI run only reconfirms Rule 1, it does
+not check Rules 2–4 (sorries, axioms, silent weakening), which have no automated gate at all and
+depend entirely on the discipline in this document.
+
 ---
 
 ## 4. Two linters worth copying
@@ -205,6 +224,88 @@ alone**.
 
 ---
 
+## 6a. Session lifecycle — Start / Run / End
+
+The documents in §6 are *what* to keep current. This is *when*. It is the workspace-standard
+loop (see the `lean-econ-workflow` skill, if your environment has it) — copy the discipline even
+if that skill is not installed where this project lands.
+
+**Naming note.** The standard convention is `CLAUDE.md` plus four control files: `memory.md`
+(live state — current phase, completed declarations, open sorries, blockers), `progress.md`
+(append-only commit log), `plan.md` (phase-by-phase steps), and `decisions.md` (append-only
+decision log — §6's `DECISIONS.md` rule applies to it verbatim: log the rejected alternative,
+record before implementing). **Use this split in a new project** — it is the convention the rest
+of the workspace already uses. `README.md` is not part of this list: it belongs to the repo, not
+the workflow — every project has one regardless of which control-file convention it follows, and
+it is written for a human reader, not maintained as session state.
+
+### Start (every session)
+
+1. Read `memory.md` **first**. If it is missing, warn and offer to reconstruct from git log and
+   the `.lean` files; do not write Lean until it is restored.
+2. Read `CLAUDE.md`. Confirm the project goal and the active phase.
+3. Check tools: toolchain version against `lean-toolchain`, `lake build` resolves, key imports
+   are available. If Lean is unavailable, say so — plan and doc work can continue, proofs cannot
+   be verified.
+4. Report current phase, last completed declaration, open blockers/sorries.
+5. **Ask before writing Lean**: continue from where the project left off, or change
+   assumptions/goals? Wait for confirmation.
+
+New-project setup, one time only: `git init` and commit the scaffolding, `lake update` to
+resolve path dependencies, `lake build` to confirm a green zero-sorry baseline **before** Phase 1
+— see §10.
+
+### Run (during a phase)
+
+- One declaration at a time — definition or theorem, smallest viable step.
+- Compiler-guided: drive proofs with the LSP / `lake build` / `lake env lean <File>`; search
+  Mathlib (`leansearch`/`loogle`/`leanfinder`) before reinventing.
+- Update `memory.md` **immediately** after each completed proof: move it to Completed, note the
+  proof pattern if non-obvious.
+- Never mark something done with a `sorry` — that is Rule 2 in §1, not a separate rule.
+- Log design choices to `decisions.md` as they are made, not at phase end — see §6's rule,
+  which applies here unchanged.
+- **Track assumptions explicitly.** Quasilinearity, single-crossing, positive welfare weights,
+  full support, finiteness, equilibrium existence — carry them as named hypotheses, list them
+  under "Assumptions in Force," never silently strengthen.
+- **Honesty constraint.** Never let a statement that is false or `sorry`'d in generality become
+  load-bearing. If a clean theorem only holds under a model restriction, state and use the
+  restricted version, and document the false general form rather than asserting it.
+- If the project is declarative, results may be `noncomputable` and use classical choice — do
+  not add `Decidable`/enumeration machinery for its own sake.
+- Resolve ambiguities against existing decisions, not in isolation: consult a shared
+  `DESIGN_*.md` if one exists (precedence: headline decisions > structural > resolved questions
+  > local convenience); a choice that contradicts a higher tier must be reopened with the human,
+  not overridden.
+
+### End (phase complete, build green, 0 new sorries)
+
+1. Update `memory.md`: move the phase's results into Completed, confirm 0 sorries or record each
+   placeholder with a reason, note new proof patterns and assumptions invoked, set the next
+   phase.
+2. Append to `progress.md`: a summary row (`phase | date | tokens | cumulative | sorry-count`)
+   and a structured commit block (fields: Phase, Completed, Sorries, Tokens, notes). Confirm
+   every decision made this phase is in `decisions.md` — a decision made but not logged is the
+   failure §6 calls "the one that gets skipped."
+3. Commit, per §9's rule (end of phase, never mid-phase with a broken build):
+   ```
+   phase(N): <one-line summary, imperative, ≤72 chars>
+
+   Phase: <N>
+   Completed: <theorems/definitions>
+   Sorries: <count> open (<names>)
+   Tokens: ~<N>
+
+   <approach notes / blocked items / hypotheses carried>
+   ```
+4. If the project keeps a dependency-graph snapshot, refresh it.
+5. Confirm next-phase prerequisites (upstream names proved, dependencies built) before starting.
+
+A session that ends mid-phase still updates the live-state and log files with partial state; the
+full End sequence and the `phase(N)` commit happen only at phase completion.
+
+---
+
 ## 7. Docstrings are prose. Lean does not check them.
 
 When you change a definition, **read its docstring**. In the originating project one claimed
@@ -250,13 +351,40 @@ both parties.
 
 ## 10. Bootstrapping a new project
 
-1. Copy `HARNESS.md` (this file) and `Lean/Linters.lean`.
-2. Create `CLAUDE.md` pointing at this file, plus whatever is specific to the new domain.
-3. Create empty `TODO.md`, `DECISIONS.md`, `PLAN.md`.
-4. `import <YourLib>.Linters` from the base module so `linter.trueStatement` runs.
-5. Confirm the gate is green *before* any real work: `lake build` clean, `#print axioms` on a
-   trivial declaration, `lake exe runLinter <YourLib>` triaged to zero or a written list of
-   known-and-accepted findings.
-6. Then, and only then, start formalising.
+This is the complete list — everything else in this document explains *why* one of these steps
+exists. A next agent doing a cold instantiation should be able to execute this section alone.
 
-The point of step 5 is that a gate adopted after the mess exists is a gate that gets waived.
+1. **Scaffold the Lake project** (`lake new <pkg> math` or `lake init`, if not done already).
+   This generates `lakefile.toml`, `lean-toolchain`, and `.github/workflows/` —
+   `lean_action_ci.yml`, `update.yml`, `create-release.yml` — as-is; see §3's CI subsection for
+   what each does. Do not hand-write these unless you have a specific reason to deviate.
+2. **Pin the toolchain and Mathlib together.** `lean-toolchain` and the `[[require]] mathlib`
+   `rev` in `lakefile.toml` must name the *same* release (e.g. both `v4.30.0`, not one `-rc`
+   ahead of the other) — a mismatch is invisible until a build breaks on a machine that resolves
+   dependencies fresh.
+3. **Copy `HARNESS.md`** (this file — it is self-contained, see the header) **and
+   `Lean/Linters.lean`** (§4). `import <YourLib>.Linters` from the library's base module so
+   `linter.trueStatement` actually runs — a linter only fires in files that import it.
+4. **Create `CLAUDE.md`** pointing at `HARNESS.md`, plus whatever is domain-specific (the
+   framework being formalised, key Mathlib gaps already known, house conventions like line
+   length). Use this project's `CLAUDE.md` as a template for shape, not content.
+5. **Create the control files** from §6a: `memory.md`, `progress.md`, `plan.md`, `decisions.md`.
+   `README.md` is separate — it is a repo file, not a workflow file, and every project has one
+   regardless. Empty control files are fine; the discipline is populating them from the first
+   commit, not what they start with.
+6. **Confirm the gate is green *before* any real work**:
+   - `lake build` clean — zero errors, zero warnings.
+   - `#print axioms` on a trivial declaration — confirms the axiom set is the expected
+     `[propext, Classical.choice, Quot.sound]` baseline before anything project-specific is
+     added.
+   - `lake exe runLinter <YourLib>` triaged to zero, or a written list of known-and-accepted
+     findings — do not adopt it as a gate while it starts red (§3: "a gate that starts red is a
+     gate nobody obeys").
+   - Push once and confirm `lean_action_ci.yml` goes green on GitHub — this is the only check in
+     the whole document that runs somewhere you do not control; confirm it *works*, not just
+     that it exists.
+7. **Run the Start sequence from §6a** on the first real session, even though `memory.md` will be
+   near-empty — it is the same muscle you will need every session after.
+8. Then, and only then, start formalising.
+
+The point of step 6 is that a gate adopted after the mess exists is a gate that gets waived.

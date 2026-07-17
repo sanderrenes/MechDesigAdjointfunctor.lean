@@ -410,7 +410,45 @@ cheap and must never fail to compile, or the entire library stops building.
 
 ---
 
+## D18 — Give the Pages site a real Jekyll homepage rather than disabling `build-page`.
+**Date:** 2026-07-17 · **Branch:** `surplus-order` · **Files:** `docs/Gemfile`,
+`docs/_config.yml`, `docs/index.md`, `.gitignore`
+
+CI (`lean_action_ci.yml` → `docgen-action@v1`) was failing at `bundle exec jekyll build` with
+"Could not locate Gemfile or .bundle/ directory". `docgen-action` defaults to `build-page: true`,
+`homepage: docs` — it runs Jekyll *inside* `docs/` to assemble a homepage, and expects that
+folder to already be a Jekyll site. This repo's `docs/` held two hand-written static pages
+(`functoriality-talk.html`, `dependency-graph.html`) and no Jekyll scaffolding at all, so the
+build had nothing to work with.
+
+Added the scaffold the action's README calls for (`jekyll new docs`, hand-written here — see
+below): `docs/Gemfile` (`jekyll ~> 4.3`, `minima` theme, `jekyll-feed`), `docs/_config.yml`
+(title/description, `theme: minima`), `docs/index.md` (a real landing page linking to the
+doc-gen4 API docs at `docs/docs/`, the talk, and the dependency graph — plain relative hrefs, no
+`baseurl`, to avoid the project-page-subpath footgun). `.gitignore` gained the Jekyll build
+artifacts: `docs/_site/`, `docs/.jekyll-cache/`, `docs/.bundle/`, `docs/vendor/`.
+
+**Rejected: `build-page: false`.** Simpler and zero-risk — skips the failing step entirely,
+doc-gen4 API docs still build and deploy at `/docs/`. Rejected because it throws away the
+homepage rather than fixing it, and the user asked for the Jekyll homepage specifically, not the
+cheapest fix.
+
+**Tested locally, 2026-07-17.** No Ruby was available in the environment that hand-wrote the
+scaffold, so it was committed to record untested per the harness's honesty rule; the user then
+installed Ruby (`apt-get install ruby-full build-essential zlib1g-dev`) and ran `bundle install`
++ `bundle exec jekyll build` against it directly — it built clean on the first try, no version
+pin changes needed. `docs/Gemfile.lock` is the lockfile that build produced; it is **committed**,
+not ignored, so CI resolves the exact gem versions that were actually tested rather than
+whatever `jekyll ~> 4.3` / `minima ~> 2.5` happen to resolve to on a given run — the same
+pin-together reasoning `lean-toolchain` and `lakefile.toml`'s Mathlib `rev` already follow.
+
+**What is still untested.** The GitHub Actions run itself — `docgen-action`'s Ruby/Bundler
+version could still differ from the local one, and `deploy-pages` has not been exercised. Push
+and check `lean_action_ci.yml` before calling D18 closed.
+
+---
+
 ## Pending
 
 *Nothing pending.* All phases of `PLAN.md` are complete; `TODO.md` lists only
-non-committal ideas.
+non-committal ideas — including confirming D18's CI fix, since it has not been pushed yet.

@@ -1,0 +1,7 @@
+title: Myerson–Mirrlees Master Theorem
+description: >-
+  A Lean 4 / Mathlib formalisation showing Myerson's Revenue Equivalence Theorem and the
+  Mirrlees Taxation Principle are both instances of a single categorical theorem.
+theme: minima
+plugins:
+  - jekyll-feed
