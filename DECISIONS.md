@@ -446,6 +446,14 @@ pin-together reasoning `lean-toolchain` and `lakefile.toml`'s Mathlib `rev` alre
 version could still differ from the local one, and `deploy-pages` has not been exercised. Push
 and check `lean_action_ci.yml` before calling D18 closed.
 
+**Addendum: the Ruby mismatch was real.** `docgen-action`'s runner pins Ruby 3.1.7. The lockfile
+above was generated locally on Ruby 3.2.3 and resolved `public_suffix (7.0.5)`, which requires
+Ruby >= 3.2 — exactly the disagreement this decision predicted, and it broke CI. Fixed by adding
+`gem "public_suffix", "< 7.0"` to `docs/Gemfile` and regenerating with `bundle lock --update
+public_suffix`; it resolved to `public_suffix (6.0.2)` (supports 3.1) with no `SolveFailure`,
+i.e. no other pinned gem forces `>= 7`. Re-verified locally: `bundle install` and `bundle exec
+jekyll build` both exit 0 on the new lockfile.
+
 ---
 
 ## Pending
