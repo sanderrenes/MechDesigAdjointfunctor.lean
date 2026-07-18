@@ -1,10 +1,10 @@
 # MechDesigAdjointfunctor — Lean 4 Formalization
 
-Formal proof in Lean 4 / Mathlib that Myerson's (1981) Revenue Equivalence Theorem and the Mirrlees (1971) Taxation Principle are both instances of a single categorical theorem about the transfer functor **T : Alloc → Mech** and the allocation functor **Q : Mech → Alloc**.
+Formal proof in Lean 4 / Mathlib that Myerson's (1981) Revenue Equivalence Theorem and the Mirrlees (1971) Taxation Principle are both consequences of an underlying structure that can be described in categorical terms via the transfer functor **T : Alloc → Mech** and the allocation functor **Q : Mech → Alloc**.
 
 See `MechDesigAdjointfunctor/Unification.md` for the mathematical write-up.
 
-## Incentive compatibility is load-bearing (the envelope bridge), it shaoes the category of mechanisms (MECH) and allocations (ALLOC) 
+## Incentive compatibility is load-bearing (the envelope bridge), it shapes the category of mechanisms (MECH) and allocations (ALLOC) 
 
 The envelope condition is **derived from IC**, not assumed:
 
