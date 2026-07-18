@@ -10,12 +10,15 @@ resolved. `lake build` is clean with **zero sorries, zero warnings**, and every 
 on `[propext, Classical.choice, Quot.sound]`. What is open below is exposition, tooling and
 one untested refactor — not mathematics.
 
-- [ ] **Confirm `lean_action_ci.yml` goes green with the new Jekyll homepage (D18).** `docs/`
-      gained `Gemfile` / `_config.yml` / `index.md` so `docgen-action`'s `bundle exec jekyll
-      build` step has a real site to build, fixing a "Could not locate Gemfile" CI failure.
-      `bundle install && jekyll build` now builds clean **locally** (2026-07-17) and
-      `docs/Gemfile.lock` is committed from that run — what's still unconfirmed is the GitHub
-      Actions runner itself and the `deploy-pages` step. Push and watch the Action.
+- [ ] **Confirm `lean_action_ci.yml` goes green, then flip Pages Source (D18, D19).** The
+      Jekyll scaffold (D18) and the `docgen-action` Ruby-3.4 pin (D19) are in the tree but
+      **unpushed and unverified on the runner**. D19 replaced `@v1` (Ruby 3.1.7) with a `main`
+      commit SHA (Ruby 3.4) to clear the `sass-embedded >= 3.2` failure; `bundle install` should
+      now resolve without the gem-pinning treadmill. Push, watch the Action reach `deploy-pages`.
+      **Then, and only then:** change **Settings → Pages → Source to "GitHub Actions"** (UI-only).
+      It is currently on "Deploy from a branch", whose legacy `github-pages` gem can't build the
+      Jekyll-4.3 Gemfile — that is why the doc-gen4 API docs 404. Flip it *after* green, or the
+      last-good homepage drops too.
 
 - [ ] **Carry D15 into the paper.** The presentation (`docs/functoriality-talk.html`) already
       states the transfer order's provenance honestly: it was a **componentwise default on the

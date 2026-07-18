@@ -456,7 +456,44 @@ jekyll build` both exit 0 on the new lockfile.
 
 ---
 
+## D19 — Pin `docgen-action` to a Ruby-3.4 `main` commit; stop pinning gems down to a stale runner.
+**Date:** 2026-07-18 · **Branch:** `master` · **Files:** `.github/workflows/lean_action_ci.yml`
+
+`docgen-action@v1`'s runner pins **Ruby 3.1.7**. D18 already paid for this once (the
+`public_suffix < 7.0` pin). It recurred: the Jekyll dependency `sass-embedded 1.101.0` (pulled
+in transitively by `jekyll-sass-converter`) requires Ruby `>= 3.2`, so `bundle install` failed
+on the runner with *"sass-embedded … requires ruby version >= 3.2, which is incompatible with the
+current version, 3.1.7."* Upstream `docgen-action` fixed exactly this by moving its runner to
+**Ruby 3.4** (`fix: update ruby-version (#27)`), but that change is on `main`, not in the `v1`
+ref this repo used. Bumped the `uses:` to that commit
+(`10db47458f91456d87804787d3dfcd914b9a19e3`). Ruby 3.4 satisfies `>= 3.2`, so no gem gymnastics.
+
+**Rejected: pin `sass-embedded` down in `docs/Gemfile`** (the D18 pattern). It keeps the Ruby-3.1
+runner and chases each gem that drops 3.1 support one at a time — and the `x86_64-linux-gnu`
+native gems drop 3.1 *earlier* than other platforms, so the exact working version needs verifying
+against rubygems every time. A losing maintenance position: the pins were only ever propping up an
+outdated runner the upstream action has already retired.
+
+**Rejected: `@main` (the branch).** Same Ruby fix, but a moving target — a later upstream commit
+could change behaviour under us with no diff in this repo. Pinned to the specific commit SHA
+instead, the same reproducibility reasoning as `lakefile.toml`'s Mathlib `rev` and the committed
+`Gemfile.lock` (D18).
+
+The `public_suffix < 7.0` pin from D18 is now **unnecessary** (Ruby 3.4 accepts `public_suffix
+7.x`) but left in place — it is harmless and removing it is a separate, unforced change.
+
+**Separately diagnosed, not fixed here: Pages *Source* is set to "Deploy from a branch."** The
+run log showed *"The github-pages gem can't satisfy your Gemfile's dependencies"* — that error
+comes from GitHub's built-in branch builder (legacy `github-pages` gem, Jekyll 3.9), not from
+`docgen-action`. It explains both this failure and why the doc-gen4 API docs 404: the
+Actions-based deploy is being ignored. **Source must be changed to "GitHub Actions"** in the repo
+settings (UI-only, cannot be done from the tree) — but *after* this workflow goes green, or the
+last-good homepage is dropped too.
+
+---
+
 ## Pending
 
 *Nothing pending.* All phases of `PLAN.md` are complete; `TODO.md` lists only
-non-committal ideas — including confirming D18's CI fix, since it has not been pushed yet.
+non-committal ideas — including confirming D18/D19's CI fix (unpushed) and flipping the Pages
+Source to "GitHub Actions" once the Action is green.

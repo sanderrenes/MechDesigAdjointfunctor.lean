@@ -18,4 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: leanprover/lean-action@v1
-      - uses: leanprover-community/docgen-action@v1
+      # Pinned to a main-branch commit (Ruby 3.4) rather than @v1 (Ruby 3.1): the v1 runner's
+      # stale Ruby forced gem pins (public_suffix, sass-embedded) to accommodate it. See D19.
+      - uses: leanprover-community/docgen-action@10db47458f91456d87804787d3dfcd914b9a19e3
