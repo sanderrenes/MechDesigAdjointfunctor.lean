@@ -60,6 +60,13 @@ Two techniques have already produced **wrong answers** here. Do not repeat them.
 **The reliable test is deletion:** comment the declaration out, run `lake build`, see what
 breaks. It cannot lie. Use it before claiming anything is unused, load-bearing, or vacuous.
 
+## Lean version and module system
+
+- Lean and Mathlib `v4.35.0`, since the port merged on 2026-11-01. Evidence and steps: `docs/PLAN_lean_module_and_version_port.md` in the workspace repo.
+- Every Lean file here is a `module`. A new file starts with `module`, imports with `public import`, and puts its declarations in `@[expose] public section`. A `module` file cannot import a non-`module` file.
+- `.lake/packages` is a symlink to the shared Mathlib, `~/claude_projects/lake-shared/mathlib-v4.35.0/packages`. Do not run two builds at the same time and do not delete that folder. The old v4.30 packages are kept as `.lake/packages-v4.30`.
+- To roll back, see `.local/lean-4.35-port-rollback.md` in the workspace repo.
+
 ## Lean conventions
 
 - 100-character lines (mathlib style), not 80.
