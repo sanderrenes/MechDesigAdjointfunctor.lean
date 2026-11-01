@@ -16,12 +16,14 @@ public import Mathlib.Topology.Order.DenselyOrdered
 @[expose] public section
 
 /-!
-# Stage 4: The Master Theorem — Adjunction Q ⊣ T
+# Stage 4: The Master Theorem — Adjunction T ⊣ Q
 
-Proves the abstract categorical Master Theorem: the allocation functor
-**Q : Mech → Alloc** has a right adjoint **T : Alloc → Mech**, and the right
-adjoint is unique up to natural isomorphism.  Every IC-IR mechanism with a given
-allocation rule is isomorphic to `T(q)`.
+Proves the abstract categorical Master Theorem: the transfer functor
+**T : Alloc → Mech** is the **left** adjoint of the allocation functor
+**Q : Mech → Alloc**, and the left adjoint is unique up to natural isomorphism.  `T(q)` is the
+minimal-rent mechanism with allocation rule `q`: every IC-IR mechanism with that rule sits above it,
+and those with zero rent at the lowest type are isomorphic to it.  The direction is not `Q ⊣ T`;
+see the *Variance* note at `adj_T_Q` and `DECISIONS.md` D1 and D3.
 
 ## Main declarations
 

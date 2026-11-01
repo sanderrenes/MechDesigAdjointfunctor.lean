@@ -16,9 +16,9 @@ public import Mathlib.Order.CompleteLattice.Basic
 # Stage 1: Abstract Categorical Framework
 
 Defines the categories **Mech** and **Alloc**, the forgetful functor
-**Q : Mech → Alloc**, and establishes that **Alloc** is complete and **Q**
-preserves limits.  These are the prerequisites for the adjunction Q ⊣ T proved
-in `MasterTheorem.lean`.
+**Q : Mech → Alloc**, and establishes that **Alloc** is complete.  These are the
+prerequisites for the adjunction `T ⊣ Q` proved in `MasterTheorem.lean`, which in turn
+gives that **Q** preserves limits and **T** preserves colimits.
 
 ## Main declarations
 
@@ -30,7 +30,7 @@ in `MasterTheorem.lean`.
 * `MechDesign.Q` — forgetful functor Q : Mech → Alloc
 * `MechDesign.IC_implies_monotone` — condition MON from IC + SC (Lemma 1.7 precursor)
 * `MechDesign.alloc_hasLimits` — Lemma 1.7
-* `MechDesign.Q_preservesColimits` — Lemma 1.8 (proved in `MasterTheorem.lean`)
+* `MechDesign.T_preservesColimits` — Lemma 1.8 (proved in `MasterTheorem.lean`, with `Q_preservesLimits`)
 
 ## References
 
@@ -228,11 +228,13 @@ noncomputable def Q {A : Type*} [LinearOrder A]
   map_id _     := by apply @Subsingleton.elim _ allocHom_subsingleton
   map_comp _ _ := by apply @Subsingleton.elim _ allocHom_subsingleton
 
-/-! ### 1.6 Q Preserves Colimits (Lemma 1.7) -/
+/-! ### 1.6 Colimits and limits through the adjunction (Lemma 1.8) -/
 
--- **Lemma 1.8**: Q preserves all small colimits because it is the left adjoint in Q ⊣ T.
--- The proof requires `adj_Q_T` (defined in `MasterTheorem.lean`, which imports this file),
--- so it lives there as `MechDesign.Q_preservesColimits`.
+-- **Lemma 1.8**: `T` preserves all small colimits because it is the left adjoint in `T ⊣ Q`;
+-- dually `Q` preserves all small limits. Both need `adj_T_Q` (defined in `MasterTheorem.lean`,
+-- which imports this file), so they live there as `MechDesign.T_preservesColimits` and
+-- `MechDesign.Q_preservesLimits`. (Earlier drafts said `Q` preserves colimits, from the old direction
+-- `Q ⊣ T`; see `DECISIONS.md` D3.)
 -- *Reference*: Mac Lane (1978), Chapter V, Theorem 5.1 (left adjoints preserve colimits).
 
 end MechDesign

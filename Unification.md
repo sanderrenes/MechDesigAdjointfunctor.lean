@@ -40,11 +40,13 @@ categorical-unification-mirrlees-myerson.md
 
 ---
 
+> **Status, 2026-11-01: superseded in part.** This write-up predates decisions D1–D3 (`DECISIONS.md`, 2026-07-13). It orders the morphisms of **Mech** by transfer (§1.3) and states the adjunction as `Q ⊣ T` with `T(q)` terminal (Theorem 4.3, Corollary 4.4, Theorem 4.5). The Lean formalisation orders them by surplus on a fixed type space and proves `T ⊣ Q` with `T(q)` **initial**. The first version ordered the morphisms of Mech by transfer; making T a functor under that order needs v convex in the allocation, which Myerson's v = θ·a satisfies but Mirrlees' concave value does not (D1). Ordering by surplus V = v − t fixes it, and individual rationality V(θ_min) ≥ 0 then floors each fibre, so T(q) is the minimal-rent mechanism and arrows run out of it (D3). The Lean source is authoritative. What is marked below is the original argument, which holds for the transfer order only when `v` is convex in the allocation. Affected here: §1.3, Theorems 4.3 and 4.5(ii), Corollary 4.4, the proof-chain summary, and the §7 notes on workarounds that D1 and D2 made unnecessary.
+
 ## Overview
 
 This document proves that Myerson's (1981) Revenue Equivalence Theorem and the Mirrlees (1971) Taxation Principle — as formalised by Hammond (1979) and Rochet (1985) — are both instances of a single categorical theorem:
 
-> **Master Theorem.** In any category of incentive-compatible mechanisms over a one-dimensional ordered type space with quasilinear preferences, the allocation functor Q: Mech → Alloc has a right adjoint T. The right adjoint is unique up to natural isomorphism. Every incentive-compatible mechanism with a given allocation rule is isomorphic to T(q). Consequently, any two IC mechanisms with the same allocation rule and the same boundary condition generate the same expected transfer.
+> **Master Theorem.** In any category of incentive-compatible mechanisms over a one-dimensional ordered type space with quasilinear preferences, the allocation functor Q: Mech → Alloc has a right adjoint T. The right adjoint is unique up to natural isomorphism. *[Original formulation, transfer order. The Lean theorem is `T ⊣ Q`; see the status note above.]* Every incentive-compatible mechanism with a given allocation rule is isomorphic to T(q). Consequently, any two IC mechanisms with the same allocation rule and the same boundary condition generate the same expected transfer.
 
 The proof proceeds in six stages:
 
@@ -336,7 +338,7 @@ with V(θ_min) = 0 (normalisation)
 
 ### 4.2 The Adjunction
 
-**Theorem 4.3 (Q ⊣ T).** The allocation functor Q: Mech → Alloc is left adjoint to the transfer functor T: Alloc → Mech:
+**Theorem 4.3 (Q ⊣ T under the transfer order; the Lean theorem is T ⊣ Q — see the status note).** The allocation functor Q: Mech → Alloc is left adjoint to the transfer functor T: Alloc → Mech:
 
 ```
 hom_Alloc(Q(q, t), q')  ≅  hom_Mech((q, t), T(q'))
@@ -362,7 +364,7 @@ Naturality in both arguments follows from the functoriality of Q and T and the c
 
 ### 4.3 Terminality of T(q)
 
-**Corollary 4.4 (T(q) is Terminal in Mech_q).** Fix a monotone allocation rule q and boundary condition V(θ_min) = 0. In the full subcategory **Mech_q** of Mech consisting of all BIC mechanisms with allocation rule q, the object T(q) is the terminal object: every object has a unique morphism to T(q).
+**Corollary 4.4 (T(q) is Terminal in Mech_q under the transfer order; the Lean version is that T(q) is *initial* under the surplus order).** Fix a monotone allocation rule q and boundary condition V(θ_min) = 0. In the full subcategory **Mech_q** of Mech consisting of all BIC mechanisms with allocation rule q, the object T(q) is the terminal object: every object has a unique morphism to T(q).
 
 *Proof.* Let (q, t) be any object in Mech_q. We need to exhibit a unique morphism φ: (q, t) → T(q).
 
@@ -456,7 +458,7 @@ The Master Theorem requires QI, SC, and MON. The following summarises what break
 
 **Failure of QI (Non-quasilinear preferences).**
 
-If U(a, t, θ) is not additively separable in t, the envelope formula no longer pins down the transfer uniquely given the allocation. The value of the transfer feeds back into the agent's valuation of the allocation, making Q and T entangled. Formally, Q no longer factors through Alloc as a forgetful functor — the allocation component of a morphism in Mech depends on the transfer component. The adjunction Q ⊣ T breaks.
+If U(a, t, θ) is not additively separable in t, the envelope formula no longer pins down the transfer uniquely given the allocation. The value of the transfer feeds back into the agent's valuation of the allocation, making Q and T entangled. Formally, Q no longer factors through Alloc as a forgetful functor — the allocation component of a morphism in Mech depends on the transfer component. The adjunction breaks.
 
 *Reference: Maskin and Riley (1984); Rochet and Chone (1998).*
 
@@ -484,7 +486,7 @@ Pavan, Segal, and Toikka (2014) extend both frameworks to dynamic environments w
 dV_t/dθ₀ = E[∫₀^T ∂v/∂θ (q_t, θ_t) · (∂θ_t/∂θ₀) dt]
 ```
 
-Categorically, the domain category Dist is replaced by a category of stochastic type processes, morphisms are adapted transformations of these processes, and the right adjoint T integrates the envelope formula over paths. The Master Theorem applies verbatim with the path integral replacing the scalar integral. The transfer schedule is unique given the allocation policy and the initial boundary condition.
+Categorically, the domain category Dist is replaced by a category of stochastic type processes, morphisms are adapted transformations of these processes, and the transfer functor T integrates the envelope formula over paths. The Master Theorem applies verbatim with the path integral replacing the scalar integral. The transfer schedule is unique given the allocation policy and the initial boundary condition.
 
 *Reference: Pavan, Segal, and Toikka (2014), Theorem 1.*
 
@@ -511,12 +513,12 @@ Lemma 4.2:  T(q) is a valid BIC mechanism for any q ∈ Alloc
             (if-direction of characterisation lemmas 2.1, 3.1)
                    │
                    ▼
-Theorem 4.3: Q ⊣ T  (adjunction)
+Theorem 4.3: Q ⊣ T under the transfer order (Lean: T ⊣ Q)  (adjunction)
              (natural bijection of hom-sets;
               explicit via envelope formula)
                    │
                    ▼
-Corollary 4.4: T(q) is terminal in Mech_q
+Corollary 4.4: T(q) is terminal in Mech_q (Lean: initial)
                (right adjoints represent terminal objects;
                 uniqueness from strict monotonicity of q)
                    │

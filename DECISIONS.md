@@ -514,6 +514,26 @@ workspace repo has the evidence). In this module:
 
 ---
 
+## D21 — Descriptions of the adjunction brought in line with D3; `Unification.md` marked, not rewritten
+**Date:** 2026-11-01 · **Branch:** `master`
+
+After D1–D3 (2026-07-13) the Lean proved `T ⊣ Q`, but a number of texts kept the first formulation, `Q ⊣ T` with `T(q)` terminal.
+**Why the direction is what it is:** The first version ordered the morphisms of Mech by transfer; making T a functor under that order needs v convex in the allocation, which Myerson's v = θ·a satisfies but Mirrlees' concave value does not (D1). Ordering by surplus V = v − t fixes it, and individual rationality V(θ_min) ≥ 0 then floors each fibre, so T(q) is the minimal-rent mechanism and arrows run out of it (D3).
+
+**Fixed (comments and docstrings only; every statement unchanged):** the `Lean.lean` header and module table, the `Framework.lean`
+header and its Lemma 1.8 comment (it is `T` that preserves colimits, `Q` that preserves limits, and both are proved in
+`MasterTheorem.lean`), the `MasterTheorem.lean` header, and `docs/index.md`.
+
+**Not rewritten: `Unification.md`.** Its framework differs from the Lean's (morphisms are type-space maps preserving transfers, not a thin
+surplus order on a fixed type space), so a correct fix is a rewrite of §1.3, §4.2–4.4 and §7, not a relabel. It now opens with a status
+notice and the affected statements carry markers.
+
+**Not touched:** `docs/functoriality-talk.html` and `docs/dependency-graph.html` (finished pages; both already say `T ⊣ Q` or narrate
+the flip), the Palomar copy `palomar-MD-adjoint-functor`, the old duplicate folder, and `lean_MirrleesWelfare`, which states `Q ⊣ T` for its
+own restricted setting. Whether that is compatible with D1 is not settled here.
+
+---
+
 ## Pending
 
 *Nothing pending.* All phases of `PLAN.md` are complete; `TODO.md` lists only
