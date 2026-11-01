@@ -534,6 +534,25 @@ own restricted setting. Whether that is compatible with D1 is not settled here.
 
 ---
 
+## D22 — `adj_T_Q` on all of Mech is vacuous for Myerson; the regular-subcategory form is not yet ported
+**Date:** 2026-11-01 · **Branch:** `master`
+
+`adj_T_Q` carries `hvLip` (one Lipschitz constant for every object) and `hW` (right-continuity of the envelope integrand at every object).
+For `myersonValue` on `MyersonAlloc = ℝ` both are false: `no_uniform_lipschitz` (a constant mechanism at every level `a`, and `θ·a` is only
+`|a|`-Lipschitz) and `no_uniform_hW` (`leftPostedPrice`, an IC-IR mechanism whose allocation is left-continuous at the reserve). Both are
+proved, with only `propext`, `Classical.choice` and `Quot.sound`, in the Palomar copy at `4ee1a28` (checked 2026-11-01; that state builds on v4.30).
+The Palomar copy therefore states the adjunction on the regular subcategories `AllocR`/`MechR` (`IsRegularAlloc` is a property of the
+allocation alone, so it cuts both categories at once), and `Corollaries.myersonAdjunction` instantiates it.
+
+**Rejected:** keeping the full-category statement as the headline. It type-checks but cannot be applied where the unification is supposed to
+say something. Bounding `MyersonAlloc` to `Set.Icc 0 1` would repair `hvLip` only, not `hW`.
+
+**Done now:** a caveat in the docstring of `adj_T_Q` (comment only; no statement changed). **Not done:** the port of the regular subcategories
+(about 35 declarations: `AllocR`, `MechR`, `TR`, `QR` and their preservation theorems, `masterTheorem_rentExtraction`, the failure
+cases), which needs the module system and v4.35 conversion and a statement-level comparison. Open in `TODO.md`.
+
+---
+
 ## Pending
 
 *Nothing pending.* All phases of `PLAN.md` are complete; `TODO.md` lists only

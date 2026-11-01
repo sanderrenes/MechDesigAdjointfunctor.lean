@@ -12,7 +12,8 @@ one untested refactor — not mathematics.
 
 - [ ] **Rewrite `Unification.md` for the surplus order and `T ⊣ Q`** (§1.3, §4.2–4.4, §7; follow-up to D21). It now carries a
       status notice and markers only, because its categorical framework differs from the Lean's.
-- [ ] **Port the Palomar copy's later work back into this module.** The Palomar copy's last commit (`4ee1a28`, 2026-09-08) holds
+- [ ] **Port the Palomar copy's later work back into this module (D22). This corrects the headline theorem:** the full-category `adj_T_Q` is
+      vacuous for Myerson, the regular-subcategory form is not. The Palomar copy's last commit (`4ee1a28`, 2026-09-08) holds
       results this module does not have: the regular subcategories (`AllocR`, `MechR`, `TR`, `QR`, `TR_preservesColimits`,
       `QR_preservesLimits`), `masterTheorem_rentExtraction`, `taxationPrinciple_impl`/`taxSchedule` in `Framework.lean`, and
       `Corollaries.no_uniform_lipschitz`/`no_uniform_hW`, `postedPrice_not_hasDerivAt`, `mirrlees_transferInvariance_impl`. About 35 declarations

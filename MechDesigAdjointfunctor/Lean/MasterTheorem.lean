@@ -568,6 +568,13 @@ mechanism in the fiber leaves the lowest type a non-negative rent and therefore 
 *above* `T(r)`.  So `T(r)` is initial in the fiber, not terminal, and `T` is the left
 adjoint.  IR is exactly what pins the direction: it is used, essentially, in the counit.
 
+**Caveat: vacuous in the Myerson setting.**  `hvLip` and `hW` are quantified over every object of **Mech**, and for
+`myersonValue` (allocation space `ℝ`) neither can hold: `v(a, θ) = θ·a` is `|a|`-Lipschitz, and a constant mechanism exists at every
+level `a`, so no single `L` works; and a posted price whose allocation jumps up just right of the reserve is a BIC-IR mechanism
+at which `hW` fails.  So this statement cannot be instantiated for Myerson.  The `palomar-MD-adjoint-functor` repository
+(commit `4ee1a28`) states the adjunction on the regular subcategories `AllocR`/`MechR` instead, and proves the two failures
+(`Corollaries.no_uniform_lipschitz`, `Corollaries.no_uniform_hW`).  Porting that here is open: see `TODO.md` and `DECISIONS.md` D22.
+
 *Reference*: Theorem 4.3; Mac Lane (1978), Chapter IV. -/
 -- `Adjunction` is a structure (Type), not a Prop, so we use `def` not `theorem`.
 noncomputable def adj_T_Q {A : Type*} [LinearOrder A]
