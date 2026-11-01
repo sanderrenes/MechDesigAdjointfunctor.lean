@@ -101,12 +101,10 @@ lemma mirrlees_singleCrossing (h g : ℝ → ℝ) (_hh : Differentiable ℝ h)
     rw [hf_eq]
     -- HasDerivAt for y/x and y'/x
     have hdy : HasDerivAt (fun x => y / x) (-(y / θ ^ 2)) θ := by
-      have hraw := (hasDerivAt_const θ y).div (hasDerivAt_id θ) hθne
-      simp only [id] at hraw
+      have hraw := (hasDerivAt_const θ y).fun_div (hasDerivAt_id' θ) hθne
       convert hraw using 1; ring
     have hdy' : HasDerivAt (fun x => y' / x) (-(y' / θ ^ 2)) θ := by
-      have hraw := (hasDerivAt_const θ y').div (hasDerivAt_id θ) hθne
-      simp only [id] at hraw
+      have hraw := (hasDerivAt_const θ y').fun_div (hasDerivAt_id' θ) hθne
       convert hraw using 1; ring
     -- HasDerivAt for g(y/x) and g(y'/x)
     have hdgy : HasDerivAt (fun x => g (y / x)) (deriv g (y / θ) * -(y / θ ^ 2)) θ :=
@@ -357,8 +355,7 @@ lemma mirrleesValue_hasDerivAt (h g : ℝ → ℝ) (_hh : Differentiable ℝ h)
     (hasDerivAt_id θ).mul_const _
   -- d/dθ [y / θ] = -(y / θ²)
   have hdy : HasDerivAt (fun x => y / x) (-(y / θ ^ 2)) θ := by
-    have hraw := (hasDerivAt_const θ y).div (hasDerivAt_id θ) hθ
-    simp only [id] at hraw
+    have hraw := (hasDerivAt_const θ y).fun_div (hasDerivAt_id' θ) hθ
     convert hraw using 1; ring
   -- chain rule for g(y/θ)
   have hdgy : HasDerivAt (fun x => g (y / x)) (deriv g (y / θ) * -(y / θ ^ 2)) θ :=

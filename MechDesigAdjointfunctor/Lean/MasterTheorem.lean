@@ -619,7 +619,7 @@ noncomputable def adj_T_Q {A : Type*} [LinearOrder A]
 (In the previous formulation this was claimed for `Q`; under the surplus order the
 variance is `T ⊣ Q`, so it is `T` that preserves colimits and `Q` that preserves
 limits — see `Q_preservesLimits`.) -/
-noncomputable instance T_preservesColimits {A : Type*} [LinearOrder A]
+theorem T_preservesColimits {A : Type*} [LinearOrder A]
     {v : A → ℝ → ℝ}
     (θ_min : ℝ) (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D)
     (hD : ∀ θ, θ ∈ D) (hD_Ioi : Set.Ioi 0 ⊆ D)
@@ -637,7 +637,7 @@ noncomputable instance T_preservesColimits {A : Type*} [LinearOrder A]
   (adj_T_Q θ_min hθ_pos hSC hD hD_Ioi hdiff hintC hint L hvLip hW).leftAdjoint_preservesColimits
 
 /-- `Q`, as the **right** adjoint, preserves all small limits. -/
-noncomputable instance Q_preservesLimits {A : Type*} [LinearOrder A]
+theorem Q_preservesLimits {A : Type*} [LinearOrder A]
     {v : A → ℝ → ℝ}
     (θ_min : ℝ) (hθ_pos : 0 < θ_min) {D : Set ℝ} (hSC : SingleCrossing v D)
     (hD : ∀ θ, θ ∈ D) (hD_Ioi : Set.Ioi 0 ⊆ D)

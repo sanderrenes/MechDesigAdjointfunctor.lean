@@ -2,6 +2,7 @@ module
 
 public import Lean
 public import Batteries.Tactic.Lint
+public meta import Lean.Linter.Basic
 
 public meta section
 
