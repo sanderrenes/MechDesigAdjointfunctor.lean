@@ -12,6 +12,14 @@ one untested refactor — not mathematics.
 
 - [ ] **Rewrite `Unification.md` for the surplus order and `T ⊣ Q`** (§1.3, §4.2–4.4, §7; follow-up to D21). It now carries a
       status notice and markers only, because its categorical framework differs from the Lean's.
+- [ ] **Port the Palomar copy's later work back into this module.** The Palomar copy's last commit (`4ee1a28`, 2026-09-08) holds
+      results this module does not have: the regular subcategories (`AllocR`, `MechR`, `TR`, `QR`, `TR_preservesColimits`,
+      `QR_preservesLimits`), `masterTheorem_rentExtraction`, `taxationPrinciple_impl`/`taxSchedule` in `Framework.lean`, and
+      `Corollaries.no_uniform_lipschitz`/`no_uniform_hW`, `postedPrice_not_hasDerivAt`, `mirrlees_transferInvariance_impl`. About 35 declarations
+      by name. Its documented reason: on all of **Mech** the envelope theorem's hypotheses cannot hold at every object, so the
+      adjunction statement would be vacuous. This module states it on the full categories. Needs a decision (generalisation vs. regular
+      restriction) and a statement-level comparison, not a copy. Found 2026-11-01; see the Palomar repo's uncommitted tree, which is
+      an older copy of this module's sources (it builds, but deletes those declarations, so do not commit it as it stands).
 - [ ] **Reconcile `lean_MirrleesWelfare` with D1/D3 in writing.** It proves `Q ⊣ T` with `T(q)` terminal in its own restricted
       setting; this module found that direction needs `v` convex. Whether the two are compatible is not settled.
 - [ ] **Confirm `lean_action_ci.yml` goes green, then flip Pages Source (D18, D19).** The
