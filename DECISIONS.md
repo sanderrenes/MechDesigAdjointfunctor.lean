@@ -492,6 +492,28 @@ last-good homepage is dropped too.
 
 ---
 
+## D20 — Port to Lean and Mathlib v4.35.0 and the module system; two `instance`s become `theorem`s
+**Date:** 2026-11-01 · **Branch:** `master` · **Commits:** module system `266bfa8`, v4.35 `f203312`
+
+Part of a workspace-wide port (13 Lean projects moved together; `docs/PLAN_lean_module_and_version_port.md` in the
+workspace repo has the evidence). In this module:
+
+- **Every Lean file is a `module`** (`public import`, `@[expose] public section`). `Linters.lean` is a `public meta section`
+  and needs `public meta import Lean.Linter.Basic`; without it the module build fails. `private` was dropped from the two linter
+  helpers; a later test showed that was not needed under `public meta section`, so it is harmless but could be restored.
+- **`T_preservesColimits` and `Q_preservesLimits` are now `theorem`s, with the same types.** v4.35 rejects them as instances:
+  their hypotheses (`hD`, `hdiff`, `L`, `hvLip`, `hW`, ...) cannot be inferred by typeclass search, so they never fired as
+  instances. **Rejected: keep `instance`.** It no longer compiles, and nothing relied on instance resolution for them.
+- **Four proofs changed, statements did not:** the derivative steps in `MirrleesSetting.lean` use `fun_div` instead of
+  `div` with a `simp only [id]` step, `MyersonSetting.lean` uses `const_mul` for the integrability step.
+- **Checked:** all 148 declarations have identical statements and axioms before and after, with only the standard three
+  axioms; zero sorries; `lake build` green (2862 jobs).
+
+`.lake/packages` is now a symlink to a Mathlib folder shared by all 13 projects; the old v4.30 packages are kept as
+`.lake/packages-v4.30`. Rollback: `.local/lean-4.35-port-rollback.md` in the workspace repo.
+
+---
+
 ## Pending
 
 *Nothing pending.* All phases of `PLAN.md` are complete; `TODO.md` lists only

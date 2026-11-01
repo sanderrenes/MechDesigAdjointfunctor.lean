@@ -10,6 +10,15 @@ resolved. `lake build` is clean with **zero sorries, zero warnings**, and every 
 on `[propext, Classical.choice, Quot.sound]`. What is open below is exposition, tooling and
 one untested refactor — not mathematics.
 
+- [ ] **Texts that still say the old direction `Q ⊣ T`, found 2026-11-01 (the Lean and D3 say `T ⊣ Q`).** Not changed, because
+      they are Lean docstrings, the maths write-up and the finished `docs/` pages. `Lean.lean` (header lines 12 and 21);
+      `Lean/MasterTheorem.lean` (the `# Stage 4` header, lines 19-22, contradicts line 563 of the same file);
+      `Lean/Framework.lean` (comments at lines 20 and 233: "Q preserves all small colimits because it is the left adjoint"
+      — it is `T` that preserves colimits, `Q` that preserves limits); `Unification.md` (Theorem 4.3 and the summary
+      diagram state `Q ⊣ T` with `T(q)` terminal; D3 says `T ⊣ Q` with `T(q)` initial); `docs/index.md` line 10 (docs/ is
+      never refreshed unasked, so this one is only recorded). The Palomar copy `palomar-MD-adjoint-functor` already fixed `Lean.lean`.
+      `lean_MirrleesWelfare` states `Q ⊣ T` with `T` terminal in a restricted setting; the two have not been reconciled in writing.
+
 - [ ] **Confirm `lean_action_ci.yml` goes green, then flip Pages Source (D18, D19).** The
       Jekyll scaffold (D18) and the `docgen-action` Ruby-3.4 pin (D19) are in the tree but
       **unpushed and unverified on the runner**. D19 replaced `@v1` (Ruby 3.1.7) with a `main`
@@ -72,6 +81,9 @@ Ideas, not commitments:
       callers rather than leaving them to unfold the composite.
 
 ## Done
+
+- [x] **Port to Lean and Mathlib v4.35.0 and the module system** (D20). All files are modules; `T_preservesColimits` and
+      `Q_preservesLimits` are theorems; 148 declarations unchanged in statement and axioms; zero sorries.
 
 - [x] **Two linters for statements that say nothing** (D17). `Lean/Linters.lean`.
       `linter.trueStatement` warns on any conclusion that is `True` — D14's exact failure, which
