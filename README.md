@@ -47,7 +47,8 @@ V_m(θ)  =  V_m(θ_min)  +  ∫_{θ_min}^{θ} (∂v/∂s)(r.q s, s) ds
 
 Every BIC-IR mechanism over an allocation `r` is the envelope mechanism displaced by a single constant. `T(r)` is the member with rent `0` — the rent-extracting mechanism — so it sits at the *bottom* of its fiber. Hence:
 
-- `adj_T_Q` : **`T ⊣ Q`**, with `T` the **left** adjoint (not `Q ⊣ T`).
+- `adj_T_Q` : **`T ⊣ Q`**, with `T` the **left** adjoint (not `Q ⊣ T`). *Caveat:* stated on all of Mech, its hypotheses `hvLip` and `hW` cannot
+  hold for Myerson, so it is vacuous there (`DECISIONS.md` D22). The regular-subcategory form that avoids this is in `palomar-MD-adjoint-functor` and is not yet ported.
 - `T_initial` : `T(r)` is **initial** in `Mech_r`, not terminal. Individual rationality is what pins the direction — it is used essentially in the counit.
 - `T_full`, `T_faithful` : `T` is **fully faithful**, exhibiting **Alloc** as a coreflective subcategory of **Mech**.
 - `T_preservesColimits`, `Q_preservesLimits` : the usual consequences, with the corrected variance.
