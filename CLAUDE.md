@@ -79,6 +79,25 @@ breaks. It cannot lie. Use it before claiming anything is unused, load-bearing, 
   `lake env lean <file>` over the editor squiggles.
 - Prefer the `/lean4:*` workflow: `/lean4:prove` to work, `/lean4:checkpoint` to land.
 
+## Key proof patterns (checked on Lean and Mathlib v4.35.0, 2026-11-02)
+
+Moved here from the old outer `declarative-only-proofs/mechdesign-adjoint-functor/CLAUDE.md`, which is not in git. Each was rechecked against
+the v4.35 sources and a small test file:
+
+- **FTC domain**: all FTC arguments restrict to `Set.Ici θ_min` (not `Set.univ`), so `θ_min > 0` is available and no `sorry` is needed for
+  non-physical types. Still the rule (47 uses).
+- **`hvθ`**: the relevant partial derivative is `deriv (v (y θ)) θ`, not the total derivative `deriv (fun s => v (y s) s) θ`.
+  Still the hypothesis form in `MirrleesSetting.lean`.
+- **Thin category laws**: morphism uniqueness (`MechHom`, `AllocHom`) is discharged by `Subsingleton.elim` (28 uses).
+- **`le_or_gt`**: case split with this lemma. In v4.35 `le_or_lt` no longer exists at all (`Unknown identifier`).
+- **`intervalIntegrable_const`**: use it from the root namespace; `intervalIntegral.intervalIntegrable_const` is an unknown constant in v4.35.
+- **`integral_symm a b`**: `∫ x in b..a, f x = -∫ x in a..b, f x`; needed when swapping interval endpoints. Unchanged.
+- **`HasDerivAt.sub`**: the code uses the explicit non-dot form (5 uses). The old warning was that dot notation resolved to
+  `HasFDerivAtFilter.sub`; in a simple test on v4.35 `hf.sub hg` worked, so this is a habit now, not a necessity. Untested on the larger proofs.
+
+Removed from the old list: the `h_spread` field. `MechHom` and `AllocHom` no longer carry it (see the *Design note* in `Framework.lean`),
+so the thin-category proofs no longer need it.
+
 ## Status (was: standing warning)
 
 **The IC ⟹ envelope bridge is closed.** `hEnv` is no longer assumed anywhere in the
